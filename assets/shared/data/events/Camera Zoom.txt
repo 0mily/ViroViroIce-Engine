@@ -1,0 +1,14 @@
+Value 1: num, steps
+Value 2: ease, type
+
+- num: zoom value.
+- steps: how many steps the transition will take.
+(Does not work with OG)
+
+- ease = tween ease  (has OG as the classic way)
+- type = how the zoom value is applied
+
+Types:
+- nll = sets zoom to num
+- mr = adds num to current zoom
+- lss = subtracts num from current zoom

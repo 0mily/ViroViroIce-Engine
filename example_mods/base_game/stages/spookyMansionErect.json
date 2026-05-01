@@ -1,0 +1,138 @@
+{
+	"directory": "week2",
+	"defaultZoom": 1.05,
+	"stageUI": "",
+	
+	"boyfriend": [1000, 120],
+	"opponent": [100, 120],
+	"girlfriend": [430, 150],
+	"hide_girlfriend": false,
+	
+	"camera_boyfriend": [0, 0],
+	"camera_opponent": [0, 0],
+	"camera_girlfriend": [0, 0],
+	"camera_speed": 1,
+
+	"objects": [
+		{
+			"x": -300,
+			"y": -500,
+			"scale": [2400, 2000],
+			"filters": 3,
+			"color": "242336",
+			"angle": 0,
+			"name": "solidBG",
+			"scroll": [1, 1],
+			"alpha": 1,
+			"type": "square"
+		},
+		{
+			"x": 200,
+			"y": 20,
+			"scale": [1, 1],
+			"image": "spooky/erect/bgtrees",
+			"flipX": false,
+			"filters": 3,
+			"color": "FFFFFF",
+			"angle": 0,
+			"name": "trees",
+			"firstAnimation": "anim",
+			"antialiasing": true,
+			"flipY": false,
+			"scroll": [0.85, 0.85],
+			"alpha": 1,
+			"animations": [
+				{
+					"offsets": null,
+					"indices": [],
+					"fps": 5,
+					"anim": "anim",
+					"loop": true,
+					"name": "bgtrees"
+				}
+			],
+			"type": "animatedSprite"
+		},
+		{
+			"x": -560,
+			"y": -220,
+			"scale": [1, 1],
+			"image": "spooky/erect/bgDark",
+			"flipX": false,
+			"filters": 3,
+			"color": "FFFFFF",
+			"angle": 0,
+			"name": "mansionDark",
+			"antialiasing": true,
+			"flipY": false,
+			"scroll": [1, 1],
+			"alpha": 1,
+			"type": "sprite"
+		},
+		{
+			"x": -560,
+			"y": -220,
+			"scale": [1, 1],
+			"image": "spooky/erect/bgLight",
+			"flipX": false,
+			"filters": 2,
+			"color": "FFFFFF",
+			"angle": 0,
+			"name": "mansion",
+			"antialiasing": true,
+			"flipY": false,
+			"scroll": [1, 1],
+			"alpha": 1,
+			"type": "sprite"
+		},
+		{"type": "gf"},
+		{"type": "dad"},
+		{"type": "boyfriend"},
+		{
+			"x": 966,
+			"y": -225,
+			"scale": [1, 1],
+			"image": "spooky/erect/stairsDark",
+			"flipX": false,
+			"filters": 2,
+			"color": "FFFFFF",
+			"angle": 0,
+			"name": "stairsDark",
+			"antialiasing": true,
+			"flipY": false,
+			"scroll": [1, 1],
+			"alpha": 1,
+			"type": "sprite"
+		},
+		{
+			"x": 966,
+			"y": -225,
+			"scale": [1, 1],
+			"image": "spooky/erect/stairsLight",
+			"flipX": false,
+			"filters": 2,
+			"color": "FFFFFF",
+			"angle": 0,
+			"name": "stairs",
+			"antialiasing": true,
+			"flipY": false,
+			"scroll": [1, 1],
+			"alpha": 1,
+			"type": "sprite"
+		}
+	],
+
+	"preload": {
+		"images/spooky/erect/bgDark": 3,
+		"images/spooky/erect/bgLight": 2,
+		"images/spooky/erect/stairsDark": 2,
+		"images/spooky/erect/stairsLight": 2,
+		"images/spooky/erect/bgtrees": 3
+	},
+
+	"_editorMeta": {
+		"boyfriend": "bf",
+		"dad": "spooky",
+		"gf": "gf"
+	}
+}

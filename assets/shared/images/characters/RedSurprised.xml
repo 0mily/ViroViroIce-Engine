@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TextureAtlas imagePath="RedSurprised.png">
+	<!-- Created using the Spritesheet and XML generator -->
+	<!-- https://uncertainprod.github.io/FNF-Spritesheet-XML-generator-Web -->
+	<SubTexture name="danceLeft0000" x="623" y="0" width="200" height="207" frameX="2" frameY="-11" frameWidth="219" frameHeight="216"/>
+	<SubTexture name="danceLeft0001" x="0" y="218" width="206" height="215" frameX="2" frameY="-1" frameWidth="219" frameHeight="216"/>
+	<SubTexture name="danceLeft0002" x="206" y="218" width="206" height="213" frameX="-1" frameY="0" frameWidth="219" frameHeight="216"/>
+	<SubTexture name="danceLeft0003" x="412" y="218" width="207" height="210" frameX="-3" frameY="1" frameWidth="219" frameHeight="216"/>
+	<SubTexture name="danceRight0000" x="207" y="0" width="208" height="215" frameX="-13" frameY="-3" frameWidth="219" frameHeight="216"/>
+	<SubTexture name="danceRight0001" x="0" y="0" width="207" height="218" frameX="-9" frameY="2" frameWidth="219" frameHeight="216"/>
+	<SubTexture name="danceRight0002" x="415" y="0" width="208" height="214" frameX="-5" frameY="2" frameWidth="219" frameHeight="216"/>
+	<SubTexture name="danceRight0003" x="412" y="218" width="207" height="210" frameX="-3" frameY="1" frameWidth="219" frameHeight="216"/>
+</TextureAtlas>

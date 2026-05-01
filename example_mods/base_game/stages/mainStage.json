@@ -1,0 +1,114 @@
+{
+	"directory": "week1",
+	"defaultZoom": 0.9,
+	"stageUI": "",
+	
+	"boyfriend": [790, 120],
+	"opponent": [120, 120],
+	"girlfriend": [400, 130],
+	"hide_girlfriend": false,
+
+	"camera_boyfriend": [0, 0],
+	"camera_opponent": [0, 0],
+	"camera_girlfriend": [0, 0],
+	"camera_speed": 1,
+
+	"objects": [
+		{
+			"x": -600,
+			"y": -200,
+			"scale": [1, 1],
+			"image": "stage/stageback",
+			"flipX": false,
+			"filters": 3,
+			"color": "FFFFFF",
+			"angle": 0,
+			"name": "stageBG",
+			"antialiasing": true,
+			"flipY": false,
+			"scroll": [0.9, 0.9],
+			"alpha": 1,
+			"type": "sprite"
+		},
+		{
+			"x": -650,
+			"y": 600,
+			"scale": [1.1, 1.1],
+			"image": "stage/stagefront",
+			"flipX": false,
+			"filters": 3,
+			"color": "FFFFFF",
+			"angle": 0,
+			"name": "stage",
+			"antialiasing": true,
+			"flipY": false,
+			"scroll": [0.9, 0.9],
+			"alpha": 1,
+			"type": "sprite"
+		},
+		{"type": "gf"},
+		{"type": "dad"},
+		{"type": "boyfriend"},
+		{
+			"x": -125,
+			"y": -100,
+			"scale": [1.1, 1.1],
+			"image": "stage/stage_light",
+			"flipX": false,
+			"filters": 2,
+			"color": "FFFFFF",
+			"angle": 0,
+			"name": "lightLeft",
+			"antialiasing": true,
+			"flipY": false,
+			"scroll": [0.9, 0.9],
+			"alpha": 1,
+			"type": "sprite"
+		},
+		{
+			"x": 1225,
+			"y": -100,
+			"scale": [1.1, 1.1],
+			"image": "stage/stage_light",
+			"flipX": true,
+			"filters": 2,
+			"color": "FFFFFF",
+			"angle": 0,
+			"name": "lightRight",
+			"antialiasing": true,
+			"flipY": false,
+			"scroll": [0.9, 0.9],
+			"alpha": 1,
+			"type": "sprite"
+		},
+		{
+			"x": -500,
+			"y": -300,
+			"scale": [0.9, 0.9],
+			"image": "stage/stagecurtains",
+			"flipX": false,
+			"filters": 2,
+			"color": "FFFFFF",
+			"angle": 0,
+			"name": "curtains",
+			"antialiasing": true,
+			"flipY": false,
+			"scroll": [1.3, 1.3],
+			"alpha": 1,
+			"type": "sprite"
+		}
+	],
+
+	"preload": {
+		"images/stage/stage_light": 2,
+		"images/stage/stagecurtains": 2,
+		"images/stage/stagefront": 3,
+		"images/stage/stageback": 3
+	},
+
+	"_editorMeta": {
+		"boyfriend": "bf",
+		"gf": "gf",
+		"dad": "dad"
+	}
+}

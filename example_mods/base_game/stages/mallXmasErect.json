@@ -1,0 +1,219 @@
+{
+	"directory": "week5",
+	"defaultZoom": 0.8,
+	"stageUI": "",
+	
+	"boyfriend": [970, 100],
+	"opponent": [100, 100],
+	"girlfriend": [400, 130],
+	"hide_girlfriend": false,
+
+	"camera_boyfriend": [0, -100],
+	"camera_opponent": [0, 0],
+	"camera_girlfriend": [0, 0],
+	"camera_speed": 1,
+	
+	"objects": [
+		{
+			"x": -630,
+			"y": -492,
+			"scale": [0.8, 0.8],
+			"image": "christmas/erect/bgWalls",
+			"flipX": false,
+			"filters": 3,
+			"color": "FFFFFF",
+			"angle": 0,
+			"name": "mallBG",
+			"antialiasing": true,
+			"flipY": false,
+			"scroll": [0.2, 0.2],
+			"alpha": 1,
+			"type": "sprite"
+		},
+		{
+			"x": -396,
+			"y": -98,
+			"scale": [0.85, 0.85],
+			"image": "christmas/erect/upperBop",
+			"flipX": false,
+			"filters": 2,
+			"color": "FFFFFF",
+			"angle": 0,
+			"name": "topBoppers",
+			"firstAnimation": "idle",
+			"antialiasing": true,
+			"flipY": false,
+			"scroll": [0.28, 0.28],
+			"alpha": 1,
+			"animations": [
+				{
+					"offsets": null,
+					"indices": [],
+					"fps": 24,
+					"anim": "idle",
+					"loop": false,
+					"name": "upperBop"
+				}
+			],
+			"type": "animatedSprite"
+		},
+		{
+			"x": -1100,
+			"y": -540,
+			"scale": [0.9, 0.9],
+			"image": "christmas/erect/bgEscalator",
+			"flipX": false,
+			"filters": 2,
+			"color": "FFFFFF",
+			"angle": 0,
+			"name": "escalators",
+			"antialiasing": true,
+			"flipY": false,
+			"scroll": [0.3, 0.3],
+			"alpha": 1,
+			"type": "sprite"
+		},
+		{
+			"x": 370,
+			"y": -250,
+			"scale": [1, 1],
+			"image": "christmas/erect/christmasTree",
+			"flipX": false,
+			"filters": 3,
+			"color": "FFFFFF",
+			"angle": 0,
+			"name": "christmasTree",
+			"antialiasing": true,
+			"flipY": false,
+			"scroll": [0.4, 0.4],
+			"alpha": 1,
+			"type": "sprite"
+		},
+		{
+			"x": -1000,
+			"y": 100,
+			"scale": [0.9, 0.9],
+			"image": "christmas/erect/white",
+			"flipX": false,
+			"filters": 2,
+			"color": "FFFFFF",
+			"angle": 0,
+			"name": "fog",
+			"antialiasing": true,
+			"flipY": false,
+			"scroll": [0.85, 0.85],
+			"alpha": 1,
+			"type": "sprite"
+		},
+		{
+			"x": -410,
+			"y": 100,
+			"scale": [1, 1],
+			"image": "christmas/erect/bottomBop",
+			"flipX": false,
+			"filters": 3,
+			"color": "FFFFFF",
+			"angle": 0,
+			"name": "bottomBoppers",
+			"firstAnimation": "idle",
+			"antialiasing": true,
+			"flipY": false,
+			"scroll": [0.9, 0.9],
+			"alpha": 1,
+			"animations": [
+				{
+					"offsets": [0, 0],
+					"indices": [],
+					"fps": 24,
+					"anim": "idle",
+					"loop": false,
+					"name": "bop"
+				},
+				{
+					"offsets": [0, 5],
+					"indices": [],
+					"fps": 24,
+					"anim": "hey",
+					"loop": false,
+					"name": "hey"
+				}
+			],
+			"type": "animatedSprite"
+		},
+		{
+			"x": -1500,
+			"y": 800,
+			"scale": [5700, 3000],
+			"filters": 3,
+			"color": "F3F4F5",
+			"angle": 0,
+			"name": "snowSolid",
+			"scroll": [1, 1],
+			"alpha": 1,
+			"type": "square"
+		},
+		{
+			"x": -1350,
+			"y": 680,
+			"scale": [1.1, 1],
+			"image": "christmas/fgSnow",
+			"flipX": false,
+			"filters": 3,
+			"color": "FFFFFF",
+			"angle": 0,
+			"name": "snowGround",
+			"antialiasing": true,
+			"flipY": false,
+			"scroll": [1, 1],
+			"alpha": 1,
+			"type": "sprite"
+		},
+		{"type": "gf"},
+		{"type": "dad"},
+		{"type": "boyfriend"},
+		{
+			"x": -840,
+			"y": 150,
+			"scale": [1, 1],
+			"image": "christmas/santa",
+			"flipX": false,
+			"filters": 3,
+			"color": "FFFFFF",
+			"angle": 0,
+			"name": "santa",
+			"firstAnimation": "idle",
+			"antialiasing": true,
+			"flipY": false,
+			"scroll": [1, 1],
+			"alpha": 1,
+			"animations": [
+				{
+					"offsets": null,
+					"indices": [],
+					"fps": 24,
+					"anim": "idle",
+					"loop": false,
+					"name": "santa idle in fear"
+				}
+			],
+			"type": "animatedSprite"
+		}
+	],
+	
+	"preload": {
+		"images/christmas/fgSnow": 3,
+		"images/christmas/erect/white": 2,
+		"images/christmas/erect/christmasTree": 3,
+		"images/christmas/erect/bottomBop": 3,
+		"images/christmas/erect/bgWalls": 3,
+		"images/christmas/erect/bgEscalator": 2,
+		"images/christmas/erect/upperBop": 2,
+		"images/christmas/santa": 3
+	},
+
+	"_editorMeta": {
+		"boyfriend": "bf-christmas",
+		"gf": "gf-christmas",
+		"dad": "parents-christmas"
+	}
+}

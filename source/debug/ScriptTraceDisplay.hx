@@ -1,0 +1,155 @@
+package debug;
+
+import openfl.display.Sprite;
+import openfl.text.TextField;
+import openfl.text.TextFormat;
+
+class ScriptTraceDisplay extends Sprite {
+	public var texts:Array<TracePopUp> = [];
+	public var borderPadding:Float = 10;
+	public var textPadding:Float = 2;
+	
+	var minHeight:Float = 0;
+	
+	public function new() {
+		super();
+		
+		var placeholder:TracePopUp = print('!');
+		minHeight = placeholder.hei;
+		placeholder.visible = false;
+	}
+	
+	public override function __enterFrame(dt:Float) {
+		for (text in texts)
+			text.update(dt);
+	}
+	
+	public function print(text:String = 'null', color:FlxColor = FlxColor.WHITE, size:Int = 15):TracePopUp {
+		var popUp:TracePopUp = null;
+		for (text in texts) {
+			if (!text.visible) {
+				popUp = text;
+				break;
+			}
+		}
+		popUp ??= new TracePopUp();
+		
+		popUp.alphaMult = popUp.alpha = 1;
+		popUp.format.color = color.rgb;
+		popUp.format.size = size;
+		popUp.visible = true;
+		popUp.aliveTime = 0;
+		popUp.text = text;
+		
+		popUp.updateWidth();
+		popUp.defaultTextFormat = popUp.format;
+		popUp.hei = Math.max(minHeight, popUp.textHeight);
+		
+		texts.remove(popUp);
+		texts.insert(0, popUp);
+		
+		if (!contains(popUp))
+			addChild(popUp);
+		
+		updateTextsPosition();
+		
+		return popUp;
+	}
+	
+	public function updateTextsPosition():Void {
+		var yy:Float = borderPadding;
+		for (text in texts) {
+			if (text.visible) {
+				if (yy + text.hei - borderPadding > FlxG.stage.window.height) {
+					text.aliveTime = 99999;
+					text.visible = false;
+					break;
+				}
+				
+				text.updateWidth();
+				text.y = yy;
+				text.x = borderPadding;
+				yy += text.hei + textPadding;
+			}
+		}
+	}
+}
+
+class TracePopUp extends TextField {
+	static var defaultShader:DebugTextShader;
+	
+	public var format:TextFormat = new TextFormat(Paths.font('vcr.ttf'));
+	public var alphaMult:Float = 1;
+	public var aliveTime:Float = 0;
+	public var curWidth:Float = 0;
+	public var hei:Float = 0;
+	
+	public function new() {
+		super();
+		
+		defaultTextFormat = format;
+		format.letterSpacing = -.5;
+		format.leading = -2;
+		multiline = true;
+		wordWrap = true;
+		
+		defaultShader ??= new DebugTextShader();
+		shader = defaultShader;
+	}
+	
+	public function update(dt:Float) {
+		if (!visible) return;
+		
+		aliveTime += dt;
+		
+		if (aliveTime >= 5000) {
+			if (aliveTime < 5000 + 2000) {
+				alpha = (1 - (aliveTime - 5000) / 2000) * alphaMult;
+			} else {
+				visible = false;
+			}
+		}
+		
+		updateWidth();
+	}
+	
+	public function updateWidth():Void {
+		var targetWidth:Float = FlxG.stage.window.width - x * 2;
+		if (curWidth != targetWidth)
+			curWidth = width = targetWidth;
+	}
+}
+
+class DebugTextShader extends openfl.display.GraphicsShader {
+	@:glFragmentSource('
+		#pragma header
+		
+		uniform float alphaMult;
+		uniform float outlineMult;
+		
+		void main() {
+			vec4 tex = texture2D(bitmap, openfl_TextureCoordv);
+			
+			vec4 outline = vec4(0.);
+			vec2 step = (1. / openfl_TextureSize);
+			outline.a += texture2D(bitmap, openfl_TextureCoordv + vec2(step.x, 0.)).a;
+			outline.a += texture2D(bitmap, openfl_TextureCoordv + vec2(-step.x, 0.)).a;
+			outline.a += texture2D(bitmap, openfl_TextureCoordv + vec2(0., step.y)).a;
+			outline.a += texture2D(bitmap, openfl_TextureCoordv + vec2(0., -step.y)).a;
+			outline.a += texture2D(bitmap, openfl_TextureCoordv + vec2(step.x, step.y)).a;
+			outline.a += texture2D(bitmap, openfl_TextureCoordv + vec2(-step.x, step.y)).a;
+			outline.a += texture2D(bitmap, openfl_TextureCoordv + vec2(step.x, -step.y)).a;
+			outline.a += texture2D(bitmap, openfl_TextureCoordv + vec2(-step.x, -step.y)).a;
+			outline.a = min(outline.a, 1.) * outlineMult;
+			
+			gl_FragColor = min(tex + outline, 1.) * alphaMult * openfl_Alphav;
+		}
+	')
+	
+	public function new(alpha:Float = 1, outline:Float = .5) {
+		super();
+		
+		data.alphaMult.value = [alpha];
+		data.outlineMult.value = [outline];
+	}
+}

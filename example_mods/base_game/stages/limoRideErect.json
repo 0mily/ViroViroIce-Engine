@@ -1,0 +1,328 @@
+{
+	"directory": "week4",
+	"defaultZoom": 0.9,
+	"stageUI": "",
+	
+	"boyfriend": [1020, -160],
+	"opponent": [100, 80],
+	"girlfriend": [400, 130],
+	"hide_girlfriend": false,
+	
+	"camera_boyfriend": [-200, 0],
+	"camera_opponent": [0, 100],
+	"camera_girlfriend": [0, 0],
+	"camera_speed": 1,
+
+	"objects": [
+		{
+			"x": -180,
+			"y": -80,
+			"scale": [0.9, 0.9],
+			"image": "limo/erect/limoSunset",
+			"flipX": false,
+			"filters": 3,
+			"color": "FFFFFF",
+			"angle": 0,
+			"name": "sky",
+			"antialiasing": true,
+			"flipY": false,
+			"scroll": [0.1, 0.1],
+			"alpha": 1,
+			"type": "sprite"
+		},
+		{
+			"x": 200,
+			"y": 0,
+			"scale": [1, 1],
+			"image": "limo/erect/shooting star",
+			"flipX": false,
+			"filters": 3,
+			"color": "FFFFFF",
+			"angle": 0,
+			"name": "shootingStar",
+			"firstAnimation": "anim",
+			"antialiasing": true,
+			"flipY": false,
+			"scroll": [0.12, 0.12],
+			"alpha": 1,
+			"animations": [
+				{
+					"offsets": null,
+					"indices": [],
+					"fps": 24,
+					"anim": "anim",
+					"loop": false,
+					"name": "shooting star"
+				}
+			],
+			"type": "animatedSprite"
+		},
+		{
+			"x": -200,
+			"y": 480,
+			"scale": [1, 1],
+			"image": "limo/erect/bgLimo",
+			"flipX": false,
+			"filters": 2,
+			"color": "FFFFFF",
+			"angle": 0,
+			"name": "limoBG",
+			"firstAnimation": "anim",
+			"antialiasing": true,
+			"flipY": false,
+			"scroll": [0.4, 0.4],
+			"alpha": 1,
+			"animations": [
+				{
+					"offsets": null,
+					"indices": [],
+					"fps": 24,
+					"anim": "anim",
+					"loop": true,
+					"name": "background limo blue"
+				}
+			],
+			"type": "animatedSprite"
+		},
+		{
+			"x": 100,
+			"y": 100,
+			"scale": [1, 1],
+			"image": "limo/limoDancer",
+			"flipX": false,
+			"filters": 2,
+			"color": "FFFFFF",
+			"angle": 0,
+			"name": "henchman1",
+			"firstAnimation": "danceLeft",
+			"antialiasing": true,
+			"flipY": false,
+			"scroll": [0.4, 0.4],
+			"alpha": 1,
+			"animations": [
+				{
+					"loop": false,
+					"offsets": null,
+					"anim": "danceLeft",
+					"fps": 24,
+					"name": "bg dancer sketch PINK",
+					"indices": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+				},
+				{
+					"loop": false,
+					"offsets": null,
+					"anim": "danceRight",
+					"fps": 24,
+					"name": "bg dancer sketch PINK",
+					"indices": [15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]
+				}
+			],
+			"type": "animatedSprite"
+		},
+		{
+			"x": 400,
+			"y": 100,
+			"scale": [1, 1],
+			"image": "limo/limoDancer",
+			"flipX": false,
+			"filters": 2,
+			"color": "FFFFFF",
+			"angle": 0,
+			"name": "henchman2",
+			"firstAnimation": "danceLeft",
+			"antialiasing": true,
+			"flipY": false,
+			"scroll": [0.4, 0.4],
+			"alpha": 1,
+			"animations": [
+				{
+					"loop": false,
+					"offsets": null,
+					"anim": "danceLeft",
+					"fps": 24,
+					"name": "bg dancer sketch PINK",
+					"indices": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+				},
+				{
+					"loop": false,
+					"offsets": null,
+					"anim": "danceRight",
+					"fps": 24,
+					"name": "bg dancer sketch PINK",
+					"indices": [15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]
+				}
+			],
+			"type": "animatedSprite"
+		},
+		{
+			"x": 700,
+			"y": 100,
+			"scale": [1, 1],
+			"image": "limo/limoDancer",
+			"flipX": false,
+			"filters": 2,
+			"color": "FFFFFF",
+			"angle": 0,
+			"name": "henchman3",
+			"firstAnimation": "danceLeft",
+			"antialiasing": true,
+			"flipY": false,
+			"scroll": [0.4, 0.4],
+			"alpha": 1,
+			"animations": [
+				{
+					"loop": false,
+					"offsets": null,
+					"anim": "danceLeft",
+					"fps": 24,
+					"name": "bg dancer sketch PINK",
+					"indices": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+				},
+				{
+					"loop": false,
+					"offsets": null,
+					"anim": "danceRight",
+					"fps": 24,
+					"name": "bg dancer sketch PINK",
+					"indices": [15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]
+				}
+			],
+			"type": "animatedSprite"
+		},
+		{
+			"x": 1000,
+			"y": 100,
+			"scale": [1, 1],
+			"image": "limo/limoDancer",
+			"flipX": false,
+			"filters": 2,
+			"color": "FFFFFF",
+			"angle": 0,
+			"name": "henchman4",
+			"firstAnimation": "danceLeft",
+			"antialiasing": true,
+			"flipY": false,
+			"scroll": [0.4, 0.4],
+			"alpha": 1,
+			"animations": [
+				{
+					"loop": false,
+					"offsets": null,
+					"anim": "danceLeft",
+					"fps": 24,
+					"name": "bg dancer sketch PINK",
+					"indices": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+				},
+				{
+					"loop": false,
+					"offsets": null,
+					"anim": "danceRight",
+					"fps": 24,
+					"name": "bg dancer sketch PINK",
+					"indices": [15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]
+				}
+			],
+			"type": "animatedSprite"
+		},
+		{
+			"x": 1300,
+			"y": 100,
+			"scale": [1, 1],
+			"image": "limo/limoDancer",
+			"flipX": false,
+			"filters": 2,
+			"color": "FFFFFF",
+			"angle": 0,
+			"name": "henchman5",
+			"firstAnimation": "danceLeft",
+			"antialiasing": true,
+			"flipY": false,
+			"scroll": [0.4, 0.4],
+			"alpha": 1,
+			"animations": [
+				{
+					"loop": false,
+					"offsets": null,
+					"anim": "danceLeft",
+					"fps": 24,
+					"name": "bg dancer sketch PINK",
+					"indices": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+				},
+				{
+					"loop": false,
+					"offsets": null,
+					"anim": "danceRight",
+					"fps": 24,
+					"name": "bg dancer sketch PINK",
+					"indices": [15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]
+				}
+			],
+			"type": "animatedSprite"
+		},
+		{
+			"x": -12600,
+			"y": 280,
+			"scale": [1, 1],
+			"image": "limo/fastCarLol",
+			"flipX": false,
+			"filters": 3,
+			"color": "FFFFFF",
+			"angle": 0,
+			"name": "car",
+			"antialiasing": true,
+			"flipY": false,
+			"scroll": [1, 1],
+			"alpha": 1,
+			"type": "sprite"
+		},
+		{"type": "gf"},
+		{
+			"x": -120,
+			"y": 540,
+			"scale": [1, 1],
+			"image": "limo/erect/limoDrive",
+			"flipX": false,
+			"filters": 3,
+			"color": "FFFFFF",
+			"angle": 0,
+			"name": "limo",
+			"firstAnimation": "anim",
+			"antialiasing": true,
+			"flipY": false,
+			"scroll": [1, 1],
+			"alpha": 1,
+			"animations": [
+				{
+					"offsets": null,
+					"indices": [],
+					"fps": 24,
+					"anim": "anim",
+					"loop": true,
+					"name": "Limo stage"
+				}
+			],
+			"type": "animatedSprite"
+		},
+		{"type": "dad"},
+		{"type": "boyfriend"}
+	],
+
+	"preload": {
+		"images/limo/limoDancer": 2,
+		"images/limo/erect/limoDrive": 3,
+		"images/limo/gore/": 2,
+		"images/limo/fastCarLol": 3,
+		"images/limo/erect/limoSunset": 3,
+		"images/limo/erect/bgLimo": 2,
+		"images/limo/erect/shooting star": 3,
+		"images/limo/erect/mistBack": 2,
+		"images/limo/erect/mistMid": 2,
+		"images/limo/erect/mistFront": 2
+	},
+
+	"_editorMeta": {
+		"boyfriend": "bf-car",
+		"gf": "gf-car",
+		"dad": "mom-car"
+	}
+}

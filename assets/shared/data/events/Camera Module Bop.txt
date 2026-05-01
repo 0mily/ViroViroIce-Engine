@@ -1,0 +1,17 @@
+Value 1: number, type
+
+- number: How many beats/steps between each bop.
+- type: Can be "beat" or "step".
+
+Value 2: gameZoom, hudZoom
+
+- gameZoom: Zoom applied to the game camera
+- hudZoom: Zoom applied to the HUD
+
+Examples:
+"0.015, 0.03" = light bop
+"0.03, 0.06" = strong bop
+
+---------------
+
+Leaving Value 2 empty will disable the event.

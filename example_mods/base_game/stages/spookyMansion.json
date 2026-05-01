@@ -1,0 +1,78 @@
+{
+	"directory": "week2",
+	"defaultZoom": 1.05,
+	"stageUI": "",
+	
+	"boyfriend": [780, 120],
+	"opponent": [120, 130],
+	"girlfriend": [400, 150],
+	"hide_girlfriend": false,
+
+	"camera_boyfriend": [0, 0],
+	"camera_opponent": [0, 0],
+	"camera_girlfriend": [0, 0],
+	"camera_speed": 1,
+
+	"objects": [
+		{
+			"x": -300,
+			"y": -500,
+			"scale": [2400, 2000],
+			"filters": 3,
+			"color": "242336",
+			"angle": 0,
+			"name": "solidBG",
+			"scroll": [1, 1],
+			"alpha": 1,
+			"type": "square"
+		},
+		{
+			"x": -200,
+			"y": -100,
+			"scale": [1, 1],
+			"image": "spooky/halloween_bg",
+			"flipX": false,
+			"filters": 3,
+			"color": "FFFFFF",
+			"angle": 0,
+			"name": "mansion",
+			"firstAnimation": "normal",
+			"antialiasing": true,
+			"flipY": false,
+			"scroll": [1, 1],
+			"alpha": 1,
+			"animations": [
+				{
+					"offsets": null,
+					"indices": [],
+					"fps": 24,
+					"anim": "normal",
+					"loop": false,
+					"name": "halloweem bg0"
+				},
+				{
+					"offsets": null,
+					"indices": [],
+					"fps": 24,
+					"anim": "lightning",
+					"loop": false,
+					"name": "halloweem bg lightning strike"
+				}
+			],
+			"type": "animatedSprite"
+		},
+		{"type": "gf"},
+		{"type": "dad"},
+		{"type": "boyfriend"}
+	],
+
+	"preload": {
+		"images/spooky/halloween_bg": 3
+	},
+
+	"_editorMeta": {
+		"boyfriend": "bf",
+		"gf": "gf",
+		"dad": "spooky"
+	}
+}

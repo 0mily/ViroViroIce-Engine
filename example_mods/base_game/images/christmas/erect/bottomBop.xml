@@ -1,0 +1,31 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TextureAtlas imagePath="bottomBop.png">
+	<!-- Created with Adobe Animate version 22.0.3.179 -->
+	<!-- http://www.adobe.com/products/animate.html -->
+	<SubTexture name="bop0000" x="4" y="716" width="2250" height="701"/>
+	<SubTexture name="bop0001" x="4" y="716" width="2250" height="701"/>
+	<SubTexture name="bop0002" x="2258" y="716" width="2250" height="701"/>
+	<SubTexture name="bop0003" x="2258" y="716" width="2250" height="701"/>
+	<SubTexture name="bop0004" x="4512" y="716" width="2250" height="701"/>
+	<SubTexture name="bop0005" x="4" y="1421" width="2250" height="701"/>
+	<SubTexture name="bop0006" x="2258" y="1421" width="2250" height="701"/>
+	<SubTexture name="bop0007" x="4512" y="1421" width="2250" height="701"/>
+	<SubTexture name="bop0008" x="4" y="2126" width="2250" height="701"/>
+	<SubTexture name="bop0009" x="4" y="2126" width="2250" height="701"/>
+	<SubTexture name="bop0010" x="2258" y="2126" width="2250" height="701"/>
+	<SubTexture name="bop0011" x="2258" y="2126" width="2250" height="701"/>
+	<SubTexture name="bop0012" x="2258" y="2126" width="2250" height="701"/>
+	<SubTexture name="hey0000" x="4" y="4" width="2243" height="708"/>
+	<SubTexture name="hey0001" x="4" y="4" width="2243" height="708"/>
+	<SubTexture name="hey0002" x="2251" y="4" width="2243" height="708"/>
+	<SubTexture name="hey0003" x="2251" y="4" width="2243" height="708"/>
+	<SubTexture name="hey0004" x="4498" y="4" width="2243" height="708"/>
+	<SubTexture name="hey0005" x="4498" y="4" width="2243" height="708"/>
+	<SubTexture name="hey0006" x="4498" y="4" width="2243" height="708"/>
+	<SubTexture name="hey0007" x="4498" y="4" width="2243" height="708"/>
+	<SubTexture name="hey0008" x="4498" y="4" width="2243" height="708"/>
+	<SubTexture name="hey0009" x="4498" y="4" width="2243" height="708"/>
+	<SubTexture name="hey0010" x="4498" y="4" width="2243" height="708"/>
+	<SubTexture name="hey0011" x="4498" y="4" width="2243" height="708"/>
+	<SubTexture name="hey0012" x="4498" y="4" width="2243" height="708"/>
+</TextureAtlas>

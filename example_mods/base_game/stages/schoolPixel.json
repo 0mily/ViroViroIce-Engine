@@ -1,0 +1,214 @@
+{
+	"directory": "week6",
+	"defaultZoom": 1.05,
+	"stageUI": "pixel",
+
+	"boyfriend": [1150, 290],
+	"opponent": [100, 40],
+	"girlfriend": [670, 440],
+	"hide_girlfriend": false,
+	
+	"camera_boyfriend": [-250, -100],
+	"camera_opponent": [0, 0],
+	"camera_girlfriend": [0, 0],
+	"camera_speed": 1,
+
+	"objects": [
+		{
+			"x": -626,
+			"y": -78,
+			"scale": [6, 6],
+			"image": "weeb/weebSky",
+			"flipX": false,
+			"filters": 3,
+			"color": "FFFFFF",
+			"angle": 0,
+			"name": "sky",
+			"antialiasing": false,
+			"flipY": false,
+			"scroll": [0.2, 0.2],
+			"alpha": 1,
+			"type": "sprite"
+		},
+		{
+			"x": -842,
+			"y": -80,
+			"scale": [6, 6],
+			"image": "weeb/weebBackTrees",
+			"flipX": false,
+			"filters": 2,
+			"color": "FFFFFF",
+			"angle": 0,
+			"name": "treesBG",
+			"antialiasing": false,
+			"flipY": false,
+			"scroll": [0.5, 0.5],
+			"alpha": 1,
+			"type": "sprite"
+		},
+		{
+			"x": -816,
+			"y": -38,
+			"scale": [6, 6],
+			"image": "weeb/weebSchool",
+			"flipX": false,
+			"filters": 3,
+			"color": "FFFFFF",
+			"angle": 0,
+			"name": "school",
+			"antialiasing": false,
+			"flipY": false,
+			"scroll": [0.75, 0.75],
+			"alpha": 1,
+			"type": "sprite"
+		},
+		{
+			"x": -662,
+			"y": 6,
+			"scale": [6, 6],
+			"image": "weeb/weebStreet",
+			"flipX": false,
+			"filters": 3,
+			"color": "FFFFFF",
+			"angle": 0,
+			"name": "street",
+			"antialiasing": false,
+			"flipY": false,
+			"scroll": [1, 1],
+			"alpha": 1,
+			"type": "sprite"
+		},
+		{
+			"x": -500,
+			"y": 6,
+			"scale": [6, 6],
+			"image": "weeb/weebTreesBack",
+			"flipX": false,
+			"filters": 2,
+			"color": "FFFFFF",
+			"angle": 0,
+			"name": "treesBack",
+			"antialiasing": false,
+			"flipY": false,
+			"scroll": [1, 1],
+			"alpha": 1,
+			"type": "sprite"
+		},
+		{
+			"x": -806,
+			"y": -1050,
+			"scale": [6, 6],
+			"image": "weeb/weebTrees",
+			"flipX": false,
+			"filters": 3,
+			"color": "FFFFFF",
+			"angle": 0,
+			"name": "trees",
+			"firstAnimation": null,
+			"antialiasing": false,
+			"flipY": false,
+			"scroll": [1, 1],
+			"alpha": 1,
+			"animations": [],
+			"type": "animatedSprite"
+		},
+		{
+			"x": -20,
+			"y": -40,
+			"scale": [6, 6],
+			"image": "weeb/petals",
+			"flipX": false,
+			"filters": 2,
+			"color": "FFFFFF",
+			"angle": 0,
+			"name": "leaves",
+			"firstAnimation": "anim",
+			"antialiasing": false,
+			"flipY": false,
+			"scroll": [0.85, 0.85],
+			"alpha": 1,
+			"animations": [
+				{
+					"offsets": null,
+					"indices": [],
+					"fps": 24,
+					"anim": "anim",
+					"loop": true,
+					"name": "PETALS ALL"
+				}
+			],
+			"type": "animatedSprite"
+		},
+		{
+			"x": -646,
+			"y": 222,
+			"scale": [6, 6],
+			"image": "weeb/bgFreaks",
+			"flipX": false,
+			"filters": 2,
+			"color": "FFFFFF",
+			"angle": 0,
+			"name": "girlfreaks",
+			"firstAnimation": "danceLeft",
+			"antialiasing": false,
+			"flipY": false,
+			"scroll": [1, 1],
+			"alpha": 1,
+			"animations": [
+				{
+					"offsets": null,
+					"indices": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+					"fps": 24,
+					"anim": "danceLeft",
+					"loop": false,
+					"name": "BG girls group"
+				},
+				{
+					"offsets": null,
+					"indices": [15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29],
+					"fps": 24,
+					"anim": "danceRight",
+					"loop": false,
+					"name": "BG girls group"
+				},
+				{
+					"offsets": null,
+					"indices": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+					"fps": 24,
+					"anim": "danceLeft-mad",
+					"loop": false,
+					"name": "BG fangirls dissuaded"
+				},
+				{
+					"offsets": null,
+					"indices": [15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29],
+					"fps": 24,
+					"anim": "danceRight-mad",
+					"loop": false,
+					"name": "BG fangirls dissuaded"
+				}
+			],
+			"type": "animatedSprite"
+		},
+		{"type": "gf"},
+		{"type": "dad"},
+		{"type": "boyfriend"}
+	],
+
+	"preload": {
+		"images/weeb/weebBackTrees": 3,
+		"images/weeb/weebTreesBack": 2,
+		"images/weeb/weebSchool": 3,
+		"images/weeb/weebTrees": 3,
+		"images/weeb/weebSky": 3,
+		"images/weeb/bgFreaks": 2,
+		"images/weeb/petals": 2,
+		"images/weeb/weebStreet": 3
+	},
+	
+	"_editorMeta": {
+		"boyfriend": "bf-pixel",
+		"gf": "gf-pixel",
+		"dad": "senpai"
+	}
+}

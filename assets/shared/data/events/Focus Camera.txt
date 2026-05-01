@@ -1,0 +1,9 @@
+Value 1: char, X, Y
+Value 2: ease, steps
+
+- char = target character (bf, dad, gf)
+- X = horizontal offset
+- Y = vertical offset
+- ease = tween ease type (has OG for the classic way and INST for instant)
+- steps = duration in steps (Does not work with OG and INST)
+

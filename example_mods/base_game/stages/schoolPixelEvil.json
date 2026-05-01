@@ -1,0 +1,99 @@
+{
+	"directory": "week6",
+	"defaultZoom": 1.05,
+	"stageUI": "pixel",
+
+	"boyfriend": [1150, 290],
+	"opponent": [100, 100],
+	"girlfriend": [670, 440],
+	"hide_girlfriend": false,
+
+	"camera_boyfriend": [-250, -100],
+	"camera_opponent": [0, 0],
+	"camera_girlfriend": [0, 0],
+	"camera_speed": 1,
+
+	"objects": [
+		{
+			"x": -842,
+			"y": -80,
+			"scale": [6, 6],
+			"image": "weeb/weebBackTreesEvil",
+			"flipX": false,
+			"filters": 3,
+			"color": "FFFFFF",
+			"angle": 0,
+			"name": "treesEvilBG",
+			"antialiasing": false,
+			"flipY": false,
+			"scroll": [0.5, 0.5],
+			"alpha": 1,
+			"type": "sprite"
+		},
+		{
+			"x": -816,
+			"y": -38,
+			"scale": [6, 6],
+			"image": "weeb/weebSchoolEvil",
+			"flipX": false,
+			"filters": 3,
+			"color": "FFFFFF",
+			"angle": 0,
+			"name": "schoolEvil",
+			"antialiasing": false,
+			"flipY": false,
+			"scroll": [0.75, 0.75],
+			"alpha": 1,
+			"type": "sprite"
+		},
+		{
+			"x": -662,
+			"y": 6,
+			"scale": [6, 6],
+			"image": "weeb/weebStreetEvil",
+			"flipX": false,
+			"filters": 3,
+			"color": "FFFFFF",
+			"angle": 0,
+			"name": "streetEvil",
+			"antialiasing": false,
+			"flipY": false,
+			"scroll": [1, 1],
+			"alpha": 1,
+			"type": "sprite"
+		},
+		{
+			"x": -662,
+			"y": 6,
+			"scale": [6, 6],
+			"image": "weeb/weebTreesEvil",
+			"flipX": false,
+			"filters": 3,
+			"color": "FFFFFF",
+			"angle": 0,
+			"name": "treesEvil",
+			"antialiasing": false,
+			"flipY": false,
+			"scroll": [1, 1],
+			"alpha": 1,
+			"type": "sprite"
+		},
+		{"type": "gf"},
+		{"type": "dad"},
+		{"type": "boyfriend"}
+	],
+
+	"preload": {
+		"images/weeb/bgGhouls": 2,
+		"images/weeb/weebBackTreesEvil": 3,
+		"images/weeb/weebSchoolEvil": 3,
+		"images/weeb/weebTreesEvil": 3,
+		"images/weeb/weebStreetEvil": 3
+	},
+	
+	"_editorMeta": {
+		"boyfriend": "bf-pixel",
+		"gf": "gf-pixel",
+		"dad": "spirit"
+	}
+}

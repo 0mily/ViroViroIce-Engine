@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="utf-8"?>
+<project>
+	<!-- _________________________ Application Settings _________________________ -->
+
+	<app title="Friday Night Funkin': ViroViroIce" file="ViroViroIce" packageName="com.viroviro.ice" package="com.viroviro.ice" main="Main" version="0.0.5" company="BFMix2 Inc." />
+	
+	<!--Switch Export with Unique ApplicationID and Icon-->
+	<set name="APP_ID" value="0x0100f6c013bbc000" />
+
+	<!-- NOTE TO SELF: DISABLE THIS IF ISSUES ARE FOUND -->
+	<haxedef name="LINC_LUA_RELATIVE_DYNAMIC_LIB"/> <!-- stable luas PUT AFTER FIRST LINE WITH APP NAME AND ETC -->
+	
+	<!-- <app preloader="Preloader" resizable="true" /> -->
+	<app preloader="flixel.system.FlxPreloader" />
+
+	<!--Minimum without FLX_NO_GAMEPAD: 11.8, without FLX_NO_NATIVE_CURSOR: 11.2-->
+	<set name="SWF_VERSION" value="11.8" />
+	
+	<!-- ______________________ PSYCH ENGINE CUSTOMIZATION ______________________ -->
+
+	<define name="MODS_ALLOWED" />
+	<define name="HSCRIPT_ALLOWED" />
+	<define name="LUA_ALLOWED" if="cpp" />
+	<define name="ACHIEVEMENTS_ALLOWED" />
+	<define name="DISCORD_ALLOWED" if="cpp" />
+	<define name="TRANSLATIONS_ALLOWED" />
+	<define name="IRIS_DEBUG" />
+	<define name="EMIMOD"/>
+	
+	<define name="INCLUDE_ALL_CLASSES" /> <!-- Removes DCE and compiles (most) classes, for use in scripting -->
+	<define name="MULTITHREADED_LOADING" /> <!-- UNCOMMENTING THIS LINE WILL ENABLE MULTITHREADED LOADING, WHICH IMPROVES LOADING TIMES, BUT APPARENTLY CAN FREEZE THE GAME ON SONG LOAD IN OLDER PCs? -->
+	<define name="SHOW_LOADING_SCREEN" />
+	<define name="PSYCH_WATERMARKS"/> <!-- DELETE THIS TO REMOVE THE PSYCH LOGO FROM LOADING SCREEN -->
+
+	<!-- define name="UNHOLYWANDERER04" -->
+	<!-- define name="BASE_GAME_FILES" -->
+	<define name="VIDEOS_ALLOWED" unless="32bits"/> <!-- IF YOU WANT TO USE VIDEOS ON YOUR SOURCE MOD, GET THIS LINE OUTSIDE OF THE SECTION -->
+
+	<!-- ____________________________ Window Settings ___________________________ -->
+
+	<!--These window settings apply to all targets-->
+	<window width="1280" height="720" fps="60" background="#000000" hardware="true" vsync="false" allow-high-dpi="true" />
+
+	<!--HTML5-specific-->
+	<window if="html5" resizable="true" />
+
+	<!--Desktop-specific-->
+	<window if="desktop" orientation="landscape" fullscreen="false" resizable="true" vsync="false"/>
+
+	<!--Mobile-specific-->
+	<window if="mobile" orientation="landscape" fullscreen="true" width="0" height="0" resizable="false"/>
+
+	<!--Switch-specific-->
+	<window if="switch" orientation="landscape" fullscreen="true" width="0" height="0" resizable="true" />
+
+	<!-- _____________________________ Path Settings ____________________________ -->
+
+	<set name="BUILD_DIR" value="export/debug" if="debug" />
+	<set name="BUILD_DIR" value="export/release" unless="debug" />
+	<set name="BUILD_DIR" value="export/32bit" if="32bits" />
+
+	<classpath name="source" />
+
+	<!-- __________________________ Game Assets & Etc. __________________________ -->
+	
+	<!-- Turn on Crash Handler -->
+	<define name="CRASH_HANDLER" if="release" />
+
+	<!-- Assets -->
+	<assets path="assets/fonts" />
+	<assets path="assets/shared"        exclude="*.mp3"/>
+	<assets path="assets/songs"         exclude="*.mp3"/>
+	<assets path="assets/embed"         embed="true"/>
+	<assets path="assets/videos"        if="VIDEOS_ALLOWED"/>
+	<assets path="assets/week_assets"   rename="assets" exclude="*.mp3"/>
+	
+	<section if="TITLE_SCREEN_EASTER_EGG">
+		<assets path="assets/secrets" rename="assets/shared"/>
+	</section>
+
+	<section if="TRANSLATIONS_ALLOWED">
+		<assets path="assets/translations" rename="assets" exclude="*.mp3"/>
+	</section>
+
+	<section if="BASE_GAME_FILES">
+		<assets path="assets/base_game" rename="assets" exclude="*.mp3"/>
+	</section>
+	
+	<section if="MODS_ALLOWED">
+		<assets path='example_mods' rename='mods' embed='false' type='template' unless="mac"/>
+		<assets path='example_mods' rename='mods' embed='false' if="mac"/>
+		<assets path='list.txt' rename='modsList.txt' />
+	</section>
+
+	<define name="CHECK_FOR_UPDATES" if="officialBuild"/>
+
+	<assets path='art/readme.txt' rename='do NOT readme.txt' />
+
+	<!-- OpenAL config -->
+	<section if="desktop">
+		<assets path="alsoft.txt" rename="plugins/alsoft.ini" type="text" if="windows"/>
+		<assets path="alsoft.txt" rename="plugins/alsoft.conf" type="text" unless="windows"/>
+	</section>
+	
+	<!-- __________________________________ Fun _________________________________ -->
+	
+	<define name="SCRIPTS_ALLOWED" if="HSCRIPT_ALLOWED || LUA_ALLOWED" />
+	
+	<section if="INCLUDE_ALL_CLASSES SCRIPTS_ALLOWED">
+		<haxeflag name="-dce no" />
+		<haxeflag name="--macro" value="backend.macro.Init.includeClasses()" />
+	</section>
+	
+	<haxeflag name="--macro" value="backend.macro.Init.init()" />
+
+	<!-- _______________________________ Libraries ______________________________ -->
+
+	<haxelib name="flixel" />
+	<haxelib name="flixel-addons" />
+	<haxelib name="tjson" />
+
+	<!--Psych stuff needed-->
+	<haxelib name="hxvlc" unless = "html5" />
+	<haxelib name="linc_luajit" if="LUA_ALLOWED"/>
+	<haxelib name="hscript-iris" if="HSCRIPT_ALLOWED" />
+	<haxelib name="hxdiscord_rpc" if="DISCORD_ALLOWED" />
+	<haxelib name="flxanimate" />
+	
+	<!-- Other -->
+	<haxelib name="grig.audio" />
+	<haxelib name="funkin.vis" />
+
+	<haxedef name="FM_ENGINE" value="PSYCH"/>
+	<haxedef name="FM_ENGINE_VERSION" value="1.0"/>
+
+	<haxelib name="funkin-modchart" />
+	<haxeflag name="--macro" value="modchart.backend.macros.Macro.includeFiles()"/>
+
+	<!-- Disable Discord IO Thread -->
+	<haxedef name="DISCORD_DISABLE_IO_THREAD" if="hxdiscord_rpc" />
+	<haxedef name="NO_PRECOMPILED_HEADERS" />
+
+	<!-- Enables a terminal log prompt on debug builds -->
+	<haxelib name="hxcpp-debug-server" if="debug" />
+	<haxedef name="HXC_LIBVLC_LOGGING" if="VIDEOS_ALLOWED debug" />
+	<haxedef name="HXVLC_NO_SHARE_DIRECTORY" if="VIDEOS_ALLOWED" />
+	<define name="x86_BUILD" if="32bits" />
+	
+	<!-- ______________________________ More defines _____________________________ -->
+	
+	<!--Disable the Flixel core focus lost screen-->
+	<haxedef name="FLX_NO_FOCUS_LOST_SCREEN" />
+	
+	<!-- Show debug traces for hxCodec -->
+	<haxedef name="HXC_DEBUG_TRACE" if="debug" />
+	
+	<!--Disable the Flixel core debugger. Automatically gets set whenever you compile in release mode!-->
+	<haxedef name="FLX_NO_DEBUG" unless="debug" />
+
+	<!--Enable this for Nape release builds for a serious peformance improvement-->
+	<haxedef name="NAPE_RELEASE_BUILD" unless="debug" />
+	
+	<!--Shuts Flixel up-->
+	<haxedef name="FLX_COVERAGE_TEST" />
+	
+	<!--Used for Izzy Engine's crash handler-->
+	<haxedef name="HXCPP_CHECK_POINTER" if="CRASH_HANDLER" />
+	<haxedef name="HXCPP_STACK_LINE" if="CRASH_HANDLER" />
+	<haxedef name="HXCPP_STACK_TRACE" if="CRASH_HANDLER" />
+	
+	<!--Disable deprecated warnings-->
+	<haxedef name='no-deprecation-warnings' />
+
+	<!-- Haxe 4.3.0+: Enable pretty syntax errors and stuff. -->
+	<!-- pretty (haxeflixel default), indent, classic (haxe compiler default) -->
+	<haxedef name="message.reporting" value="pretty" />
+	
+	<!--HScript-->
+	<haxedef name="hscriptPos" if="HSCRIPT_ALLOWED" />
+	<define name="GLOBAL_SCRIPTS" if="HSCRIPT_ALLOWED" />
+
+	<!-- _________________________________ Custom _______________________________ -->
+
+	<assets path='art/icons/iconOG.png' rename='icon.png' if="linux || mac" />
+	
+	<icon path="art/icons/icon16.png" size='16'/>
+	<icon path="art/icons/icon32.png" size='32'/>
+	<icon path="art/icons/icon64.png" size='64'/>
+	<icon path="art/icons/iconOG.png" />
+</project>

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+Created with Funkin Packer v0.1.3 https://neeeoo.github.io/funkin-packer/
+-->
+<TextureAtlas imagePath="shooting_star.png">
+	<SubTexture name="shooting star0000" x="762" y="107" width="13" height="12" frameX="-313" frameY="-1" frameWidth="331" frameHeight="520"/>
+	<SubTexture name="shooting star0001" x="762" y="107" width="13" height="12" frameX="-313" frameY="-1" frameWidth="331" frameHeight="520"/>
+	<SubTexture name="shooting star0002" x="762" y="91" width="15" height="14" frameX="-307" frameY="-0" frameWidth="331" frameHeight="520"/>
+	<SubTexture name="shooting star0003" x="762" y="91" width="15" height="14" frameX="-307" frameY="-0" frameWidth="331" frameHeight="520"/>
+	<SubTexture name="shooting star0004" x="722" y="91" width="18" height="18" frameX="-303" frameY="-0" frameWidth="331" frameHeight="520"/>
+	<SubTexture name="shooting star0005" x="722" y="91" width="18" height="18" frameX="-303" frameY="-0" frameWidth="331" frameHeight="520"/>
+	<SubTexture name="shooting star0006" x="742" y="91" width="18" height="18" frameX="-299" frameY="-2" frameWidth="331" frameHeight="520"/>
+	<SubTexture name="shooting star0007" x="742" y="91" width="18" height="18" frameX="-299" frameY="-2" frameWidth="331" frameHeight="520"/>
+	<SubTexture name="shooting star0008" x="663" y="91" width="57" height="32" frameX="-254" frameY="-10" frameWidth="331" frameHeight="520"/>
+	<SubTexture name="shooting star0009" x="663" y="91" width="57" height="32" frameX="-254" frameY="-10" frameWidth="331" frameHeight="520"/>
+	<SubTexture name="shooting star0010" x="617" y="0" width="173" height="89" frameX="-119" frameY="-18" frameWidth="331" frameHeight="520"/>
+	<SubTexture name="shooting star0011" x="617" y="0" width="173" height="89" frameX="-119" frameY="-18" frameWidth="331" frameHeight="520"/>
+	<SubTexture name="shooting star0012" x="408" y="0" width="207" height="131" frameX="-46" frameY="-32" frameWidth="331" frameHeight="520"/>
+	<SubTexture name="shooting star0013" x="408" y="0" width="207" height="131" frameX="-46" frameY="-32" frameWidth="331" frameHeight="520"/>
+	<SubTexture name="shooting star0014" x="0" y="0" width="213" height="148" frameX="-15" frameY="-44" frameWidth="331" frameHeight="520"/>
+	<SubTexture name="shooting star0015" x="0" y="0" width="213" height="148" frameX="-15" frameY="-44" frameWidth="331" frameHeight="520"/>
+	<SubTexture name="shooting star0016" x="215" y="0" width="191" height="142" frameX="-5" frameY="-60" frameWidth="331" frameHeight="520"/>
+	<SubTexture name="shooting star0017" x="215" y="0" width="191" height="142" frameX="-5" frameY="-60" frameWidth="331" frameHeight="520"/>
+	<SubTexture name="shooting star0018" x="792" y="0" width="62" height="67" frameX="-3" frameY="-140" frameWidth="331" frameHeight="520"/>
+	<SubTexture name="shooting star0019" x="792" y="0" width="62" height="67" frameX="-3" frameY="-140" frameWidth="331" frameHeight="520"/>
+	<SubTexture name="shooting star0020" x="792" y="69" width="49" height="57" frameX="-3" frameY="-153" frameWidth="331" frameHeight="520"/>
+	<SubTexture name="shooting star0021" x="792" y="69" width="49" height="57" frameX="-3" frameY="-153" frameWidth="331" frameHeight="520"/>
+	<SubTexture name="shooting star0022" x="617" y="91" width="44" height="50" frameX="-1" frameY="-161" frameWidth="331" frameHeight="520"/>
+	<SubTexture name="shooting star0023" x="617" y="91" width="44" height="50" frameX="-1" frameY="-161" frameWidth="331" frameHeight="520"/>
+	<SubTexture name="shooting star0024" x="779" y="91" width="9" height="9" frameX="-0" frameY="-203" frameWidth="331" frameHeight="520"/>
+	<SubTexture name="shooting star0025" x="779" y="91" width="9" height="9" frameX="-0" frameY="-203" frameWidth="331" frameHeight="520"/>
+	<SubTexture name="shooting star0026" x="779" y="102" width="7" height="8" frameX="-0" frameY="-205" frameWidth="331" frameHeight="520"/>
+	<SubTexture name="shooting star0027" x="779" y="102" width="7" height="8" frameX="-0" frameY="-205" frameWidth="331" frameHeight="520"/>
+	<SubTexture name="shooting star0028" x="788" y="102" width="1" height="1" frameX="-0" frameY="-0" frameWidth="331" frameHeight="520"/>
+</TextureAtlas>
