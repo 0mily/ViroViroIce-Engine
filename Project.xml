@@ -2,7 +2,7 @@
 <project>
 	<!-- _________________________ Application Settings _________________________ -->
 
-	<app title="Friday Night Funkin': ViroViroIce" file="ViroViroIce" packageName="com.viroviro.ice" package="com.viroviro.ice" main="Main" version="0.0.5" company="BFMix2 Inc." />
+	<app title="Friday Night Funkin': ViroViroIce" file="ViroViroIce" packageName="com.viroviro.ice" package="com.viroviro.ice" main="Main" version="0.1.0" company="BFMix2 Inc." />
 	
 	<!--Switch Export with Unique ApplicationID and Icon-->
 	<set name="APP_ID" value="0x0100f6c013bbc000" />
