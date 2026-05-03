@@ -5,8 +5,10 @@ import flixel.addons.display.FlxRuntimeShader;
 #end
 
 import flixel.FlxCamera;
+import flixel.FlxG;
 import flixel.tweens.FlxTween;
 import flixel.tweens.FlxEase;
+import openfl.Lib;
 import openfl.filters.ShaderFilter;
 
 
@@ -91,7 +93,7 @@ class ShaderFunctions
 			var leObj:FlxSprite = LuaUtils.getObjectDirectly(obj);
 			if (leObj != null) {
 				var arr:Array<String> = funk.runtimeShaders.get(shader);
-				var runtime = new shaders.ErrorHandledShader.ErrorHandledRuntimeShader(shader, arr[0], arr[1]);
+				var runtime = new shaders.CodenameRuntimeShader(shader, arr[0], arr[1]);
 				leObj.shader = runtime;
 				if (shaderTag != null && shaderTag.length > 0)
 					storeShader(obj, shaderTag, runtime);
@@ -136,9 +138,11 @@ class ShaderFunctions
 			var leCam:FlxCamera = LuaUtils.cameraFromString(cam);
 			if (leCam != null) {
 				var arr:Array<String> = funk.runtimeShaders.get(shader);
-				var runtime = new shaders.ErrorHandledShader.ErrorHandledRuntimeShader(shader, arr[0], arr[1]);
+				var runtime = new shaders.CodenameRuntimeShader(shader, arr[0], arr[1]);
+				shaders.CodenameRuntimeShader.applyCameraUniforms(runtime, leCam);
 				if (leCam.filters == null) leCam.filters = [];
 				leCam.filters.push(new ShaderFilter(runtime));
+				shaders.ShaderResizeFix.fixCamera(leCam);
 				if (shaderTag != null && shaderTag.length > 0)
 					storeShader(cam, shaderTag, runtime);
 				return true;
@@ -163,10 +167,12 @@ class ShaderFunctions
 							leCam.filters = leCam.filters.filter(function(f) {
 								return !(Std.isOfType(f, ShaderFilter) && cast(f, ShaderFilter).shader == cast toRemove);
 							});
+						shaders.ShaderResizeFix.fixCamera(leCam);
 					}
 				} else {
 					leCam.filters = [];
 					if (shaderMap.exists(cam)) shaderMap.get(cam).clear();
+					shaders.ShaderResizeFix.fixCamera(leCam);
 				}
 				return true;
 			}
@@ -175,6 +181,55 @@ class ShaderFunctions
 			FunkinLua.luaTrace("removeCameraShader: Platform unsupported for Runtime Shaders!!!!!", false, false, ERROR);
 			#end
 			return false;
+		});
+
+		// setWindowShader(shader, ?shaderTag)
+		funk.addLocalCallback("setWindowShader", function(shader:String, ?shaderTag:String) {
+			if (!ClientPrefs.data.shaders) return false;
+			#if (!flash && MODS_ALLOWED && sys)
+			if (!funk.runtimeShaders.exists(shader) && !funk.initLuaShader(shader)) {
+				FunkinLua.luaTrace('setWindowShader: Shader "$shader" não encontrado!', false, false, ERROR);
+				return false;
+			}
+			var arr:Array<String> = funk.runtimeShaders.get(shader);
+			var runtime = new shaders.CodenameRuntimeShader(shader, arr[0], arr[1]);
+			shaders.CodenameRuntimeShader.applyScreenUniforms(runtime);
+			var filters = Lib.current.filters;
+			filters.push(new ShaderFilter(runtime));
+			Lib.current.filters = filters;
+			shaders.ShaderResizeFix.fixSprite(Lib.current);
+			if (shaderTag != null && shaderTag.length > 0)
+				storeShader("window", shaderTag, runtime);
+			FunkinLua.luaTrace('setWindowShader: applied "$shader" to window.', false, false, INFO);
+			return true;
+			#else
+			FunkinLua.luaTrace("setWindowShader: Platform unsupported for Runtime Shaders!!!!!", false, false, ERROR);
+			return false;
+			#end
+		});
+
+		// removeWindowShader(?shaderTag)
+		funk.addLocalCallback("removeWindowShader", function(?shaderTag:String) {
+			#if (!flash && MODS_ALLOWED && sys)
+			if (shaderTag != null && shaderTag.length > 0) {
+				if (shaderMap.exists("window") && shaderMap.get("window").exists(shaderTag)) {
+					var toRemove:FlxRuntimeShader = shaderMap.get("window").get(shaderTag);
+					shaderMap.get("window").remove(shaderTag);
+					if (Lib.current.filters != null)
+						Lib.current.filters = Lib.current.filters.filter(function(f) {
+							return !(Std.isOfType(f, ShaderFilter) && cast(f, ShaderFilter).shader == cast toRemove);
+						});
+				}
+			} else {
+				Lib.current.filters = [];
+				if (shaderMap.exists("window")) shaderMap.get("window").clear();
+			}
+			shaders.ShaderResizeFix.fixSprite(Lib.current);
+			return true;
+			#else
+			FunkinLua.luaTrace("removeWindowShader: Platform unsupported for Runtime Shaders!!!!!", false, false, ERROR);
+			return false;
+			#end
 		});
 
 /*  =======================================================
@@ -377,6 +432,22 @@ class ShaderFunctions
 			return false;
 			#else
 			FunkinLua.luaTrace("setShaderSampler2D: Platform unsupported for Runtime Shaders!!!!!", false, false, ERROR);
+			return false;
+			#end
+		});
+
+		funk.addLocalCallback("setShaderValue", function(obj:String, prop:String, value:Dynamic, ?shaderTag:String) {
+			#if (!flash && MODS_ALLOWED && sys)
+			var shader = getShader(obj, shaderTag);
+			if (shader == null) { FunkinLua.luaTrace('setShaderValue: shader not found in "$obj"!', false, false, ERROR); return false; }
+			if (Std.isOfType(shader, shaders.CodenameRuntimeShader)) {
+				cast(shader, shaders.CodenameRuntimeShader).hset(prop, value);
+				return true;
+			}
+			FunkinLua.luaTrace('setShaderValue: shader in "$obj" is not a CodenameRuntimeShader!', false, false, ERROR);
+			return false;
+			#else
+			FunkinLua.luaTrace("setShaderValue: Platform unsupported for Runtime Shaders!!!!!", false, false, ERROR);
 			return false;
 			#end
 		});

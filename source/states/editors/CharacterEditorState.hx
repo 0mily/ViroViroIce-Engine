@@ -302,10 +302,7 @@ class CharacterEditorState extends ScriptedState implements PsychUIEventHandler.
 					if(animateGhost == null || animateGhostImage != character.imageFile)
 						Paths.loadAnimateAtlas(animateGhost, character.imageFile);
 					
-					if(myAnim.indices != null && myAnim.indices.length > 0)
-						animateGhost.anim.addBySymbolIndices('anim', myAnim.name, myAnim.indices, 0, false);
-					else
-						animateGhost.anim.addBySymbol('anim', myAnim.name, 0, false);
+					animateGhost.addAtlasAnimation('anim', myAnim.name, myAnim.indices, 0, false);
 
 					animateGhost.anim.play('anim', true, false, character.atlas.anim.curFrame);
 					animateGhost.anim.pause();
@@ -876,7 +873,7 @@ class CharacterEditorState extends ScriptedState implements PsychUIEventHandler.
 		character.color = FlxColor.WHITE;
 		character.alpha = 1;
 
-		if(Paths.fileExists('images/' + character.imageFile + '/Animation.json', TEXT))
+		if(Paths.isAnimateAtlas(character.imageFile))
 		{
 			character.atlas = new FlxAnimate();
 			character.atlas.showPivot = false;
@@ -1299,10 +1296,7 @@ class CharacterEditorState extends ScriptedState implements PsychUIEventHandler.
 		}
 		else
 		{
-			if(indices != null && indices.length > 0)
-				character.atlas.anim.addBySymbolIndices(anim, name, indices, fps, loop);
-			else
-				character.atlas.anim.addBySymbol(anim, name, fps, loop);
+			character.atlas.addAtlasAnimation(anim, name, indices, fps, loop);
 		}
 
 		if(!character.hasAnimation(anim))

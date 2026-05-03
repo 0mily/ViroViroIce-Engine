@@ -17,7 +17,7 @@ import openfl.display.Sprite;
 import openfl.events.Event;
 import openfl.display.StageScaleMode;
 import lime.app.Application;
-import states.TitleState;
+import states.BootState;
 import psychlua.GlobalScriptHandler;
 import psychlua.HScript;
 
@@ -54,7 +54,7 @@ class Main extends Sprite
 	public static final game = {
 		width: 1280, // WINDOW width
 		height: 720, // WINDOW height
-		initialState: TitleState, // initial game state
+		initialState: BootState, // initial game state
 		framerate: 60, // default framerate
 		skipSplash: true, // if the default flixel splash screen should be skipped
 		startFullscreen: false // if the game should start at fullscreen mode
@@ -100,11 +100,13 @@ class Main extends Sprite
 			#if (!html5 && !switch) FlxG.autoPause = ClientPrefs.data.autoPause; #end
 			FlxG.fixedTimestep = false;
 		});
+		FlxG.signals.postGameStart.add(function() backend.CustomCursor.reloadFromMods());
 		
 		FlxG.save.bind('funkin', CoolUtil.getSavePath());
 		Controls.instance = new Controls();
 		Language.reloadPhrases();
 		Difficulty.resetList();
+		moonchart.Moonchart.init();
 		
 		#if HSCRIPT_ALLOWED HScript.init(); #end
 		#if GLOBAL_SCRIPTS GlobalScriptHandler.init(); #end
@@ -150,16 +152,10 @@ class Main extends Sprite
 		
 		// shader coords fix
 		FlxG.signals.gameResized.add((w:Int, h:Int) -> {
-		     if (FlxG.cameras != null) {
-			   for (cam in FlxG.cameras.list) {
-				if (cam != null && cam.filters != null)
-					resetSpriteCache(cam.flashSprite);
-			   }
-			}
-
-			if (FlxG.game != null)
-			resetSpriteCache(FlxG.game);
+			backend.CameraResizeFix.aplyAll();
+			shaders.ShaderResizeFix.fixAll();
 		});
+		FlxG.cameras.cameraResized.add((camera) -> backend.CameraResizeFix.aplyCentroOFS(camera));
 
 		Lib.current.stage.addEventListener(KeyboardEvent.KEY_DOWN, onKeyPress);
 	}
@@ -173,10 +169,7 @@ class Main extends Sprite
 }
 
 	static function resetSpriteCache(sprite:Sprite):Void {
-		@:privateAccess {
-		        sprite.__cacheBitmap = null;
-			sprite.__cacheBitmapData = null;
-		}
+		shaders.ShaderResizeFix.fixSprite(sprite);
 	}
 	
 	// Code was entirely made by sqirra-rng for their fnf engine named "Izzy Engine", big props to them!!!

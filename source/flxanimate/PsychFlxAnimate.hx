@@ -11,47 +11,189 @@ import flxanimate.FlxAnimate as OriginalFlxAnimate;
 
 class PsychFlxAnimate extends OriginalFlxAnimate
 {
-	public function loadAtlasEx(img:FlxGraphicAsset, ?pathOrStr:String, ?myJson:Dynamic) {
-		if (myJson is String) {
-			var data:String = myJson;
-			var ext:String = data.trim();
-			ext = ext.substr(ext.length - 5).toLowerCase();
-			
-			if (ext == '.json') data = Paths.getTextFromFile(data); //is a path
-			anim._loadAtlas(haxe.Json.parse(_removeBOM(data)));
-		} else {
-			anim._loadAtlas(myJson);
+	public function loadAtlasEx(img:FlxGraphicAsset, ?pathOrStr:String, ?myJson:Dynamic)
+	{
+		var parsedFrames:FlxAtlasFrames = parseAtlasFrames(pathOrStr, img);
+		if(parsedFrames != null) frames = parsedFrames;
+
+		loadAnimationData(myJson);
+		syncAnimateOrigin();
+	}
+
+	public function loadAtlasExMulti(spriteMaps:Array<Dynamic>, ?animationJson:Dynamic)
+	{
+		var combinedFrames:FlxAtlasFrames = null;
+		if(spriteMaps != null)
+		{
+			for(spriteMap in spriteMaps)
+			{
+				if(spriteMap == null) continue;
+
+				var atlasFrames:FlxAtlasFrames = parseAtlasFrames(Reflect.field(spriteMap, 'json'), Reflect.field(spriteMap, 'image'));
+				if(atlasFrames == null) continue;
+
+				if(combinedFrames == null)
+				{
+					combinedFrames = atlasFrames;
+				}
+				else
+				{
+					var parentFrames:FlxAtlasFrames = new FlxAtlasFrames(combinedFrames.parent);
+					parentFrames.addAtlas(combinedFrames, true);
+					parentFrames.addAtlas(atlasFrames, true);
+					combinedFrames = parentFrames;
+				}
+			}
 		}
-		
-		var data:String = pathOrStr;
-		
-		var ext:String = pathOrStr.trim();
-		ext = ext.substr(ext.length - 5).toLowerCase();
-		
-		if (ext == '.json') {
-			frames = spriteMapFrames(haxe.Json.parse(_removeBOM(Paths.getTextFromFile(data))), img);
-		} else if (ext.substr(1) == '.xml') {
-			frames = FlxAnimateFrames.fromSparrow(Xml.parse(_removeBOM(Paths.getTextFromFile(data))), img);
-		} else {
-			frames = try spriteMapFrames(haxe.Json.parse(_removeBOM(data)), img)
-				catch (e:Dynamic) FlxAnimateFrames.fromSparrow(Xml.parse(_removeBOM(data)), img);
+
+		if(combinedFrames != null) frames = combinedFrames;
+		loadAnimationData(animationJson);
+		syncAnimateOrigin();
+	}
+
+	function loadAnimationData(data:Dynamic)
+	{
+		if(data == null) return;
+
+		if(data is String)
+		{
+			var text:String = resolveText(data);
+			if(text == null || text.trim().length < 1) return;
+
+			anim._loadAtlas(haxe.Json.parse(_removeBOM(text)));
 		}
-		
-		origin = anim.curInstance.symbol.transformationPoint;
+		else
+		{
+			anim._loadAtlas(data);
+		}
+	}
+
+	function parseAtlasFrames(data:Dynamic, img:FlxGraphicAsset):FlxAtlasFrames
+	{
+		if(data == null) return null;
+
+		if(data is String)
+		{
+			var text:String = resolveText(data);
+			if(text == null || text.trim().length < 1) return null;
+
+			var trimmed:String = text.trim();
+			if(trimmed.charAt(0) == '<')
+				return FlxAnimateFrames.fromSparrow(Xml.parse(_removeBOM(trimmed)), img);
+
+			return try spriteMapFrames(haxe.Json.parse(_removeBOM(trimmed)), img)
+				catch(e:Dynamic)
+				{
+					try FlxAnimateFrames.fromSparrow(Xml.parse(_removeBOM(trimmed)), img)
+					catch(xmlError:Dynamic) null;
+				}
+		}
+
+		return spriteMapFrames(data, img);
+	}
+
+	function resolveText(data:String):String
+	{
+		var trimmed:String = data.trim();
+		if(trimmed.length < 1) return data;
+		if(trimmed.charAt(0) == '{' || trimmed.charAt(0) == '[' || trimmed.charAt(0) == '<') return data;
+
+		var text:String = Paths.getTextFromFile(trimmed);
+		return text != null ? text : data;
 	}
 	
 	public static function spriteMapFrames(atlas:AnimateAtlas, graphic:FlxGraphicAsset):FlxAtlasFrames {
-		var frames = new FlxAtlasFrames(FlxG.bitmap.add(graphic));
+		if(atlas == null || graphic == null) return null;
+
+		var parent = FlxG.bitmap.add(graphic);
+		if(parent == null) return null;
+
+		var frames = new FlxAtlasFrames(parent);
 		
 		for (sprite in atlas.ATLAS.SPRITES) {
 			var limb = sprite.SPRITE;
 			var rect = FlxRect.get(limb.x, limb.y, limb.w, limb.h);
-			if (limb.rotated) rect.setSize(rect.height, rect.width);
+			if (limb.rotated == true) rect.setSize(rect.height, rect.width);
 			
 			FlxAnimateFrames.sliceFrame(limb.name, limb.rotated, rect, frames);
 		}
 		
 		return frames;
+	}
+
+	public function addAtlasAnimation(name:String, symbol:String, ?indices:Array<Int>, framerate:Float = 24, loop:Bool = false, matX:Float = 0, matY:Float = 0)
+	{
+		if(indices != null && indices.length > 0)
+		{
+			if(hasAtlasFrameLabel(symbol) && !hasAtlasSymbol(symbol))
+				anim.addBySymbolIndices(name, anim.stageInstance.symbol.name, remapFrameLabelIndices(symbol, indices), framerate, loop, matX, matY);
+			else
+				anim.addBySymbolIndices(name, symbol, indices, framerate, loop, matX, matY);
+
+			return;
+		}
+
+		if(hasAtlasFrameLabel(symbol) && !hasAtlasSymbol(symbol))
+			anim.addByFrameLabel(name, symbol, framerate, loop, matX, matY);
+		else
+			anim.addBySymbol(name, symbol, framerate, loop, matX, matY);
+	}
+
+	public function hasAtlasSymbol(symbol:String):Bool
+	{
+		if(symbol == null || anim == null || anim.library == null) return false;
+
+		var exact:Bool = symbol.endsWith('\\');
+		var symbolName:String = exact ? symbol.substr(0, symbol.length - 1) : symbol;
+		for(name in anim.library.getList().keys())
+		{
+			if((exact && name == symbolName) || (!exact && name.startsWith(symbolName)))
+				return true;
+		}
+
+		return false;
+	}
+
+	public function hasAtlasFrameLabel(label:String):Bool
+	{
+		return findAtlasFrameLabel(label) != null;
+	}
+
+	function findAtlasFrameLabel(label:String):Dynamic
+	{
+		if(label == null || anim == null || anim.curSymbol == null) return null;
+
+		for(frameLabel in anim.getFrameLabels())
+		{
+			if(frameLabel != null && frameLabel.name == label)
+				return frameLabel;
+		}
+
+		return null;
+	}
+
+	function remapFrameLabelIndices(label:String, indices:Array<Int>):Array<Int>
+	{
+		var frameLabel:Dynamic = findAtlasFrameLabel(label);
+		if(frameLabel == null) return indices;
+
+		var labelIndices:Array<Int> = frameLabel.getFrameIndices();
+		var remapped:Array<Int> = [];
+		for(index in indices)
+		{
+			if(index >= 0 && index < labelIndices.length)
+				remapped.push(labelIndices[index]);
+			else
+				remapped.push(index);
+		}
+
+		return remapped;
+	}
+
+	function syncAnimateOrigin()
+	{
+		if(anim != null && anim.curInstance != null && anim.curInstance.symbol != null)
+			origin = anim.curInstance.symbol.transformationPoint;
 	}
 
 	override function draw()

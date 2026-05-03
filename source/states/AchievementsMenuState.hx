@@ -21,6 +21,17 @@ class AchievementsMenuState extends ScriptedState
 
 	var MAX_PER_ROW:Int = 4;
 
+	function refreshShitScript():Void {
+		if (options.length < 1)
+			return;
+
+		setOnScripts('curSelected', curSelected);
+		setOnScripts('selectedAchievement', options[curSelected]);
+		setOnScripts('achievementsList', options.copy());
+		setOnScripts('bg', 'bg');
+		setOnScripts('progressText', 'progressTxt');
+	}
+
 	override function create() {	
 		Paths.clearStoredMemory();
 		Paths.clearUnusedMemory();
@@ -120,6 +131,7 @@ class AchievementsMenuState extends ScriptedState
 		
 		_changeSelection();
 		super.create();
+		refreshShitScript();
 		
 		FlxG.camera.follow(camFollow, null, 0.15);
 		FlxG.camera.scroll.y = -FlxG.height;
@@ -146,8 +158,9 @@ class AchievementsMenuState extends ScriptedState
 	var goingBack:Bool = false;
 	override function update(elapsed:Float) {
 		preUpdate(elapsed);
+		var blockedFNFInput:Bool = (callOnScripts('onInputUpdate', [elapsed], true) == psychlua.LuaUtils.Function_Stop);
 		
-		if(!goingBack && options.length > 1)
+		if(!goingBack && options.length > 1 && !blockedFNFInput)
 		{
 			var add:Int = 0;
 			if (controls.UI_LEFT_P) add = -1;
@@ -203,10 +216,12 @@ class AchievementsMenuState extends ScriptedState
 			}
 		}
 
-		if (controls.BACK) {
-			FlxG.sound.play(Paths.sound('cancelMenu'));
-			MusicBeatState.switchState(new MainMenuState());
-			goingBack = true;
+		if (controls.BACK && !blockedFNFInput) {
+			if (callOnScripts('onBack', true) != psychlua.LuaUtils.Function_Stop) {
+				FlxG.sound.play(Paths.sound('cancelMenu'));
+				MusicBeatState.switchState(new MainMenuState());
+				goingBack = true;
+			}
 		}
 		super.update(elapsed);
 		
@@ -216,6 +231,13 @@ class AchievementsMenuState extends ScriptedState
 	public var barTween:FlxTween = null;
 	function _changeSelection()
 	{
+		var oldSelected:Int = curSelected;
+		if (callOnScripts('onHighlighted', [options[curSelected].name, curSelected], true) == psychlua.LuaUtils.Function_Stop)
+		{
+			curSelected = oldSelected;
+			return;
+		}
+
 		FlxG.sound.play(Paths.sound('scrollMenu'));
 		var hasProgress = options[curSelected].maxProgress > 0;
 		nameText.text = options[curSelected].displayName;
@@ -249,7 +271,43 @@ class AchievementsMenuState extends ScriptedState
 			spr.alpha = 0.6;
 			if(spr.ID == curSelected) spr.alpha = 1;
 		});
+		refreshShitScript();
+		callOnScripts('onHighlightedPost', [options[curSelected].name, curSelected]);
 	}
+
+	#if LUA_ALLOWED
+	public override function implementLua(lua:psychlua.FunkinLua):Void {
+		super.implementLua(lua);
+
+		lua.addLocalCallback('changeAchievementSelection', function(change:Int = 0) {
+			if (options.length < 1)
+				return null;
+
+			var row:Int = Math.floor(curSelected / MAX_PER_ROW);
+			curSelected += change;
+			if (Math.abs(change) >= MAX_PER_ROW) {
+				var diff:Int = curSelected - (Math.floor(curSelected / MAX_PER_ROW) * MAX_PER_ROW);
+				if(curSelected < 0) {
+					curSelected += Math.ceil(options.length / MAX_PER_ROW) * MAX_PER_ROW;
+					if(curSelected >= options.length) curSelected -= MAX_PER_ROW;
+				}
+				if(curSelected >= options.length)
+					curSelected = diff;
+			} else {
+				var rowSize:Int = Std.int(Math.min(MAX_PER_ROW, options.length - row * MAX_PER_ROW));
+				var curRow:Int = Math.floor(curSelected / MAX_PER_ROW);
+				if(curSelected >= options.length) curRow++;
+				if(curRow != row) {
+					if(curRow < row) curSelected += rowSize;
+					else curSelected -= rowSize;
+				}
+			}
+			curSelected = FlxMath.wrap(curSelected, 0, options.length - 1);
+			_changeSelection();
+			return options[curSelected].name;
+		});
+	}
+	#end
 }
 
 class ResetAchievementSubstate extends MusicBeatSubstate

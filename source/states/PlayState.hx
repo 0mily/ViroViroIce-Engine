@@ -425,6 +425,20 @@ class PlayState extends ScriptedState
 	 * Speed multiplier for the camera to shift towards its focus.
 	*/
 	public var cameraSpeed:Float = 1;
+	public var cameraFocus:String = 'dad';
+	public var cameraFocusOffsetX:Float = 0;
+	public var cameraFocusOffsetY:Float = 0;
+	public var cameraMoveEnabled:Bool = false;
+	public var cameraMoveIntensity:Float = 1;
+	public var cameraMoveSpeed:Float = 1;
+	public var cameraMoveOffset:Float = 30;
+	@:dox(hide) var cameraFocusTween:FlxTween;
+	@:dox(hide) var cameraMoveTween:FlxTween;
+	var cameraFocusBaseX:Float = 0;
+	var cameraFocusBaseY:Float = 0;
+	var cameraMoveOffsetX:Float = 0;
+	var cameraMoveOffsetY:Float = 0;
+	var cameraMoveReturning:Bool = false;
 
 	/**
 	 * The player's current score.
@@ -533,7 +547,7 @@ class PlayState extends ScriptedState
 	override public function create()
 	{
 		//trace('Playback Rate: ' + playbackRate);
-		_lastLoadedModDirectory = Mods.currentModDirectory;
+		_lastLoadedModDirectory = Mods.getAssetContextKey();
 		Paths.clearStoredMemory();
 		if(nextReloadAll)
 		{
@@ -574,19 +588,9 @@ class PlayState extends ScriptedState
 		camGame = initPsychCamera();
 		camHUD = new FlxCamera();
 		camHUD.bgColor.alpha = 0;
-
 		// https://media1.tenor.com/m/fP1Qr3rwSHkAAAAd/praying-angel.gif caralho
-		var cuW:Int = FlxG.width;
-		var cuH:Int = FlxG.height;
-
-		camGame.width = Std.int(cuW * 2.5); 
-		camGame.height = Std.int(cuH * 3.5);
-
-		camGame.x = -(camGame.width - cuW) / 2;
-		camGame.y = -(camGame.height - cuH) / 2;
-
-
 		FlxG.cameras.add(camHUD, false);
+		backend.CameraResizeFix.aplyAll();
 
 		persistentUpdate = true;
 		persistentDraw = true;
@@ -644,6 +648,7 @@ class PlayState extends ScriptedState
 		girlfriendCameraOffset = stageData.camera_girlfriend;
 		if(girlfriendCameraOffset == null)
 			girlfriendCameraOffset = [0, 0];
+		loadCameraMoveData();
 
 		boyfriendGroup = new FlxSpriteGroup(BF_X, BF_Y);
 		dadGroup = new FlxSpriteGroup(DAD_X, DAD_Y);
@@ -699,6 +704,7 @@ class PlayState extends ScriptedState
 		generateStaticArrows(true);
 		
 		preCreate();
+		backend.CameraResizeFix.aplyAll();
 		
 		#if (SCRIPTS_ALLOWED)
 		// "SCRIPTS FOLDER" SCRIPTS
@@ -706,7 +712,7 @@ class PlayState extends ScriptedState
 			for (file in FileSystem.readDirectory(folder))
 			{
 				#if LUA_ALLOWED
-				if(file.toLowerCase().endsWith('.lua'))
+				if(file.toLowerCase().endsWith('.lua') && !milyMC.MilyMC.shouldSkipRegularLua('$folder$file', songName))
 					initLuaScript('$folder$file');
 				#end
 
@@ -716,7 +722,7 @@ class PlayState extends ScriptedState
 				#end
 			}
 		#end
-			
+
 		var camPos:FlxPoint = FlxPoint.get(girlfriendCameraOffset[0], girlfriendCameraOffset[1]);
 		if(gf != null)
 		{
@@ -870,7 +876,7 @@ class PlayState extends ScriptedState
 			for (file in FileSystem.readDirectory(folder))
 			{
 				#if LUA_ALLOWED
-				if(file.toLowerCase().endsWith('.lua'))
+				if(file.toLowerCase().endsWith('.lua') && !milyMC.MilyMC.shouldSkipRegularLua(folder + file, songName))
 					initLuaScript(folder + file);
 				#end
 
@@ -879,6 +885,10 @@ class PlayState extends ScriptedState
 					initHScript(folder + file);
 				#end
 			}
+
+		#if LUA_ALLOWED
+		milyMC.MilyMC.load(this);
+		#end
 		#end
 
 		if(eventNotes.length > 0)
@@ -1011,7 +1021,7 @@ class PlayState extends ScriptedState
 		lua.set('modchart', ClientPrefs.data.modchart);
 		lua.set('pixelRender', ClientPrefs.data.weekpixel);
 		lua.set('allowMiku', ClientPrefs.data.mikudside);
-		lua.set('customScore', ClientPrefs.data.customScore);
+		//lua.set('customScore', ClientPrefs.data.customScore);
 		lua.set('extra', ClientPrefs.data.extra);
 		lua.set('stageUI', stageUI);
 		
@@ -1040,6 +1050,24 @@ class PlayState extends ScriptedState
 		lua.set('splashAlpha', ClientPrefs.data.splashAlpha);
 	}
 	#end
+
+	public function addModchart(modchart:String):Dynamic
+		return callOnScripts('addModchart', [modchart], true);
+
+	public function clearModchart(modchart:String):Dynamic
+		return callOnScripts('clearModchart', [modchart], true);
+
+	public function setModchart(modchart:String, value:Dynamic, ?target:Dynamic):Dynamic
+		return callOnScripts('setModchart', [modchart, value, target], true);
+
+	public function easeModchart(modchart:String, value:Dynamic, duration:Float, ?ease:String = 'linear', ?target:Dynamic):Dynamic
+		return callOnScripts('easeModchart', [modchart, value, duration, ease, target], true);
+
+	public function queueSetModchart(step:Float, modchart:String, value:Dynamic, ?target:Dynamic):Dynamic
+		return callOnScripts('queueSet', [step, modchart, value, target], true);
+
+	public function queueEaseModchart(step:Float, endStep:Float, modchart:String, value:Dynamic, ?ease:String = 'linear', ?target:Dynamic):Dynamic
+		return callOnScripts('queueEase', [step, endStep, modchart, value, ease, target], true);
 
 	function set_songSpeed(value:Float):Float
 	{
@@ -2353,6 +2381,7 @@ class PlayState extends ScriptedState
 		doDeathCheck();
 		
 		super.update(elapsed);
+		updateCameraMoveIdleReset();
 
 		if (unspawnNotes[0] != null)
 		{
@@ -2748,12 +2777,24 @@ class PlayState extends ScriptedState
 					if(flValue1 != null || flValue2 != null)
 					{
 						isCameraOnForcedPos = true;
+						if(cameraMoveTween != null)
+						{
+							cameraMoveTween.cancel();
+							cameraMoveTween = null;
+						}
+						cameraMoveOffsetX = 0;
+						cameraMoveOffsetY = 0;
+						cameraMoveReturning = false;
 						if(flValue1 == null) flValue1 = 0;
 						if(flValue2 == null) flValue2 = 0;
 						camFollow.x = flValue1;
 						camFollow.y = flValue2;
 					}
 				}
+
+			case 'Change Focus' | 'ChangeFocus':
+				var focus:Array<String> = parseCameraFocusEvent(value1, value2);
+				changeFocus(focus[0], Std.parseFloat(focus[1]), Std.parseFloat(focus[2]), focus[3], Std.parseFloat(focus[4]));
 
 			case 'Alt Idle Animation':
 				var char:Character = dad;
@@ -2950,6 +2991,29 @@ class PlayState extends ScriptedState
 		callOnScripts('onEvent', [eventName, value1, value2, strumTime]);
 	}
 
+	function parseCameraFocusEvent(value1:String, value2:String):Array<String> {
+		var targetData:Array<String> = splitCameraEventValues(value1);
+		var easeData:Array<String> = splitCameraEventValues(value2);
+
+		var target:String = targetData[0] ?? 'dad';
+		var x:String = targetData[1] ?? '0';
+		var y:String = targetData[2] ?? '0';
+		var ease:String = easeData[0] ?? targetData[3] ?? 'classic';
+		var steps:String = easeData[1] ?? targetData[4] ?? '0';
+
+		return [target, x, y, ease, steps];
+	}
+
+	function splitCameraEventValues(value:String):Array<String> {
+		if(value == null || value.length < 1) return [];
+
+		var values:Array<String> = value.split(',');
+		for (i in 0...values.length)
+			values[i] = values[i].trim();
+
+		return values;
+	}
+
 	public function moveCameraSection(?sec:Null<Int>):Void {
 		if (sec == null) sec = curSection;
 		if (sec < 0) sec = 0;
@@ -2959,7 +3023,7 @@ class PlayState extends ScriptedState
 		if (gf != null && SONG.notes[sec].gfSection) {
 			moveCameraToGirlfriend();
 		} else {
-			moveCamera(SONG.notes[sec].mustHitSection != true);	
+			moveCamera(SONG.notes[sec].mustHitSection != true);
 		}
 	}
 	
@@ -2967,7 +3031,7 @@ class PlayState extends ScriptedState
 	 * Focuses the camera on `gf`.
 	*/
 	public function moveCameraToGirlfriend() {
-		moveCamera(false, true);
+		changeFocus('gf');
 	}
 	
 	/**
@@ -2977,35 +3041,279 @@ class PlayState extends ScriptedState
 	 * @param 	isGf 	If the camera should be focused on the speakers (middle) character.
 	*/
 	public function moveCamera(isDad:Bool, isGf:Bool = false) {
-		var character:String;
-		if (isGf) {
-			if (gf != null) {
-				camFollow.setPosition(gf.getMidpoint().x, gf.getMidpoint().y);
-				camFollow.x += gf.cameraPosition[0] + girlfriendCameraOffset[0];
-				camFollow.y += gf.cameraPosition[1] + girlfriendCameraOffset[1];
-			}
-			
-			character = 'gf';
-		} else if (isDad) {
-			if (dad != null) {
-				camFollow.setPosition(dad.getMidpoint().x + 150, dad.getMidpoint().y - 100);
-				camFollow.x += dad.cameraPosition[0] + opponentCameraOffset[0];
-				camFollow.y += dad.cameraPosition[1] + opponentCameraOffset[1];
-			}
-			
-			character = 'dad';
-		} else {
-			if (boyfriend != null) {
-				camFollow.setPosition(boyfriend.getMidpoint().x - 100, boyfriend.getMidpoint().y - 100);
-				camFollow.x -= boyfriend.cameraPosition[0] - boyfriendCameraOffset[0];
-				camFollow.y += boyfriend.cameraPosition[1] + boyfriendCameraOffset[1];
-			}
-			
-			character = 'boyfriend';
+		changeFocus(isGf ? 'gf' : (isDad ? 'dad' : 'bf'));
+	}
+
+	function loadCameraMoveData():Void
+	{
+		var data:Dynamic = Song.ensureCameraMoveData(SONG);
+		cameraMoveEnabled = data != null && data.enabled == true;
+		cameraMoveIntensity = data != null ? data.intensity : 1;
+		cameraMoveSpeed = data != null ? data.speed : 1;
+		cameraMoveOffset = data != null ? data.offset : 30;
+
+		if(Math.isNaN(cameraMoveIntensity)) cameraMoveIntensity = 1;
+		if(Math.isNaN(cameraMoveSpeed) || cameraMoveSpeed < 0) cameraMoveSpeed = 1;
+		if(Math.isNaN(cameraMoveOffset) || cameraMoveOffset < 0) cameraMoveOffset = 30;
+	}
+
+	public function changeFocus(target:String, ?x:Float = 0, ?y:Float = 0, ?ease:String = 'classic', ?steps:Float = 0):Void {
+		if(camFollow == null) return;
+		if(Math.isNaN(x)) x = 0;
+		if(Math.isNaN(y)) y = 0;
+		if(Math.isNaN(steps)) steps = 0;
+
+		var character:String = normalizeCameraTarget(target);
+		var focusChanged:Bool = (character != cameraFocus);
+		var point:FlxPoint = getCameraFocusPoint(character, x, y);
+		if(point == null) return;
+
+		if(cameraFocusTween != null)
+		{
+			cameraFocusTween.cancel();
+			cameraFocusTween = null;
 		}
-		
+		if(focusChanged && cameraMoveTween != null)
+		{
+			cameraMoveTween.cancel();
+			cameraMoveTween = null;
+		}
+
+		var startX:Float = camFollow.x;
+		var startY:Float = camFollow.y;
+
+		cameraFocus = character;
+		cameraFocusOffsetX = x;
+		cameraFocusOffsetY = y;
+		if(focusChanged)
+		{
+			cameraMoveOffsetX = 0;
+			cameraMoveOffsetY = 0;
+			cameraMoveReturning = false;
+		}
+		isCameraOnForcedPos = false;
+		setOnScripts('cameraFocus', character);
+		setOnScripts('cameraFocusOffsetX', x);
+		setOnScripts('cameraFocusOffsetY', y);
+
+		camFollow.setPosition(point.x, point.y);
+		point.put();
+
 		stagesFunc((stage:BaseStage) -> stage.onMoveCamera(character));
 		callOnScripts('onMoveCamera', [character]);
+
+		cameraFocusBaseX = camFollow.x;
+		cameraFocusBaseY = camFollow.y;
+		var targetX:Float = cameraFocusBaseX + cameraMoveOffsetX;
+		var targetY:Float = cameraFocusBaseY + cameraMoveOffsetY;
+		var easeMode:String = normalizeCameraEase(ease);
+
+		switch(easeMode)
+		{
+			case 'instant':
+				camFollow.setPosition(targetX, targetY);
+				FlxG.camera.snapToTarget();
+
+			case 'classic':
+				camFollow.setPosition(targetX, targetY);
+
+			default:
+				if(steps <= 0)
+				{
+					camFollow.setPosition(targetX, targetY);
+					return;
+				}
+
+				camFollow.setPosition(startX, startY);
+				cameraFocusTween = FlxTween.tween(camFollow, {x: targetX, y: targetY}, (steps * Conductor.stepCrochet / 1000) / playbackRate, {
+					ease: LuaUtils.getTweenEaseByString(easeMode),
+					onComplete: (_) -> cameraFocusTween = null
+				});
+		}
+	}
+
+	function normalizeCameraTarget(target:String):String {
+		if(target == null) return 'dad';
+
+		return switch(target.toLowerCase().trim())
+		{
+			case 'bf' | 'boyfriend' | 'player' | '0':
+				'boyfriend';
+			case 'gf' | 'girlfriend' | '2':
+				'gf';
+			default:
+				'dad';
+		}
+	}
+
+	function normalizeCameraEase(ease:String):String {
+		if(ease == null || ease.trim().length < 1) return 'classic';
+
+		return switch(ease.toLowerCase().trim())
+		{
+			case 'classic' | 'og':
+				'classic';
+			case 'instant':
+				'instant';
+			default:
+				ease;
+		}
+	}
+
+	function getCameraFocusPoint(character:String, ?x:Float = 0, ?y:Float = 0):FlxPoint {
+		var point:FlxPoint = FlxPoint.get();
+
+		switch(character)
+		{
+			case 'gf':
+				if(gf == null)
+				{
+					point.put();
+					return null;
+				}
+
+				point.set(gf.getMidpoint().x, gf.getMidpoint().y);
+				point.x += gf.cameraPosition[0] + girlfriendCameraOffset[0];
+				point.y += gf.cameraPosition[1] + girlfriendCameraOffset[1];
+
+			case 'dad':
+				if(dad == null)
+				{
+					point.put();
+					return null;
+				}
+
+				point.set(dad.getMidpoint().x + 150, dad.getMidpoint().y - 100);
+				point.x += dad.cameraPosition[0] + opponentCameraOffset[0];
+				point.y += dad.cameraPosition[1] + opponentCameraOffset[1];
+
+			default:
+				if(boyfriend == null)
+				{
+					point.put();
+					return null;
+				}
+
+				point.set(boyfriend.getMidpoint().x - 100, boyfriend.getMidpoint().y - 100);
+				point.x -= boyfriend.cameraPosition[0] - boyfriendCameraOffset[0];
+				point.y += boyfriend.cameraPosition[1] + boyfriendCameraOffset[1];
+		}
+
+		point.x += x;
+		point.y += y;
+		return point;
+	}
+
+	function getCameraFocusCharacter():Character
+	{
+		return switch(cameraFocus)
+		{
+			case 'gf': gf;
+			case 'boyfriend': boyfriend;
+			default: dad;
+		}
+	}
+
+	function cameraTargetFromCharacter(character:Character):String
+	{
+		if(character == null) return null;
+		if(character == boyfriend) return 'boyfriend';
+		if(character == gf) return 'gf';
+		if(character == dad) return 'dad';
+		return null;
+	}
+
+	function getCameraMoveDuration():Float
+	{
+		if(cameraMoveSpeed <= 0) return 0;
+		return (Conductor.stepCrochet / 1000) / cameraMoveSpeed / playbackRate;
+	}
+
+	function setCameraMoveTarget(x:Float, y:Float):Void
+	{
+		if(camFollow == null) return;
+		if(cameraFocusTween != null)
+		{
+			cameraFocusTween.cancel();
+			cameraFocusTween = null;
+		}
+		if(cameraMoveTween != null)
+		{
+			cameraMoveTween.cancel();
+			cameraMoveTween = null;
+		}
+
+		cameraMoveReturning = (x == 0 && y == 0);
+		var duration:Float = getCameraMoveDuration();
+		if(duration <= 0)
+		{
+			cameraMoveOffsetX = x;
+			cameraMoveOffsetY = y;
+			cameraMoveReturning = false;
+			refreshCameraMovePosition();
+			return;
+		}
+
+		cameraMoveTween = FlxTween.tween(this, {cameraMoveOffsetX: x, cameraMoveOffsetY: y}, duration, {
+			ease: FlxEase.quadOut,
+			onUpdate: (_) -> refreshCameraMovePosition(),
+			onComplete: (_) ->
+			{
+				cameraMoveOffsetX = x;
+				cameraMoveOffsetY = y;
+				cameraMoveReturning = false;
+				cameraMoveTween = null;
+				refreshCameraMovePosition();
+			}
+		});
+	}
+
+	function refreshCameraMovePosition():Void
+	{
+		if(camFollow == null || isCameraOnForcedPos) return;
+		camFollow.setPosition(cameraFocusBaseX + cameraMoveOffsetX, cameraFocusBaseY + cameraMoveOffsetY);
+	}
+
+	function applyCameraMove(note:Note, character:Character):Void
+	{
+		if(!cameraMoveEnabled || note == null || character == null || note.isSustainNote || isCameraOnForcedPos) return;
+		if(cameraTargetFromCharacter(character) != cameraFocus) return;
+
+		var amount:Float = cameraMoveOffset * cameraMoveIntensity;
+		if(amount == 0) return;
+
+		var x:Float = 0;
+		var y:Float = 0;
+		switch(Std.int(Math.abs(note.noteData)) % 4)
+		{
+			case 0: x = -amount;
+			case 1: y = amount;
+			case 2: y = -amount;
+			case 3: x = amount;
+		}
+
+		setCameraMoveTarget(x, y);
+	}
+
+	function resetCameraMoveForCharacter(character:Character):Void
+	{
+		if(!cameraMoveEnabled || character == null || cameraMoveReturning) return;
+		if(cameraMoveOffsetX == 0 && cameraMoveOffsetY == 0) return;
+		if(cameraTargetFromCharacter(character) != cameraFocus) return;
+
+		setCameraMoveTarget(0, 0);
+	}
+
+	function updateCameraMoveIdleReset():Void
+	{
+		if(!cameraMoveEnabled || cameraMoveReturning || (cameraMoveOffsetX == 0 && cameraMoveOffsetY == 0)) return;
+
+		var character:Character = getCameraFocusCharacter();
+		if(character == null) return;
+
+		var anim:String = character.getAnimationName();
+		if(anim != null && (anim.startsWith('idle') || anim.startsWith('danceLeft') || anim.startsWith('danceRight')))
+			resetCameraMoveForCharacter(character);
 	}
 
 	/**
@@ -3350,7 +3658,7 @@ class PlayState extends ScriptedState
 		});
 	}
 
-	public var strumsBlocked:Array<Bool> = [];
+	public var strumsblockedFNF:Array<Bool> = [];
 	private function onKeyPress(event:KeyboardEvent):Void
 	{
 
@@ -3383,7 +3691,7 @@ class PlayState extends ScriptedState
 		// obtain notes that the player can hit
 		var highestNote:Note = null;
 		for (n in notes) {
-			if (n != null && !n.isSustainNote && n.noteData == key && !strumsBlocked[n.noteData] && n.canBeHit && n.mustPress && !n.tooLate && !n.wasGoodHit && !n.blockHit) {
+			if (n != null && !n.isSustainNote && n.noteData == key && !strumsblockedFNF[n.noteData] && n.canBeHit && n.mustPress && !n.tooLate && !n.wasGoodHit && !n.blockHit) {
 				if (highestNote == null || n.hitPriority > highestNote.hitPriority || (n.hitPriority == highestNote.hitPriority && n.strumTime < highestNote.strumTime))
 					highestNote = n;
 			}
@@ -3393,7 +3701,7 @@ class PlayState extends ScriptedState
 			goodNoteHit(highestNote);
 		} else {
 			var spr:StrumNote = playerStrums.members[key];
-			if (strumsBlocked[key] != true && spr != null) {
+			if (strumsblockedFNF[key] != true && spr != null) {
 				spr.playAnim('pressed');
 				spr.resetAnim = 0;
 			}
@@ -3469,14 +3777,14 @@ class PlayState extends ScriptedState
 		// TO DO: Find a better way to handle controller inputs, this should work for now
 		if(controls.controllerMode && pressArray.contains(true))
 			for (i in 0...pressArray.length)
-				if(pressArray[i] && strumsBlocked[i] != true)
+				if(pressArray[i] && strumsblockedFNF[i] != true)
 					keyPressed(i);
 
 		if (startedCountdown && !inCutscene && !boyfriend.stunned && generatedMusic)
 		{
 			if (notes.length > 0) {
 				for (n in notes) { // I can't do a filter here, that's kinda awesome
-					var canHit:Bool = (n != null && !strumsBlocked[n.noteData] && n.canBeHit
+					var canHit:Bool = (n != null && !strumsblockedFNF[n.noteData] && n.canBeHit
 						&& n.mustPress && !n.tooLate && !n.wasGoodHit && !n.blockHit);
 
 					if (guitarHeroSustains)
@@ -3500,9 +3808,9 @@ class PlayState extends ScriptedState
 		}
 
 		// TO DO: Find a better way to handle controller inputs, this should work for now
-		if((controls.controllerMode || strumsBlocked.contains(true)) && releaseArray.contains(true))
+		if((controls.controllerMode || strumsblockedFNF.contains(true)) && releaseArray.contains(true))
 			for (i in 0...releaseArray.length)
-				if(releaseArray[i] || strumsBlocked[i] == true)
+				if(releaseArray[i] || strumsblockedFNF[i] == true)
 					keyReleased(i);
 	}
 
@@ -3653,6 +3961,7 @@ class PlayState extends ScriptedState
 		if (char != null) {
 			if (note.noteType == 'Hey!' && char.hasAnimation('hey')) {
 				char.playAnim('hey', true);
+				applyCameraMove(note, char);
 				char.specialAnim = true;
 				char.heyTimer = 0.6;
 			} else if(!note.noAnimation) {
@@ -3668,7 +3977,10 @@ class PlayState extends ScriptedState
 				}
 
 				if (canPlay)
+				{
 					char.playAnim(animToPlay, true);
+					applyCameraMove(note, char);
+				}
 				
 				char.holdTimer = 0;
 			}
@@ -3727,7 +4039,11 @@ class PlayState extends ScriptedState
 							canPlay = false;
 					}
 	
-					if (canPlay) char.playAnim(animToPlay, true);
+					if (canPlay)
+					{
+						char.playAnim(animToPlay, true);
+						applyCameraMove(note, char);
+					}
 					char.holdTimer = 0;
 					
 					if (note.noteType == 'Hey!') {
@@ -3953,24 +4269,33 @@ class PlayState extends ScriptedState
 	*/
 	public function characterBopper(beat:Int):Void {
 		if (gf != null && beat % Math.round(gfSpeed * gf.danceEveryNumBeats) == 0 && !gf.getAnimationName().startsWith('sing') && !gf.stunned)
+		{
 			gf.dance();
+			resetCameraMoveForCharacter(gf);
+		}
 		if (boyfriend != null && beat % boyfriend.danceEveryNumBeats == 0 && !boyfriend.getAnimationName().startsWith('sing') && !boyfriend.stunned)
+		{
 			boyfriend.dance();
+			resetCameraMoveForCharacter(boyfriend);
+		}
 		if (dad != null && beat % dad.danceEveryNumBeats == 0 && !dad.getAnimationName().startsWith('sing') && !dad.stunned)
+		{
 			dad.dance();
+			resetCameraMoveForCharacter(dad);
+		}
 	}
 
 	function playerDance():Void {
 		var anim:String = boyfriend.getAnimationName();
 		if(boyfriend.holdTimer > Conductor.stepCrochet * (0.0011 #if FLX_PITCH / FlxG.sound.music.pitch #end) * boyfriend.singDuration && anim.startsWith('sing') && !anim.endsWith('miss'))
+		{
 			boyfriend.dance();
+			resetCameraMoveForCharacter(boyfriend);
+		}
 	}
 
 	public override function sectionHit(section:Int):Void {
 		if (SONG.notes[section] != null) {
-			if (generatedMusic && !endingSong && !isCameraOnForcedPos)
-				moveCameraSection();
-
 			if (camZooming && FlxG.camera.zoom < 1.35 && ClientPrefs.data.camZooms) {
 				FlxG.camera.zoom += 0.015 * camZoomingMult;
 				camHUD.zoom += 0.03 * camZoomingMult;

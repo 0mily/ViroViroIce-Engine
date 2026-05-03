@@ -66,12 +66,29 @@ class ReflectionFunctions
 		});
 		
 		FunkinLua.registerFunction('switchState', function(type:String, ?args:Array<Dynamic>) {
-			var cls:Class<Dynamic> = Type.resolveClass(type);
-			
-			if (cls != null)
-				return MusicBeatState.switchState(Type.createInstance(cls, parseInstances(args ?? [])));
-			
-			FunkinLua.luaTrace('switchState: Couldn\'t resolve class $type', false, false, ERROR);
+			var nextState = MusicBeatState.buildState(type, parseInstances(args ?? []));
+			if (nextState != null)
+				return MusicBeatState.switchState(nextState);
+
+			FunkinLua.luaTrace('switchState: Couldn\'t resolve class/state $type', false, false, ERROR);
+		});
+		FunkinLua.registerFunction('loadState', function(type:String, ?args:Array<Dynamic>) {
+			var nextState = MusicBeatState.buildState(type, parseInstances(args ?? []));
+			if (nextState != null)
+				return MusicBeatState.loadState(nextState);
+
+			FunkinLua.luaTrace('loadState: Couldn\'t resolve class/state $type', false, false, ERROR);
+		});
+		FunkinLua.registerFunction('reloadState', function(?type:String = '', ?args:Array<Dynamic>) {
+			type = type == null ? '' : type.trim();
+			if (type.length < 1)
+				return MusicBeatState.resetState();
+
+			var nextState = MusicBeatState.buildState(type, parseInstances(args ?? []));
+			if (nextState != null)
+				return MusicBeatState.switchState(nextState);
+
+			FunkinLua.luaTrace('reloadState: Couldn\'t resolve class/state $type', false, false, ERROR);
 		});
 	}
 	public static function implementLocal(funk:FunkinLua) {

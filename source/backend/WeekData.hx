@@ -24,6 +24,7 @@ class WeekData {
 	public static var weeksLoaded:Map<String, WeekData> = new Map<String, WeekData>();
 	public static var weeksList:Array<String> = [];
 	public var folder:String = '';
+	public var packageFolder:String = '';
 
 	// JSON variables
 	public var songs:Array<Dynamic>;
@@ -136,10 +137,35 @@ class WeekData {
 				}
 			}
 		}
+
+		for (mod in Mods.parseList().enabled)
+		{
+			for (packageFolder in Mods.getPackageDirectories(mod))
+			{
+				var directory:String = Paths.mods(packageFolder + '/weeks/');
+				if(FileSystem.exists(directory))
+				{
+					var listOfWeeks:Array<String> = CoolUtil.coolTextFile(directory + 'weekList.txt');
+					for (daWeek in listOfWeeks)
+					{
+						var path:String = directory + daWeek + '.json';
+						if(FileSystem.exists(path))
+							addWeek(daWeek, path, null, -1, originalLength, mod, packageFolder);
+					}
+
+					for (file in FileSystem.readDirectory(directory))
+					{
+						var path = haxe.io.Path.join([directory, file]);
+						if (!FileSystem.isDirectory(path) && file.endsWith('.json'))
+							addWeek(file.substr(0, file.length - 5), path, null, -1, originalLength, mod, packageFolder);
+					}
+				}
+			}
+		}
 		#end
 	}
 
-	private static function addWeek(weekToCheck:String, path:String, directory:String, i:Int, originalLength:Int)
+	private static function addWeek(weekToCheck:String, path:String, directory:String, i:Int, originalLength:Int, ?modFolder:String, ?packageFolder:String)
 	{
 		if(!weeksLoaded.exists(weekToCheck))
 		{
@@ -147,7 +173,12 @@ class WeekData {
 			if(week != null)
 			{
 				var weekFile:WeekData = new WeekData(week, weekToCheck);
-				if(i >= originalLength)
+				if (modFolder != null && modFolder.length > 0)
+				{
+					weekFile.folder = modFolder;
+					weekFile.packageFolder = packageFolder ?? '';
+				}
+				else if(i >= originalLength)
 				{
 					#if MODS_ALLOWED
 					weekFile.folder = directory.substring(Paths.mods().length, directory.length-1);
@@ -194,8 +225,10 @@ class WeekData {
 
 	public static function setDirectoryFromWeek(?data:WeekData = null) {
 		Mods.currentModDirectory = '';
+		Mods.currentPackageDirectory = '';
 		if(data != null && data.folder != null && data.folder.length > 0) {
 			Mods.currentModDirectory = data.folder;
+			Mods.currentPackageDirectory = data.packageFolder ?? '';
 		}
 	}
 }

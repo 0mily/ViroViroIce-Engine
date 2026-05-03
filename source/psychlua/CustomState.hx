@@ -1,5 +1,19 @@
 package psychlua;
 
+import backend.Mods;
+import backend.MusicBeatState;
+import backend.ScriptedState;
+import backend.ScriptedSubState;
+import flixel.addons.transition.FlxTransitionableState;
+
+#if LUA_ALLOWED
+import psychlua.FunkinLua;
+#end
+
+#if HSCRIPT_ALLOWED
+import psychlua.HScript;
+#end
+
 class CustomState extends ScriptedState {
 	public var stateName:String;
 	
@@ -14,6 +28,88 @@ class CustomState extends ScriptedState {
 		stateName = name;
 		multiScript = false;
 	}
+
+	function normalizarPorra(value:Dynamic):String {
+		if (!Std.isOfType(value, String))
+			return null;
+
+		var state:String = cast value;
+		state = state.trim();
+		return state.length > 0 ? state : null;
+	}
+
+	#if LUA_ALLOWED
+	function slaBuceta():String {
+		var path:String = getSingleStateScriptPath(stateName, '.lua');
+		if (path == null)
+			return null;
+
+		var probe:FunkinLua = null;
+		try {
+			probe = new FunkinLua(path, this);
+
+			var forkState:String = normalizarPorra(probe.get('forkState'));
+			if (forkState == null)
+				forkState = normalizarPorra(probe.get('baseState'));
+			if (forkState == null && probe.exists('getState'))
+				forkState = normalizarPorra(probe.call('getState'));
+			if (forkState == null && probe.exists('getBaseState'))
+				forkState = normalizarPorra(probe.call('getBaseState'));
+
+			probe.stop();
+			return forkState;
+		} catch (e:Dynamic) {
+			probe?.stop();
+		}
+		return null;
+	}
+	#end
+
+	#if HSCRIPT_ALLOWED
+	function esuquecidoHaxe():String {
+		var path:String = getSingleStateScriptPath(stateName, '.hx');
+		if (path == null)
+			return null;
+
+		var probe:HScript = null;
+		try {
+			probe = new HScript(null, path, null, true, this);
+			probe.execute();
+
+			var forkState:String = normalizarPorra(probe.get('forkState'));
+			if (forkState == null)
+				forkState = normalizarPorra(probe.get('baseState'));
+			if (forkState == null && probe.exists('getState'))
+			{
+				var ret = probe.call('getState');
+				forkState = normalizarPorra(ret?.returnValue);
+			}
+			if (forkState == null && probe.exists('getBaseState'))
+			{
+				var ret = probe.call('getBaseState');
+				forkState = normalizarPorra(ret?.returnValue);
+			}
+
+			probe.destroy();
+			return forkState;
+		} catch (e:Dynamic) {
+			probe?.destroy();
+		}
+		return null;
+	}
+	#end
+
+	function resolverState():String {
+		var forkState:String = null;
+		#if LUA_ALLOWED
+		forkState = slaBuceta();
+		#end
+		#if HSCRIPT_ALLOWED
+		if (forkState == null)
+			forkState = esuquecidoHaxe();
+		#end
+		return forkState;
+	}
 	
 	public override function create():Void {
 		rpcDetails = 'Custom State ($stateName)';
@@ -22,6 +118,20 @@ class CustomState extends ScriptedState {
 		super.create();
 	}
 	override function _preCreate():Void {
+		var forkState:String = resolverState();
+		if (forkState != null && Mods.getStateName(forkState) != Mods.getStateName(stateName))
+		{
+			var nextState = MusicBeatState.buildState(forkState, null, null, true);
+			if (nextState != null && !(nextState is CustomState))
+			{
+				ScriptedSubState.scriptOverrideShit(ScriptedSubState.getStateName(nextState), stateName);
+				FlxTransitionableState.skipNextTransIn = true;
+				FlxTransitionableState.skipNextTransOut = true;
+				MusicBeatState.loadState(nextState, false);
+				return;
+			}
+		}
+
 		var loaded:Bool = #if SCRIPTS_ALLOWED startStateScripts() #else false #end;
 		
 		if (!loaded) {

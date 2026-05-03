@@ -2,7 +2,9 @@ package states;
 
 import flixel.FlxObject;
 import flixel.effects.FlxFlicker;
+import flixel.graphics.frames.FlxFrame;
 import lime.app.Application;
+import backend.Highscore;
 import states.editors.MasterEditorMenu;
 import options.OptionsState;
 
@@ -156,7 +158,33 @@ class MainMenuState extends ScriptedState
 		super.create();
 		
 		changeItem(true);
+		refreshShitScript();
 		FlxG.camera.snapToTarget();
+	}
+
+	function refreshShitScript():Void {
+		var curItem:MenuItem = switch (curColumn) {
+			case LEFT: leftItem;
+			case CENTER: (menuItems != null && menuItems.length > 0) ? menuItems.members[curSelected] : null;
+			case RIGHT: rightItem;
+		}
+
+		setOnScripts('curSelected', curSelected);
+		setOnScripts('curColumn', curColumn);
+		setOnScripts('selectedItemName', curItem?.name);
+		setOnScripts('menuItemNames', [for (item in menuItems.members) if (item != null) item.name]);
+		setOnScripts('menuItemsGroup', 'menuItems');
+		setOnScripts('bg', 'bg');
+		setOnScripts('magenta', 'magenta');
+		setOnScripts('camFollow', 'camFollow');
+		setOnScripts('EngineVerTxt', 'emiVer');
+		setOnScripts('FNFVerTxt', 'psychVer');
+		setOnScripts('storymode', 'story_mode');
+		setOnScripts('freeplay', 'freeplay');
+		setOnScripts('mods', 'mods');
+		setOnScripts('options', 'options');
+		setOnScripts('credits', 'credits');
+		setOnScripts('awards', 'achievements');
 	}
 	
 	function pause(yea:Bool):Void {
@@ -202,6 +230,72 @@ class MainMenuState extends ScriptedState
 		
 		return item;
 	}
+
+	function getMenuItemByName(name:String, ?column:MainMenuColumn):MenuItem {
+		if (name == null) return null;
+
+		if (column == null || column == CENTER)
+			for (item in menuItems.members)
+				if (item != null && item.name == name)
+					return item;
+
+		if ((column == null || column == LEFT) && leftItem != null && leftItem.name == name)
+			return leftItem;
+		if ((column == null || column == RIGHT) && rightItem != null && rightItem.name == name)
+			return rightItem;
+		return null;
+	}
+
+	function removeMenuItemByName(name:String, destroy:Bool = true):Bool {
+		var item = getMenuItemByName(name);
+		if (item == null)
+			return false;
+
+		if (item == leftItem) {
+			remove(leftItem, destroy);
+			if (destroy) leftItem.destroy();
+			leftItem = null;
+		} else if (item == rightItem) {
+			remove(rightItem, destroy);
+			if (destroy) rightItem.destroy();
+			rightItem = null;
+		} else {
+			menuItems.remove(item, destroy);
+			if (destroy) item.destroy();
+			if (menuItems.length > 0)
+				curSelected = FlxMath.wrap(curSelected, 0, menuItems.length - 1);
+			else
+				curSelected = 0;
+
+			if (selectedItem == item)
+				selectedItem = null;
+			positionMenuItems();
+		}
+
+		updateYScroll();
+		refreshShitScript();
+		return true;
+	}
+
+	function reorderMenuItems(order:Array<String>):Array<String> {
+		if (order == null)
+			return [for (item in menuItems.members) if (item != null) item.name];
+
+		var insertAt:Int = 0;
+		for (name in order) {
+			var item = getMenuItemByName(name, CENTER);
+			if (item == null)
+				continue;
+
+			menuItems.remove(item, false);
+			menuItems.insert(insertAt, item);
+			insertAt++;
+		}
+
+		positionMenuItems();
+		refreshShitScript();
+		return [for (item in menuItems.members) if (item != null) item.name];
+	}
 	
 	function positionMenuItems():Void {
 		for (i => item in menuItems.members) {
@@ -241,10 +335,14 @@ class MainMenuState extends ScriptedState
 	{
 		preUpdate(elapsed);
 		
-		if (FlxG.sound.music.volume < 0.8)
+		if (FlxG.sound.music == null)
+			FlxG.sound.playMusic(Paths.music('freakyMenu'), 0.8);
+		else if (FlxG.sound.music.volume < 0.8)
 			FlxG.sound.music.volume = Math.min(FlxG.sound.music.volume + 0.5 * elapsed, 0.8);
 
-		if (!selectedSomethin)
+		var blockedFNFInput:Bool = (callOnScripts('onInputUpdate', [elapsed], true) == psychlua.LuaUtils.Function_Stop);
+
+		if (!selectedSomethin && !blockedFNFInput)
 		{
 			if (controls.UI_UP_P)
 				changeItem(-1);
@@ -319,8 +417,10 @@ class MainMenuState extends ScriptedState
 			}
 
 			if (controls.BACK) {
-				FlxG.sound.play(Paths.sound('cancelMenu'));
-				MusicBeatState.switchState(new TitleState());
+				if (callOnScripts('onBack', true) != psychlua.LuaUtils.Function_Stop) {
+					FlxG.sound.play(Paths.sound('cancelMenu'));
+					MusicBeatState.switchState(new TitleState());
+				}
 			}
 
 			if (controls.ACCEPT || (FlxG.mouse.justPressed && allowMouse)) {
@@ -330,7 +430,9 @@ class MainMenuState extends ScriptedState
 					case RIGHT: rightItem;
 				}
 				
-				if (callOnScriptsExt('onAccept', [curSelected], [item, curSelected], true) != psychlua.LuaUtils.Function_Stop) {
+				var blockedFNF:Bool = (callOnScriptsExt('onSelected', [item.name, curSelected, curColumn], [item, curSelected, curColumn], true) == psychlua.LuaUtils.Function_Stop);
+				blockedFNF = (blockedFNF || callOnScriptsExt('onAccept', [curSelected], [item, curSelected], true) == psychlua.LuaUtils.Function_Stop);
+				if (!blockedFNF) {
 					FlxG.sound.play(Paths.sound('confirmMenu'));
 					selectedSomethin = true;
 					FlxG.mouse.visible = false;
@@ -401,7 +503,13 @@ class MainMenuState extends ScriptedState
 				newSelectedItem = rightItem;
 		}
 		
-		if (forced || callOnScriptsExt('onSelectItem', [curSelected], [selectedItem, curSelected], true) != psychlua.LuaUtils.Function_Stop) {
+		var blockedFNF:Bool = false;
+		if (!forced) {
+			blockedFNF = (callOnScriptsExt('onHighlighted', [newSelectedItem.name, curSelected, curColumn], [newSelectedItem, curSelected, curColumn], true) == psychlua.LuaUtils.Function_Stop);
+			blockedFNF = (blockedFNF || callOnScriptsExt('onSelectItem', [curSelected], [selectedItem, curSelected], true) == psychlua.LuaUtils.Function_Stop);
+		}
+
+		if (forced || !blockedFNF) {
 			if (selectedItem != null)
 				selectedItem.selected = false;
 			newSelectedItem.selected = true;
@@ -423,12 +531,83 @@ class MainMenuState extends ScriptedState
 				camFollow.y = selectedItem.getGraphicMidpoint().y;
 			camFollow.x = selectedItem.getGraphicMidpoint().x;
 			
+			refreshShitScript();
+			callOnScriptsExt('onHighlightedPost', [selectedItem.name, curSelected, curColumn], [selectedItem, curSelected, curColumn]);
 			callOnScriptsExt('onSelectItemPost', [curSelected], [selectedItem, curSelected]);
 		} else {
 			curColumn = oldColumn;
 			curSelected = oldSelected;
 		}
 	}
+
+	#if LUA_ALLOWED
+	public override function implementLua(lua:psychlua.FunkinLua):Void {
+		super.implementLua(lua);
+
+		lua.addLocalCallback('addItemMenu', function(item:String, imagePath:String = '', fps:Float = 24, column:String = 'center', insertAt:Int = -1) {
+			switch (column.toLowerCase()) {
+				case 'left':
+					if (leftItem != null) return false;
+					addMenuItem(item, menuFunctions[item], LEFT);
+					if (imagePath != null && imagePath.trim().length > 0)
+						leftItem.loadSprite(item, imagePath, fps);
+
+				case 'right':
+					if (rightItem != null) return false;
+					addMenuItem(item, menuFunctions[item], RIGHT);
+					if (imagePath != null && imagePath.trim().length > 0)
+						rightItem.loadSprite(item, imagePath, fps);
+
+				default:
+					var added = addMenuItem(item, menuFunctions[item], CENTER);
+					if (imagePath != null && imagePath.trim().length > 0)
+						added.loadSprite(item, imagePath, fps);
+					if (insertAt >= 0) {
+						menuItems.remove(added, false);
+						menuItems.insert(Std.int(Math.min(insertAt, menuItems.length)), added);
+						positionMenuItems();
+					}
+			}
+
+			refreshShitScript();
+			return true;
+		});
+		lua.addLocalCallback('removeItemMenu', function(item:String) {
+			return removeMenuItemByName(item);
+		});
+		lua.addLocalCallback('setItemOrder', function(order:Array<String>) {
+			return reorderMenuItems(order);
+		});
+		lua.addLocalCallback('hasBeatenSong', function(songName:String) {
+			for (i in 0...Std.int(Math.max(Difficulty.defaultList.length, 1)))
+				if (Highscore.getScore(songName, i) > 0)
+					return true;
+			return false;
+		});
+		lua.addLocalCallback('hasBeatenWeek', function(week:String) {
+			return StoryMenuState.weekCompleted.exists(week) && StoryMenuState.weekCompleted.get(week);
+		});
+		lua.addLocalCallback('changeMainMenuSelection', function(change:Int = 0, column:String = 'center') {
+			var selectedColumn:MainMenuColumn = switch (column.toLowerCase()) {
+				case 'left': LEFT;
+				case 'right': RIGHT;
+				default: CENTER;
+			};
+			changeItem(change, selectedColumn);
+			return selectedItem?.name;
+		});
+		lua.addLocalCallback('acceptMainMenuSelection', function() {
+			var item:MenuItem = switch(curColumn) {
+				case LEFT: leftItem;
+				case CENTER: menuItems.members[curSelected];
+				case RIGHT: rightItem;
+			}
+			if (item != null && item.onAccept != null)
+				item.onAccept(item);
+			return item?.name;
+		});
+	}
+	#end
 }
 
 class MenuItem extends FlxSprite {
@@ -447,10 +626,25 @@ class MenuItem extends FlxSprite {
 		antialiasing = ClientPrefs.data.antialiasing;
 	}
 	
-	public function loadSprite(name:String) {
-		frames = Paths.getSparrowAtlas('mainmenu/menu_$name');
-		animation.addByPrefix('idle', '$name idle', 24, true);
-		animation.addByPrefix('selected', '$name selected', 24, true);
+	function getPrefix(candidates:Array<String>, fallback:String):String {
+		for (candidate in candidates) {
+			var found:Array<FlxFrame> = [];
+			@:privateAccess animation.findByPrefix(found, candidate);
+			if (found.length > 0)
+				return candidate;
+		}
+		return fallback;
+	}
+
+	public function loadSprite(name:String, imagePath:String = '', fps:Float = 24) {
+		var atlas:String = (imagePath != null && imagePath.trim().length > 0) ? imagePath : 'mainmenu/menu_$name';
+		frames = Paths.getSparrowAtlas(atlas);
+		animation.destroyAnimations();
+
+		var idlePrefix:String = getPrefix(['$name idle', '${name}_idle', name], '$name idle');
+		var selectedPrefix:String = getPrefix(['$name selected', '${name}_selected', '$name press', idlePrefix], '$name selected');
+		animation.addByPrefix('idle', idlePrefix, Std.int(fps), true);
+		animation.addByPrefix('selected', selectedPrefix, Std.int(fps), true);
 		animation.play('idle');
 		updateHitbox();
 		

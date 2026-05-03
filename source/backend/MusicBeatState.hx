@@ -33,6 +33,58 @@ class MusicBeatState extends MusicBeatSubstate {
 	public static function getVariables():Map<String, Dynamic> {
 		return FlxG.state.extraData;
 	}
+
+	public static function canseiOverride(?nextState:FlxState, allowStateAlias:Bool = true):FlxState {
+		if (!allowStateAlias || nextState == null || nextState is CustomState)
+			return nextState;
+
+		var stateName:String = ScriptedSubState.getStateName(nextState);
+		var alias:String = Mods.getStateScriptName(stateName);
+		if (alias != null && alias.length > 0)
+			return new CustomState(alias);
+		return nextState;
+	}
+
+	public static function buildState(name:String, ?args:Array<Dynamic>, ?data:Dynamic, ignoreStateAlias:Bool = false):FlxState {
+		if (name == null)
+			return null;
+
+		name = name.trim();
+		if (name.length < 1)
+			return null;
+
+		var cls:Class<Dynamic> = Type.resolveClass(name);
+		if (cls == null && name.indexOf('.') < 0)
+			cls = Type.resolveClass('states.$name');
+		if (cls == null && name.indexOf('.') < 0)
+			cls = Type.resolveClass('options.$name');
+
+		if (cls != null) {
+			var state:FlxState = Type.createInstance(cls, args ?? []);
+			return canseiOverride(state, !ignoreStateAlias);
+		}
+
+		return new CustomState(Mods.getStateName(name) ?? name, data);
+	}
+
+	public static function loadState(?nextState:FlxState, allowStateAlias:Bool = true):Void { // eu esqueci como eu fiz isso
+		nextState = canseiOverride(nextState, allowStateAlias);
+		if (nextState == null)
+			return resetState();
+
+		FlxTransitionableState.skipNextTransIn = true;
+		FlxTransitionableState.skipNextTransOut = true;
+
+		if (nextState is CustomState) {
+			var customState:CustomState = cast nextState;
+			FlxG.switchState(() -> new CustomState(customState.stateName, customState.data));
+		} else {
+			FlxG.switchState(nextState);
+		}
+
+		FlxTransitionableState.skipNextTransIn = false;
+		FlxTransitionableState.skipNextTransOut = false;
+	}
 	
 	public override function create() {
 		#if MODS_ALLOWED Mods.updatedOnState = false; #end
@@ -53,6 +105,8 @@ class MusicBeatState extends MusicBeatSubstate {
 			camOther.bgColor.alpha = 0;
 			FlxG.cameras.add(camOther, false);
 		}
+		setVar('camOther', camOther);
+		setVar('camHUD', camOther);
 		
 		if (!_psychCameraInitialized)
 			initPsychCamera();
@@ -75,6 +129,9 @@ class MusicBeatState extends MusicBeatSubstate {
 		var camera = new PsychCamera();
 		FlxG.cameras.reset(camera);
 		FlxG.cameras.setDefaultDrawTarget(camera, true);
+		setVar('camMain', camera);
+		setVar('camGame', camera);
+		setVar('camHUD', camOther);
 		_psychCameraInitialized = true;
 		return camera;
 	}
@@ -85,6 +142,7 @@ class MusicBeatState extends MusicBeatSubstate {
 	 * @param 	nextState 	The next state to switch to.
 	*/
 	public static function switchState(?nextState:FlxState):Void {
+		nextState = canseiOverride(nextState);
 		if (MusicBeatSubstate.callGlobal('onSwitchState', [nextState, Type.getClass(nextState)]) != psychlua.LuaUtils.Function_Stop) {
 			if (nextState == null)
 				return resetState();
@@ -119,6 +177,7 @@ class MusicBeatState extends MusicBeatSubstate {
 	 * @param 	nextState 	The next state to switch to.
 	*/
 	public static function startTransition(?nextState:FlxState):Void {
+		nextState = canseiOverride(nextState);
 		FlxG.state.openSubState(new CustomFadeTransition(.5, false));
 		
 		nextState ??= FlxG.state;

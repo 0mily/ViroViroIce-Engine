@@ -364,15 +364,15 @@ class MusicBeatSubstate extends flixel.FlxSubState {
 	*/
 	public function createRuntimeShader(shaderName:String):ErrorHandledRuntimeShader {
 		if (!ClientPrefs.data.shaders)
-			return new ErrorHandledRuntimeShader(shaderName);
+			return new shaders.CodenameRuntimeShader(shaderName);
 		
 		if (!runtimeShaders.exists(shaderName) && !initRuntimeShader(shaderName)) {
 			FlxG.log.warn('Shader $shaderName is missing!');
-			return new ErrorHandledRuntimeShader(shaderName);
+			return new shaders.CodenameRuntimeShader(shaderName);
 		}
 		
 		var arr:Array<String> = runtimeShaders.get(shaderName);
-		return new ErrorHandledRuntimeShader(shaderName, arr[0], arr[1]);
+		return new shaders.CodenameRuntimeShader(shaderName, arr[0], arr[1]);
 	}
 	
 	/**

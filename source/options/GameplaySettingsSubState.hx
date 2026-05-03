@@ -78,7 +78,7 @@ class GameplaySettingsSubState extends BaseOptionsMenu
 		option.displayFormat = '%vms';
 		option.scrollSpeed = 10;
 		option.minValue = 5.0;
-		option.maxValue = 15.0;
+		option.maxValue = 22.0;
 		option.changeValue = 0.1;
 		addOption(option);
 
@@ -88,7 +88,7 @@ class GameplaySettingsSubState extends BaseOptionsMenu
 			FLOAT);
 		option.displayFormat = '%vms';
 		option.scrollSpeed = 15;
-		option.minValue = 15.0;
+		option.minValue = 22.0;
 		option.maxValue = 45.0;
 		option.changeValue = 0.1;
 		addOption(option);
@@ -99,7 +99,7 @@ class GameplaySettingsSubState extends BaseOptionsMenu
 			FLOAT);
 		option.displayFormat = '%vms';
 		option.scrollSpeed = 30;
-		option.minValue = 15.0;
+		option.minValue = 22.0;
 		option.maxValue = 90.0;
 		option.changeValue = 0.1;
 		addOption(option);
@@ -110,7 +110,7 @@ class GameplaySettingsSubState extends BaseOptionsMenu
 			FLOAT);
 		option.displayFormat = '%vms';
 		option.scrollSpeed = 60;
-		option.minValue = 15.0;
+		option.minValue = 22.0;
 		option.maxValue = 135.0;
 		option.changeValue = 0.1;
 		addOption(option);

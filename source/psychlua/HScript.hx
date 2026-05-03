@@ -26,6 +26,7 @@ class HScriptMacro {
 
 import flixel.FlxState;
 import flixel.FlxSubState;
+import openfl.Lib;
 
 import states.MainMenuState;
 
@@ -245,6 +246,7 @@ class HScript extends Iris {
 		set('Paths', Paths);
 		set('Conductor', Conductor);
 		set('ClientPrefs', ClientPrefs);
+		set('CustomCursor', backend.CustomCursor);
 		#if ACHIEVEMENTS_ALLOWED
 		set('Achievements', Achievements);
 		#end
@@ -261,6 +263,46 @@ class HScript extends Iris {
 		#if (!flash && sys)
 		set('FlxRuntimeShader', flixel.addons.display.FlxRuntimeShader);
 		set('ErrorHandledRuntimeShader', shaders.ErrorHandledShader.ErrorHandledRuntimeShader);
+		set('CodenameRuntimeShader', shaders.CodenameRuntimeShader);
+		set('CustomShader', shaders.CustomShader);
+		set('addCameraShader', function(camera:FlxCamera, shader:flixel.addons.display.FlxRuntimeShader) {
+			if(camera == null || shader == null) return false;
+			if(Std.isOfType(shader, shaders.CodenameRuntimeShader))
+				shaders.CodenameRuntimeShader.applyCameraUniforms(shader, camera);
+			if(camera.filters == null) camera.filters = [];
+			camera.filters.push(new openfl.filters.ShaderFilter(shader));
+			shaders.ShaderResizeFix.fixCamera(camera);
+			return true;
+		});
+		set('removeCameraShader', function(camera:FlxCamera, shader:flixel.addons.display.FlxRuntimeShader = null) {
+			if(camera == null) return false;
+			if(shader == null) camera.filters = [];
+			else if(camera.filters != null)
+				camera.filters = camera.filters.filter(function(filter) {
+					return !(Std.isOfType(filter, openfl.filters.ShaderFilter) && cast(filter, openfl.filters.ShaderFilter).shader == shader);
+				});
+			shaders.ShaderResizeFix.fixCamera(camera);
+			return true;
+		});
+		set('addWindowShader', function(shader:flixel.addons.display.FlxRuntimeShader) {
+			if(shader == null) return false;
+			if(Std.isOfType(shader, shaders.CodenameRuntimeShader))
+				shaders.CodenameRuntimeShader.applyScreenUniforms(shader);
+			var filters = Lib.current.filters;
+			filters.push(new openfl.filters.ShaderFilter(shader));
+			Lib.current.filters = filters;
+			shaders.ShaderResizeFix.fixSprite(Lib.current);
+			return true;
+		});
+		set('removeWindowShader', function(shader:flixel.addons.display.FlxRuntimeShader = null) {
+			if(shader == null) Lib.current.filters = [];
+			else if(Lib.current.filters != null)
+				Lib.current.filters = Lib.current.filters.filter(function(filter) {
+					return !(Std.isOfType(filter, openfl.filters.ShaderFilter) && cast(filter, openfl.filters.ShaderFilter).shader == shader);
+				});
+			shaders.ShaderResizeFix.fixSprite(Lib.current);
+			return true;
+		});
 		#end
 		set('ShaderFilter', openfl.filters.ShaderFilter);
 		set('StringTools', StringTools);
@@ -282,6 +324,12 @@ class HScript extends Iris {
 			
 			set('game', parentState);
 			set(stateName, cls);
+		}
+
+		if(PlayState.instance != null) {
+			set('camGame', PlayState.instance.camGame);
+			set('camHUD', PlayState.instance.camHUD);
+			set('camOther', PlayState.instance.camOther);
 		}
 		
 		set('global', variableMap);
@@ -329,6 +377,13 @@ class HScript extends Iris {
 		set('anyGamepadJustPressed', function(name:String) return FlxG.gamepads.anyJustPressed(name));
 		set('anyGamepadPressed', function(name:String) FlxG.gamepads.anyPressed(name));
 		set('anyGamepadReleased', function(name:String) return FlxG.gamepads.anyJustReleased(name));
+		set('setCustomCursor', function(image:String = 'cursor', scale:Float = 1, hotspotX:Int = 0, hotspotY:Int = 0)
+			return backend.CustomCursor.set(image, scale, hotspotX, hotspotY));
+		set('reloadCustomCursor', function()
+			return backend.CustomCursor.reloadFromMods());
+		set('resetCustomCursor', function() {
+			backend.CustomCursor.reset();
+		});
 
 		set('gamepadAnalogX', function(id:Int, ?leftStick:Bool = true) {
 			var controller = FlxG.gamepads.getByID(id);

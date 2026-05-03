@@ -19,6 +19,14 @@ class CreditsState extends ScriptedState
 	public var creditsStuff:Array<Array<String>> = [];
 	public var defaultList:Array<Array<String>>;
 
+	function refreshShitScript():Void {
+		setOnScripts('curSelected', curSelected);
+		setOnScripts('selectedCredit', creditsStuff[curSelected]);
+		setOnScripts('creditsList', creditsStuff.copy());
+		setOnScripts('bg', 'bg');
+		setOnScripts('descText', 'descText');
+	}
+
 	override function create() {
 		rpcDetails = 'Credits Menu';
 
@@ -101,6 +109,7 @@ class CreditsState extends ScriptedState
 		intendedColor = bg.color;
 		changeSelection();
 		super.create();
+		refreshShitScript();
 	}
 
 	var quitting:Bool = false;
@@ -108,11 +117,12 @@ class CreditsState extends ScriptedState
 	override function update(elapsed:Float)
 	{
 		preUpdate(elapsed);
+		var blockedFNFInput:Bool = (callOnScripts('onInputUpdate', [elapsed], true) == psychlua.LuaUtils.Function_Stop);
 		
 		if (FlxG.sound.music.volume < 0.7)
 			FlxG.sound.music.volume += 0.5 * elapsed;
 
-		if(!quitting)
+		if(!quitting && !blockedFNFInput)
 		{
 			if(creditsStuff.length > 1)
 			{
@@ -153,15 +163,19 @@ class CreditsState extends ScriptedState
 			}
 
 			if(controls.ACCEPT && (creditsStuff[curSelected][3] == null || creditsStuff[curSelected][3].length > 4)) {
-				if (callOnScripts('onAccept', [creditsStuff[curSelected], curSelected], true) != psychlua.LuaUtils.Function_Stop) {
+				var blockedFNF:Bool = (callOnScripts('onSelected', [creditsStuff[curSelected][0], curSelected], true) == psychlua.LuaUtils.Function_Stop);
+				blockedFNF = (blockedFNF || callOnScripts('onAccept', [creditsStuff[curSelected], curSelected], true) == psychlua.LuaUtils.Function_Stop);
+				if (!blockedFNF) {
 					CoolUtil.browserLoad(creditsStuff[curSelected][3]);
 				}
 			}
 			if (controls.BACK)
 			{
-				FlxG.sound.play(Paths.sound('cancelMenu'));
-				MusicBeatState.switchState(new MainMenuState());
-				quitting = true;
+				if (callOnScripts('onBack', true) != psychlua.LuaUtils.Function_Stop) {
+					FlxG.sound.play(Paths.sound('cancelMenu'));
+					MusicBeatState.switchState(new MainMenuState());
+					quitting = true;
+				}
 			}
 		}
 		
@@ -192,39 +206,47 @@ class CreditsState extends ScriptedState
 	{
 		FlxG.sound.play(Paths.sound('scrollMenu'), 0.4);
 		var max:Int = creditsStuff.length;
+		var oldSelected:Int = curSelected;
 		do {
 			curSelected = FlxMath.wrap(curSelected + change, 0, creditsStuff.length - 1);
 			max --;
 		} while (isSeparator(curSelected) && max >= 0);
 
-		var newColor:FlxColor = CoolUtil.colorFromString(creditsStuff[curSelected][4]);
-		if(newColor != intendedColor) {
-			intendedColor = newColor;
-			FlxTween.cancelTweensOf(bg);
-			FlxTween.color(bg, 1, bg.color, intendedColor);
-		}
-
-		for (num => item in grpOptions.members) {
-			item.targetY = num - curSelected;
-			if (!isSeparator(num)) {
-				item.alpha = .6;
-				if (item.targetY == 0)
-					item.alpha = 1;
+		if (callOnScripts('onHighlighted', [creditsStuff[curSelected][0], curSelected], true) != psychlua.LuaUtils.Function_Stop) {
+			var newColor:FlxColor = CoolUtil.colorFromString(creditsStuff[curSelected][4]);
+			if(newColor != intendedColor) {
+				intendedColor = newColor;
+				FlxTween.cancelTweensOf(bg);
+				FlxTween.color(bg, 1, bg.color, intendedColor);
 			}
-		}
 
-		descText.text = (creditsStuff[curSelected].length > 3 ? creditsStuff[curSelected][2] : '');
-		if (descText.text.trim().length > 0) {
-			descText.visible = descBox.visible = true;
-			descText.y = FlxG.height - descText.height + offsetThing - 60;
-	
-			if(moveTween != null) moveTween.cancel();
-			moveTween = FlxTween.tween(descText, {y : descText.y + 75}, 0.25, {ease: FlxEase.sineOut});
-	
-			descBox.setGraphicSize(Std.int(descText.width + 20), Std.int(descText.height + 25));
-			descBox.updateHitbox();
+			for (num => item in grpOptions.members) {
+				item.targetY = num - curSelected;
+				if (!isSeparator(num)) {
+					item.alpha = .6;
+					if (item.targetY == 0)
+						item.alpha = 1;
+				}
+			}
+
+			descText.text = (creditsStuff[curSelected].length > 3 ? creditsStuff[curSelected][2] : '');
+			if (descText.text.trim().length > 0) {
+				descText.visible = descBox.visible = true;
+				descText.y = FlxG.height - descText.height + offsetThing - 60;
+		
+				if(moveTween != null) moveTween.cancel();
+				moveTween = FlxTween.tween(descText, {y : descText.y + 75}, 0.25, {ease: FlxEase.sineOut});
+		
+				descBox.setGraphicSize(Std.int(descText.width + 20), Std.int(descText.height + 25));
+				descBox.updateHitbox();
+			} else {
+				descText.visible = descBox.visible = false;
+			}
+
+			refreshShitScript();
+			callOnScripts('onHighlightedPost', [creditsStuff[curSelected][0], curSelected]);
 		} else {
-			descText.visible = descBox.visible = false;
+			curSelected = oldSelected;
 		}
 	}
 	
@@ -256,4 +278,21 @@ class CreditsState extends ScriptedState
 	public function isSeparator(num:Int):Bool {
 		return (creditsStuff[num].length <= 2);
 	}
+
+	#if LUA_ALLOWED
+	public override function implementLua(lua:psychlua.FunkinLua):Void {
+		super.implementLua(lua);
+
+		lua.addLocalCallback('changeCreditsSelection', function(change:Int = 0) {
+			changeSelection(change);
+			return creditsStuff[curSelected][0];
+		});
+		lua.addLocalCallback('setCreditDescription', function(text:String) {
+			descText.text = text;
+			descBox.visible = descText.visible = (text != null && text.trim().length > 0);
+			refreshShitScript();
+			return text;
+		});
+	}
+	#end
 }

@@ -125,6 +125,7 @@
 	<haxelib name="hscript-iris" if="HSCRIPT_ALLOWED" />
 	<haxelib name="hxdiscord_rpc" if="DISCORD_ALLOWED" />
 	<haxelib name="flxanimate" />
+	<haxelib name="moonchart" />
 	
 	<!-- Other -->
 	<haxelib name="grig.audio" />

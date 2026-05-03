@@ -42,12 +42,14 @@ import psychlua.GlobalScriptHandler;
 class ScriptedSubState extends MusicBeatSubstate {
 	#if LUA_ALLOWED public var luaArray:Array<FunkinLua> = []; #end
 	#if HSCRIPT_ALLOWED public var hscriptArray:Array<HScript> = []; #end
+	static var overrideDnvSla:Map<String, Array<String>> = [];
 	
 	var multiScript:Bool = true;
 	var loadedScripts:Bool = false;
+	var _resolvedScriptStateName:String = null;
 	
 	public var data:Dynamic = null;
-	public var scriptFolder:String = 'data/scripts';
+	public var scriptFolder:String = 'data';
 	
 	public function new(?data:Dynamic) {
 		super();
@@ -164,8 +166,69 @@ class ScriptedSubState extends MusicBeatSubstate {
 		var clsName:String = Type.getClassName(Type.getClass(this));
 		return clsName.substr(clsName.lastIndexOf('.') + 1);
 	}
+	public static function scriptOverrideShit(stateName:String, scriptName:String):Void {
+		stateName = Mods.getStateName(stateName);
+		if (stateName == null || scriptName == null)
+			return;
+
+		scriptName = scriptName.trim();
+		if (scriptName.length < 1)
+			return;
+
+		if (!overrideDnvSla.exists(stateName))
+			overrideDnvSla.set(stateName, []);
+		overrideDnvSla.get(stateName).push(scriptName);
+	}
+	static function consumeScriptOverride(stateName:String):String {
+		stateName = Mods.getStateName(stateName);
+		if (stateName == null || !overrideDnvSla.exists(stateName))
+			return null;
+
+		var queued = overrideDnvSla.get(stateName);
+		if (queued == null || queued.length < 1) {
+			overrideDnvSla.remove(stateName);
+			return null;
+		}
+
+		var scriptName:String = queued.shift();
+		if (queued.length < 1)
+			overrideDnvSla.remove(stateName);
+		return scriptName;
+	}
+	public function scriptStateName():String {
+		if (_resolvedScriptStateName == null)
+			_resolvedScriptStateName = consumeScriptOverride(customStateName()) ?? customStateName();
+		return _resolvedScriptStateName;
+	}
 	function getFolderName():String {
 		return 'substates';
+	}
+	function getScriptFolders():Array<String> {
+		var folders:Array<String> = [];
+		var addFolder = function(path:String) {
+			if (path == null) return;
+			path = path.trim();
+			if (path.length > 0 && !folders.contains(path))
+				folders.push(path);
+		};
+
+		addFolder(scriptFolder);
+		addFolder('data/scripts');
+		return folders;
+	}
+	public function getSingleStateScriptPath(scriptName:String, extension:String):String {
+		var prefix:String = getFolderName();
+		if (prefix.length > 0) prefix += '/';
+
+		for (scriptRoot in getScriptFolders()) {
+			var file:String = '$scriptRoot/$prefix$scriptName$extension';
+			var path:String = Paths.modFolders(file);
+			if(!FileSystem.exists(path))
+				path = Paths.getSharedPath(file);
+			if (FileSystem.exists(path))
+				return path;
+		}
+		return null;
 	}
 	
 	#if SCRIPTS_ALLOWED
@@ -207,24 +270,26 @@ class ScriptedSubState extends MusicBeatSubstate {
 	#if LUA_ALLOWED
 	@:dox(hide) function startLuas():Bool {
 		var loaded:Bool = false;
+		var prefix:String = getFolderName();
+		if (prefix.length > 0) prefix += '/';
 		
 		if (multiScript) {
-			for (folder in Mods.directoriesWithFile(Paths.getSharedPath(), scriptFolder)) {
-				var prefix:String = getFolderName();
-				if (prefix.length > 0) prefix += '/';
-				
-				var path:String = '$folder/$prefix${customStateName()}.lua';
+			for (scriptRoot in getScriptFolders()) {
+				for (folder in Mods.directoriesWithFile(Paths.getSharedPath(), scriptRoot)) {
+					var path:String = '$folder/$prefix${scriptStateName()}.lua';
+					if (FileSystem.exists(path))
+						loaded = (initLuaScript(path) != null || loaded);
+				}
+			}
+		} else {
+			for (scriptRoot in getScriptFolders()) {
+				var file:String = '$scriptRoot/$prefix${scriptStateName()}.lua';
+				var path:String = Paths.modFolders(file);
+				if(!FileSystem.exists(path))
+					path = Paths.getSharedPath(file);
 				if (FileSystem.exists(path))
 					loaded = (initLuaScript(path) != null || loaded);
 			}
-		} else {
-			var prefix:String = getFolderName();
-			if (prefix.length > 0) prefix += '/';
-			
-			var file:String = 'data/scripts/$prefix${customStateName()}.lua';
-			var path:String = Paths.modFolders(file);
-			if (FileSystem.exists(path))
-				loaded = (initLuaScript(path) != null);
 		}
 		
 		return loaded;
@@ -289,24 +354,26 @@ class ScriptedSubState extends MusicBeatSubstate {
 	#if HSCRIPT_ALLOWED
 	function startHScripts():Bool {
 		var loaded:Bool = false;
+		var prefix:String = getFolderName();
+		if (prefix.length > 0) prefix += '/';
 		
 		if (multiScript) {
-			for (folder in Mods.directoriesWithFile(Paths.getSharedPath(), scriptFolder)) {
-				var prefix:String = getFolderName();
-				if (prefix.length > 0) prefix += '/';
-				
-				var path:String = '$folder/$prefix${customStateName()}.hx';
+			for (scriptRoot in getScriptFolders()) {
+				for (folder in Mods.directoriesWithFile(Paths.getSharedPath(), scriptRoot)) {
+					var path:String = '$folder/$prefix${scriptStateName()}.hx';
+					if (FileSystem.exists(path))
+						loaded = (initHScript(path) != null || loaded);
+				}
+			}
+		} else {
+			for (scriptRoot in getScriptFolders()) {
+				var file:String = '$scriptRoot/$prefix${scriptStateName()}.hx';
+				var path:String = Paths.modFolders(file);
+				if(!FileSystem.exists(path))
+					path = Paths.getSharedPath(file);
 				if (FileSystem.exists(path))
 					loaded = (initHScript(path) != null || loaded);
 			}
-		} else {
-			var prefix:String = getFolderName();
-			if (prefix.length > 0) prefix += '/';
-			
-			var file:String = '$scriptFolder/$prefix${customStateName()}.hx';
-			var path:String = Paths.modFolders(file);
-			if (FileSystem.exists(path))
-				loaded = (initHScript(path) != null);
 		}
 		
 		return loaded;

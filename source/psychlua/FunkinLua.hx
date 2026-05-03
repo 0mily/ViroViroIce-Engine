@@ -1708,6 +1708,12 @@ class FunkinLua {
 				default: game.moveCamera(false);
 			}
 		});
+		registerFunction('changeFocus', function(target:String, ?x:Float = 0, ?y:Float = 0, ?ease:String = 'classic', ?steps:Float = 0) {
+			game.changeFocus(target, x, y, ease, steps);
+		});
+		registerFunction('ChangeFocus', function(target:String, ?x:Float = 0, ?y:Float = 0, ?ease:String = 'classic', ?steps:Float = 0) {
+			game.changeFocus(target, x, y, ease, steps);
+		});
 		
 		// camfollow
 		registerFunction('setCameraFollowPoint', function(x:Float, y:Float) game.camFollow.setPosition(x, y));

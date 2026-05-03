@@ -3,6 +3,7 @@ package substates;
 import backend.WeekData;
 import backend.Highscore;
 import backend.Song;
+import backend.CameraResizeFix;
 
 import flixel.util.FlxStringUtil;
 
@@ -65,12 +66,18 @@ class PauseSubState extends ScriptedSubState
 		pauseMusic.play(false, FlxG.random.int(0, Std.int(pauseMusic.length / 2)));
 		
 		preCreate();
+		CameraResizeFix.aplyAll();
+		var pauseCamera = FlxG.cameras.list[FlxG.cameras.list.length - 1];
+		var fullScreenX:Float = CameraResizeFix.pegarFSX(pauseCamera);
+		var fullScreenY:Float = CameraResizeFix.pegarFSY(pauseCamera);
+		var fullScreenWidth:Float = CameraResizeFix.pegarFSL(pauseCamera);
+		var fullScreenHeight:Float = CameraResizeFix.pegarFSA(pauseCamera);
 		
 		if (pauseMusic != null)
 			FlxG.sound.list.add(pauseMusic);
 
-		var bg:FlxSprite = new FlxSprite().makeGraphic(1, 1, FlxColor.BLACK);
-		bg.scale.set(FlxG.width, FlxG.height);
+		var bg:FlxSprite = new FlxSprite(fullScreenX, fullScreenY).makeGraphic(1, 1, FlxColor.BLACK);
+		bg.scale.set(fullScreenWidth, fullScreenHeight);
 		bg.updateHitbox();
 		bg.alpha = 0;
 		bg.scrollFactor.set();
@@ -127,21 +134,21 @@ class PauseSubState extends ScriptedSubState
 		grpMenuShit = new FlxTypedGroup<Alphabet>();
 		add(grpMenuShit);
 
-		missingTextBG = new FlxSprite().makeGraphic(1, 1, FlxColor.BLACK);
-		missingTextBG.scale.set(FlxG.width, FlxG.height);
+		missingTextBG = new FlxSprite(fullScreenX, fullScreenY).makeGraphic(1, 1, FlxColor.BLACK);
+		missingTextBG.scale.set(fullScreenWidth, fullScreenHeight);
 		missingTextBG.updateHitbox();
 		missingTextBG.alpha = 0.6;
 		missingTextBG.visible = false;
 		add(missingTextBG);
 		
-		missingText = new FlxText(50, 0, FlxG.width - 100, '', 24);
+		missingText = new FlxText(fullScreenX + 50, 0, fullScreenWidth - 100, '', 24);
 		missingText.setFormat(Paths.font("vcr.ttf"), 24, FlxColor.WHITE, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
 		missingText.scrollFactor.set();
 		missingText.visible = false;
 		add(missingText);
 
 		regenMenu();
-		cameras = [FlxG.cameras.list[FlxG.cameras.list.length - 1]];
+		cameras = [pauseCamera];
 
 		super.create();
 	}

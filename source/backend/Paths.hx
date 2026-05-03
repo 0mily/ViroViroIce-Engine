@@ -311,11 +311,7 @@ class Paths
 			var modKey:String = key;
 			if(parentFolder == 'songs') modKey = 'songs/$key/song';
 
-			for(mod in Mods.getGlobalMods())
-				if (FileSystem.exists(mods('$mod/$modKey')))
-					return true;
-
-			if (FileSystem.exists(mods(Mods.currentModDirectory + '/' + modKey)) || FileSystem.exists(mods(modKey)))
+			if (FileSystem.exists(modFolders(modKey)) || FileSystem.exists(mods(modKey)))
 				return true;
 		}
 		#end
@@ -475,6 +471,13 @@ class Paths
 
 	static public function modFolders(key:String)
 	{
+		if(Mods.packageSupportsKey(key) && Mods.isCurrentPackageActive())
+		{
+			var fileToCheck:String = mods(Mods.currentPackageDirectory + '/' + key);
+			if(FileSystem.exists(fileToCheck))
+				return fileToCheck;
+		}
+
 		if(Mods.currentModDirectory != null && Mods.currentModDirectory.length > 0)
 		{
 			var fileToCheck:String = mods(Mods.currentModDirectory + '/' + key);
@@ -493,73 +496,112 @@ class Paths
 	#end
 
 	#if flxanimate
+	public static function isAnimateAtlas(imageKey:String):Bool
+	{
+		if(imageKey == null) return false;
+
+		imageKey = imageKey.trim();
+		while(imageKey.length > 0 && (imageKey.endsWith('/') || imageKey.endsWith('\\')))
+			imageKey = imageKey.substr(0, imageKey.length - 1);
+		if(imageKey.length < 1 || imageKey.contains(',')) return false;
+
+		return getTextFromFile('images/$imageKey/Animation.json') != null;
+	}
+
 	public static function loadAnimateAtlas(spr:FlxAnimate, folderOrImg:Dynamic, spriteJson:Dynamic = null, animationJson:Dynamic = null)
 	{
-		var changedAnimJson = false;
-		var changedAtlasJson = false;
-		var changedImage = false;
-		
-		if(spriteJson != null)
-		{
-			changedAtlasJson = true;
-			spriteJson = getTextFromFile(spriteJson);
-		}
-
-		if(animationJson != null) 
-		{
-			changedAnimJson = true;
-			animationJson = getTextFromFile(animationJson);
-		}
-
-		// is folder or image path
 		if(Std.isOfType(folderOrImg, String))
 		{
-			var originalPath:String = folderOrImg;
-			for (i in 0...10)
-			{
-				var st:String = '$i';
-				if(i == 0) st = '';
-
-				if(!changedAtlasJson)
-				{
-					spriteJson = getTextFromFile('images/$originalPath/spritemap$st.json');
-					if(spriteJson != null)
-					{
-						//trace('found Sprite Json');
-						changedImage = true;
-						changedAtlasJson = true;
-						folderOrImg = image('$originalPath/spritemap$st');
-						break;
-					}
-				}
-				else if(fileExists('images/$originalPath/spritemap$st.png', IMAGE))
-				{
-					//trace('found Sprite PNG');
-					changedImage = true;
-					folderOrImg = image('$originalPath/spritemap$st');
-					break;
-				}
-			}
-
-			if(!changedImage)
-			{
-				//trace('Changing folderOrImg to FlxGraphic');
-				changedImage = true;
-				folderOrImg = image(originalPath);
-			}
-
-			if(!changedAnimJson)
-			{
-				//trace('found Animation Json');
-				changedAnimJson = true;
+			var originalPath:String = Std.string(folderOrImg).trim();
+			while(originalPath.length > 0 && (originalPath.endsWith('/') || originalPath.endsWith('\\')))
+				originalPath = originalPath.substr(0, originalPath.length - 1);
+			animationJson = getAnimateAtlasText(animationJson);
+			if(animationJson == null)
 				animationJson = getTextFromFile('images/$originalPath/Animation.json');
+
+			if(spriteJson == null)
+			{
+				var spriteMaps:Array<Dynamic> = getAnimateAtlasSpriteMaps(originalPath);
+				if(spriteMaps.length > 0)
+				{
+					spr.loadAtlasExMulti(spriteMaps, animationJson);
+					return;
+				}
+			}
+			else
+			{
+				spriteJson = getAnimateAtlasText(spriteJson);
+				var imageKey:String = getAnimateAtlasImageKey(originalPath, spriteJson, 'spritemap');
+				folderOrImg = image(fileExists('images/$imageKey.png', IMAGE) ? imageKey : originalPath);
 			}
 		}
+		else
+		{
+			spriteJson = getAnimateAtlasText(spriteJson);
+			animationJson = getAnimateAtlasText(animationJson);
+		}
 
-		//trace(folderOrImg);
-		//trace(spriteJson);
-		//trace(animationJson);
 		spr.loadAtlasEx(folderOrImg, spriteJson, animationJson);
+	}
+
+	static function getAnimateAtlasText(data:Dynamic):Dynamic
+	{
+		if(data == null) return null;
+		if(!Std.isOfType(data, String)) return data;
+
+		var str:String = Std.string(data);
+		var trimmed:String = str.trim();
+		if(trimmed.startsWith('{') || trimmed.startsWith('[') || trimmed.startsWith('<')) return str;
+
+		var text:String = getTextFromFile(str);
+		return text != null ? text : str;
+	}
+
+	static function getAnimateAtlasSpriteMaps(folder:String):Array<Dynamic>
+	{
+		var spriteMaps:Array<Dynamic> = [];
+		addAnimateAtlasSpriteMap(spriteMaps, folder, 'spritemap');
+
+		var index:Int = 1;
+		while(index < 1000)
+		{
+			var name:String = 'spritemap$index';
+			if(!addAnimateAtlasSpriteMap(spriteMaps, folder, name)) break;
+			index++;
+		}
+
+		return spriteMaps;
+	}
+
+	static function addAnimateAtlasSpriteMap(spriteMaps:Array<Dynamic>, folder:String, name:String):Bool
+	{
+		var spriteJson:String = getTextFromFile('images/$folder/$name.json');
+		if(spriteJson == null) return false;
+
+		spriteMaps.push({
+			json: spriteJson,
+			image: image(getAnimateAtlasImageKey(folder, spriteJson, name))
+		});
+		return true;
+	}
+
+	static function getAnimateAtlasImageKey(folder:String, spriteJson:Dynamic, fallback:String):String
+	{
+		var imageName:String = fallback;
+		try
+		{
+			var parsed:Dynamic = Std.isOfType(spriteJson, String) ? Json.parse(Std.string(spriteJson)) : spriteJson;
+			var meta:Dynamic = Reflect.field(parsed, 'meta');
+			var metaImage:Dynamic = meta != null ? Reflect.field(meta, 'image') : null;
+			if(metaImage != null) imageName = Std.string(metaImage);
+		}
+		catch(e:Dynamic) {}
+
+		imageName = StringTools.replace(imageName, '\\', '/');
+		if(imageName.contains('/')) imageName = imageName.substr(imageName.lastIndexOf('/') + 1);
+		if(StringTools.endsWith(imageName.toLowerCase(), '.png')) imageName = imageName.substr(0, imageName.length - 4);
+
+		return '$folder/$imageName';
 	}
 	#end
 }

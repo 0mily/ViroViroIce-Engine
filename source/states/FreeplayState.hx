@@ -53,6 +53,18 @@ class FreeplayState extends ScriptedState
 
 	var player:MusicPlayer;
 
+	function refreshShitScript():Void {
+		var songName:String = (songs != null && songs.length > 0 && curSelected >= 0 && curSelected < songs.length) ? songs[curSelected].songName : null;
+		setOnScripts('curSelected', curSelected);
+		setOnScripts('curDifficulty', curDifficulty);
+		setOnScripts('selectedSong', songName);
+		setOnScripts('songsList', [for (song in songs) song.songName]);
+		setOnScripts('scoreText', 'scoreText');
+		setOnScripts('diffText', 'diffText');
+		setOnScripts('bg', 'bg');
+		setOnScripts('bottomText', 'bottomText');
+	}
+
 	var stickerSubState:StickerSubState;
 	public function new(?stickers:StickerSubState = null)
 	{
@@ -138,6 +150,7 @@ class FreeplayState extends ScriptedState
 			songText.snapToPosition();
 
 			Mods.currentModDirectory = songs[i].folder;
+			Mods.currentPackageDirectory = songs[i].packageFolder;
 			var icon:HealthIcon = new HealthIcon(songs[i].songCharacter);
 			icon.sprTracker = songText;
 
@@ -206,6 +219,7 @@ class FreeplayState extends ScriptedState
 		changeSelection();
 		updateTexts();
 		super.create();
+		refreshShitScript();
 	}
 
 	override function closeSubState()
@@ -239,7 +253,9 @@ class FreeplayState extends ScriptedState
 		if(WeekData.weeksList.length < 1)
 			return;
 
-		if (FlxG.sound.music.volume < 0.7)
+		if (FlxG.sound.music == null)
+			FlxG.sound.playMusic(Paths.music('freakyMenu'), 0.7);
+		else if (FlxG.sound.music.volume < 0.7)
 			FlxG.sound.music.volume += 0.5 * elapsed;
 
 		lerpScore = Math.floor(FlxMath.lerp(intendedScore, lerpScore, Math.exp(-elapsed * 24)));
@@ -259,8 +275,9 @@ class FreeplayState extends ScriptedState
 
 		var shiftMult:Int = 1;
 		if(FlxG.keys.pressed.SHIFT) shiftMult = 3;
+		var blockedFNFInput:Bool = (callOnScripts('onInputUpdate', [elapsed], true) == psychlua.LuaUtils.Function_Stop);
 
-		if (!player.playingMusic)
+		if (!player.playingMusic && !blockedFNFInput)
 		{
 			scoreText.text = Language.getPhrase('personal_best', 'PERSONAL BEST: {1} ({2}%)', [Std.string(lerpScore), ratingSplit.join('.')]);
 			positionHighscore();
@@ -319,14 +336,15 @@ class FreeplayState extends ScriptedState
 			}
 		}
 
-		if (controls.BACK)
+		if (controls.BACK && !blockedFNFInput)
 		{
-			if (player.playingMusic)
-			{
-				FlxG.sound.music.stop();
-				destroyFreeplayVocals();
-				FlxG.sound.music.volume = 0;
-				instPlaying = -1;
+			if (callOnScripts('onBack', true) != psychlua.LuaUtils.Function_Stop) {
+				if (player.playingMusic)
+				{
+					FlxG.sound.music.stop();
+					destroyFreeplayVocals();
+					FlxG.sound.music.volume = 0;
+					instPlaying = -1;
 
 				player.playingMusic = false;
 				player.switchPlayMusic();
@@ -339,15 +357,16 @@ class FreeplayState extends ScriptedState
 				persistentUpdate = false;
 				FlxG.sound.play(Paths.sound('cancelMenu'));
 				MusicBeatState.switchState(new MainMenuState());
+				}
 			}
 		}
 
-		if(FlxG.keys.justPressed.CONTROL && !player.playingMusic)
+		if(FlxG.keys.justPressed.CONTROL && !player.playingMusic && !blockedFNFInput)
 		{
 			persistentUpdate = false;
 			openSubState(new GameplayChangersSubState());
 		}
-		else if(FlxG.keys.justPressed.SPACE)
+		else if(FlxG.keys.justPressed.SPACE && !blockedFNFInput)
 		{
 			if (instPlaying != curSelected && !player.playingMusic && callOnScriptsExt('onMusicPlayer', [true, curSelected], [true, songs[curSelected]], true) != psychlua.LuaUtils.Function_Stop)
 			{
@@ -355,6 +374,7 @@ class FreeplayState extends ScriptedState
 				FlxG.sound.music.volume = 0;
 
 				Mods.currentModDirectory = songs[curSelected].folder;
+				Mods.currentPackageDirectory = songs[curSelected].packageFolder;
 				var poop:String = Highscore.formatSong(songs[curSelected].songName.toLowerCase(), curDifficulty);
 				Song.loadFromJson(poop, songs[curSelected].songName.toLowerCase());
 				if (PlayState.SONG.needsVoices)
@@ -426,8 +446,17 @@ class FreeplayState extends ScriptedState
 				callOnScriptsExt('onMusicPlayerPost', [true, curSelected], [player.playing, songs[curSelected]]);
 			}
 		}
-		else if (controls.ACCEPT && !player.playingMusic && callOnScriptsExt('onAccept', [curSelected], [songs[curSelected], curSelected], true) != psychlua.LuaUtils.Function_Stop)
+		else if (controls.ACCEPT && !player.playingMusic && !blockedFNFInput)
 		{
+			var acceptblockedFNF:Bool = (callOnScriptsExt('onSelected', [songs[curSelected].songName, curSelected], [songs[curSelected], curSelected], true) == psychlua.LuaUtils.Function_Stop);
+			acceptblockedFNF = (acceptblockedFNF || callOnScriptsExt('onAccept', [curSelected], [songs[curSelected], curSelected], true) == psychlua.LuaUtils.Function_Stop);
+			if (acceptblockedFNF) {
+				updateTexts(elapsed);
+				super.update(elapsed);
+				postUpdate(elapsed);
+				return;
+			}
+
 			persistentUpdate = false;
 			var songLowercase:String = Paths.formatToSongPath(songs[curSelected].songName);
 			var poop:String = Highscore.formatSong(songLowercase, curDifficulty);
@@ -460,7 +489,7 @@ class FreeplayState extends ScriptedState
 			}
 
 			@:privateAccess
-			if(PlayState._lastLoadedModDirectory != Mods.currentModDirectory)
+			if(PlayState._lastLoadedModDirectory != Mods.getAssetContextKey())
 			{
 				trace('CHANGED MOD DIRECTORY, RELOADING STUFF');
 				Paths.freeGraphicsFromMemory();
@@ -475,7 +504,7 @@ class FreeplayState extends ScriptedState
 			DiscordClient.loadModRPC();
 			#end
 		}
-		else if(controls.RESET && !player.playingMusic)
+		else if(controls.RESET && !player.playingMusic && !blockedFNFInput)
 		{
 			persistentUpdate = false;
 			openSubState(new ResetScoreSubState(songs[curSelected].songName, curDifficulty, songs[curSelected].songCharacter));
@@ -537,6 +566,7 @@ class FreeplayState extends ScriptedState
 			missingText.visible = false;
 			missingTextBG.visible = false;
 			
+			refreshShitScript();
 			callOnScripts('onChangeDifficultyPost', [Difficulty.getString(curDifficulty), curDifficulty]);
 		}
 	}
@@ -548,7 +578,9 @@ class FreeplayState extends ScriptedState
 		
 		var next:Int = FlxMath.wrap(curSelected + change, 0, songs.length-1);
 		
-		if (callOnScripts('onSelectItem', [songs[next], next], true) != psychlua.LuaUtils.Function_Stop) {
+		var blockedFNF:Bool = (callOnScripts('onHighlighted', [songs[next].songName, next], true) == psychlua.LuaUtils.Function_Stop);
+		blockedFNF = (blockedFNF || callOnScripts('onSelectItem', [songs[next], next], true) == psychlua.LuaUtils.Function_Stop);
+		if (!blockedFNF) {
 			curSelected = next;
 			_updateSongLastDifficulty();
 			if(playSound) FlxG.sound.play(Paths.sound('scrollMenu'), 0.4);
@@ -574,6 +606,7 @@ class FreeplayState extends ScriptedState
 			}
 			
 			Mods.currentModDirectory = songs[curSelected].folder;
+			Mods.currentPackageDirectory = songs[curSelected].packageFolder;
 			PlayState.storyWeek = songs[curSelected].week;
 			Difficulty.loadFromWeek();
 			
@@ -591,12 +624,34 @@ class FreeplayState extends ScriptedState
 			changeDiff();
 			_updateSongLastDifficulty();
 			
+			refreshShitScript();
+			callOnScripts('onHighlightedPost', [songs[curSelected].songName, curSelected]);
 			callOnScriptsExt('onSelectItemPost', [next], [songs[next], next]);
 		}
 	}
 
 	inline private function _updateSongLastDifficulty()
 		songs[curSelected].lastDifficulty = Difficulty.getString(curDifficulty, false);
+
+	#if LUA_ALLOWED
+	public override function implementLua(lua:psychlua.FunkinLua):Void {
+		super.implementLua(lua);
+
+		lua.addLocalCallback('changeFreeplaySelection', function(change:Int = 0, playSound:Bool = true) {
+			changeSelection(change, playSound);
+			return songs[curSelected]?.songName;
+		});
+		lua.addLocalCallback('changeFreeplayDifficulty', function(change:Int = 0) {
+			changeDiff(change);
+			return Difficulty.getString(curDifficulty);
+		});
+		lua.addLocalCallback('setFreeplayBottomText', function(text:String) {
+			bottomString = text;
+			bottomText.text = text;
+			return text;
+		});
+	}
+	#end
 
 	private function positionHighscore()
 	{
@@ -651,6 +706,7 @@ class SongMetadata
 	public var songCharacter:String = "";
 	public var color:Int = -7179779;
 	public var folder:String = "";
+	public var packageFolder:String = "";
 	public var lastDifficulty:String = null;
 
 	public function new(song:String, week:Int, songCharacter:String, color:Int)
@@ -660,6 +716,8 @@ class SongMetadata
 		this.songCharacter = songCharacter;
 		this.color = color;
 		this.folder = Mods.currentModDirectory;
+		this.packageFolder = Mods.currentPackageDirectory;
 		if(this.folder == null) this.folder = '';
+		if(this.packageFolder == null) this.packageFolder = '';
 	}
 }

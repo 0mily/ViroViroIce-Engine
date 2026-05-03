@@ -29,7 +29,7 @@ class FlxAnimateFunctions {
 			var obj:FlxAnimate = LuaUtils.getObjectDirectly(tag);
 			if (obj == null) return false;
 
-			obj.anim.addBySymbol(name, symbol, framerate, loop, matX, matY);
+			obj.addAtlasAnimation(name, symbol, null, framerate, loop, matX, matY);
 			if(obj.anim.curSymbol == null) {
 				var obj2:ModchartAnimateSprite = cast (obj, ModchartAnimateSprite);
 				if(obj2 != null) obj2.playAnim(name, true); //is ModchartAnimateSprite
@@ -54,7 +54,8 @@ class FlxAnimateFunctions {
 				indices = myIndices;
 			}
 
-			obj.anim.addBySymbolIndices(name, symbol, indices, framerate, loop, matX, matY);
+			var animIndices:Array<Int> = cast indices;
+			obj.addAtlasAnimation(name, symbol, animIndices, framerate, loop, matX, matY);
 			if(obj.anim.curSymbol == null)
 			{
 				var obj2:ModchartAnimateSprite = cast (obj, ModchartAnimateSprite);

@@ -35,6 +35,16 @@ typedef TitleData =
 	@:optional var idle:Bool;
 }
 
+typedef TitleIntroAction =
+{
+	var action:String;
+	@:optional var text:String;
+	@:optional var lines:Array<String>;
+	@:optional var offset:Float;
+	@:optional var visible:Bool;
+	@:optional var value:String;
+}
+
 class TitleState extends ScriptedState
 {
 	public static var muteKeys:Array<FlxKey> = [FlxKey.ZERO];
@@ -53,6 +63,9 @@ class TitleState extends ScriptedState
 	var titleTextAlphas:Array<Float> = [1, .64];
 
 	var curWacky:Array<String> = [];
+	var titleTextPools:Map<String, Array<String>> = [];
+	var introActions:Map<Int, Array<TitleIntroAction>> = [];
+	var eCustomLegal:Bool = false;
 
 	var wackyImage:FlxSprite;
 
@@ -70,7 +83,7 @@ class TitleState extends ScriptedState
 		
 		rpcDetails = 'Title Screen';
 
-		curWacky = FlxG.random.getObject(getIntroTextShit());
+		loadTitleTextPools();
 
 		if(!initialized) {
 			if(FlxG.save.data != null && FlxG.save.data.fullscreen)
@@ -195,6 +208,7 @@ class TitleState extends ScriptedState
 		add(titleText); //"Press Enter to Begin" text
 		add(credGroup);
 		add(ngSpr);
+		refreshShitScript();
 
 		if (initialized)
 			skipIntro();
@@ -217,8 +231,247 @@ class TitleState extends ScriptedState
 	var danceLeftFrames:Array<Int> = [15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29];
 	var danceRightFrames:Array<Int> = [30, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14];
 
+	function refreshShitScript():Void
+	{
+		setOnScripts('logoBl', 'logoBl');
+		setOnScripts('gfDance', 'gfDance');
+		setOnScripts('titleText', 'titleText');
+		setOnScripts('ngSpr', 'ngSpr');
+		setOnScripts('credGroup', 'credGroup');
+		setOnScripts('textGroup', 'textGroup');
+		setOnScripts('curWacky', curWacky);
+		setOnScripts('titleTextPools', titleTextPools);
+		setOnScripts('introActions', introActions);
+	}
+
+	inline function parseTitleFloat(value:String, fallback:Float):Float
+	{
+		var parsed = Std.parseFloat(value);
+		return Math.isNaN(parsed) ? fallback : parsed;
+	}
+
+	function parseTitleBool(value:String, fallback:Bool):Bool
+	{
+		if (value == null) return fallback;
+		switch (value.trim().toLowerCase()) {
+			case 'true', '1', 'yes', 'y', 'on': return true;
+			case 'false', '0', 'no', 'n', 'off': return false;
+		}
+		return fallback;
+	}
+
+	function parseTitleIntList(value:String, fallback:Array<Int>):Array<Int>
+	{
+		if (value == null || value.trim().length < 1)
+			return fallback;
+
+		var result:Array<Int> = [];
+		for (part in value.split(',')) {
+			var parsed:Null<Int> = Std.parseInt(part.trim());
+			if (parsed != null)
+				result.push(parsed);
+		}
+		return result.length > 0 ? result : fallback;
+	}
+
+	function parseTitleLines(value:String):Array<String>
+	{
+		if (value == null || value.trim().length < 1)
+			return [];
+		return [for (line in value.split('|')) if (line.trim().length > 0) line.trim()];
+	}
+
+	function resolveTitleText(value:String):String
+	{
+		if (value == null)
+			return '';
+
+		var trimmed:String = value.trim();
+		if (!trimmed.startsWith('[') || !trimmed.endsWith(']'))
+			return value;
+
+		var inside:String = trimmed.substr(1, trimmed.length - 2);
+		var parts:Array<String> = inside.split(',');
+		var poolName:String = parts[0].trim();
+		if (poolName.length < 1 || !titleTextPools.exists(poolName))
+			return value;
+
+		var pool:Array<String> = titleTextPools.get(poolName);
+		if (parts.length < 2)
+			return pool.join('\n');
+
+		var index:Null<Int> = Std.parseInt(parts[1].trim());
+		if (index == null || index < 0 || index >= pool.length)
+			return '';
+
+		return pool[index];
+	}
+
+	function resolveTitleLines(lines:Array<String>):Array<String>
+	{
+		if (lines == null)
+			return [];
+
+		return [for (line in lines) resolveTitleText(line)];
+	}
+
+	function getNodeText(node:Xml):String // KKKKKKKKKKKKKKK BUCETA DE DIFICIL mas é mais facil de mexer
+	{
+		var text = '';
+		for (child in node)
+			if (child.nodeType == Xml.PCData || child.nodeType == Xml.CData)
+				text += child.nodeValue;
+		return text.trim();
+	}
+
+	function registerIntroAction(beat:Int, action:TitleIntroAction):Void
+	{
+		if (!introActions.exists(beat))
+			introActions.set(beat, []);
+		introActions.get(beat).push(action);
+	}
+
+	function loadXmlData():Bool
+	{
+		if (!Paths.fileExists('data/titleState.xml', TEXT))
+			return false;
+
+		var titleRaw:String = Paths.getTextFromFile('data/titleState.xml');
+		if (titleRaw == null || titleRaw.trim().length < 1)
+			return false;
+
+		try
+		{
+			var gostosas:Xml = Xml.parse(titleRaw).firstElement(); // ME DÁ UM DESCONTO, eu tive q olhar sources e forums pra saber como funciona XML, nem eu sei
+			if (gostosas == null)
+				return false;
+
+			for (node in gostosas.elements())
+			{
+				switch (node.nodeName)
+				{
+					case 'layout':
+						if (node.exists('titlex')) logoPosition.x = parseTitleFloat(node.get('titlex'), logoPosition.x);
+						if (node.exists('titley')) logoPosition.y = parseTitleFloat(node.get('titley'), logoPosition.y);
+						if (node.exists('startx')) enterPosition.x = parseTitleFloat(node.get('startx'), enterPosition.x);
+						if (node.exists('starty')) enterPosition.y = parseTitleFloat(node.get('starty'), enterPosition.y);
+						if (node.exists('gfx')) gfPosition.x = parseTitleFloat(node.get('gfx'), gfPosition.x);
+						if (node.exists('gfy')) gfPosition.y = parseTitleFloat(node.get('gfy'), gfPosition.y);
+						if (node.exists('bpm')) musicBPM = parseTitleFloat(node.get('bpm'), musicBPM);
+						if (node.exists('animation')) animationName = node.get('animation');
+						if (node.exists('image')) characterImage = node.get('image');
+						if (node.exists('idle')) useIdle = parseTitleBool(node.get('idle'), useIdle);
+
+						if (node.exists('backgroundSprite'))
+						{
+							var bgName:String = node.get('backgroundSprite');
+							if (bgName != null && bgName.trim().length > 0)
+							{
+								var bg:FlxSprite = new FlxSprite().loadGraphic(Paths.image(bgName));
+								bg.antialiasing = ClientPrefs.data.antialiasing;
+								add(bg);
+							}
+						}
+
+						for (child in node.elements())
+						{
+							switch (child.nodeName)
+							{
+								case 'dance':
+									if (child.exists('left')) danceLeftFrames = parseTitleIntList(child.get('left'), danceLeftFrames);
+									if (child.exists('right')) danceRightFrames = parseTitleIntList(child.get('right'), danceRightFrames);
+
+								case 'background':
+									var bgName:String = child.get('sprite');
+									if (bgName != null && bgName.trim().length > 0)
+									{
+										var bg:FlxSprite = new FlxSprite().loadGraphic(Paths.image(bgName));
+										bg.antialiasing = ClientPrefs.data.antialiasing;
+										add(bg);
+									}
+
+								default:
+							}
+						}
+
+					case 'intro':
+						eCustomLegal = true;
+						for (beatNode in node.elementsNamed('beat'))
+						{
+							var beat:Null<Int> = Std.parseInt(beatNode.get('index'));
+							if (beat == null)
+								continue;
+							for (actionNode in beatNode.elements())
+							{
+								var rawText:String = actionNode.exists('text') ? actionNode.get('text') : getNodeText(actionNode);
+								var lines:Array<String> = parseTitleLines(actionNode.exists('lines') ? actionNode.get('lines') : rawText);
+								var offset:Float = actionNode.exists('offset') ? parseTitleFloat(actionNode.get('offset'), 0) : 0;
+
+								switch (actionNode.nodeName.toLowerCase())
+								{
+									case 'create':
+										registerIntroAction(beat, {action: 'create', lines: lines, offset: offset});
+									case 'add':
+										registerIntroAction(beat, {action: 'add', text: rawText, offset: offset});
+									case 'clear':
+										registerIntroAction(beat, {action: 'clear'});
+									case 'newgrounds':
+										registerIntroAction(beat, {action: 'newgrounds', visible: parseTitleBool(actionNode.get('visible'), true)});
+									case 'music':
+										registerIntroAction(beat, {action: 'music', value: actionNode.exists('song') ? actionNode.get('song') : 'freakyMenu'});
+									case 'skipintro':
+										registerIntroAction(beat, {action: 'skipIntro'});
+									default:
+								}
+							}
+						}
+
+					default:
+				}
+			}
+
+			return true;
+		}
+		catch(e:haxe.Exception)
+		{
+			trace('[WARN] Title XML might broken, ignoring issue...\n${e.details()}');
+		}
+
+		return false;
+	}
+
+	function runIntroAction(action:TitleIntroAction):Void
+	{
+		switch (action.action)
+		{
+			case 'music':
+				FlxG.sound.playMusic(Paths.music(action.value ?? 'freakyMenu'), 0);
+				FlxG.sound.music.fadeIn(4, 0, 0.7);
+
+			case 'create':
+				createCoolText(resolveTitleLines(action.lines ?? []), action.offset ?? 0);
+
+			case 'add':
+				addMoreText(resolveTitleText(action.text ?? ''), action.offset ?? 0);
+
+			case 'clear':
+				deleteCoolText();
+
+			case 'newgrounds':
+				ngSpr.visible = (action.visible == true);
+
+			case 'skipIntro':
+				skipIntro();
+
+			default:
+		}
+	}
+
 	function loadJsonData()
 	{
+		if (loadXmlData())
+			return;
+
 		if(Paths.fileExists('images/gfDanceTitle.json', TEXT))
 		{
 			var titleRaw:String = Paths.getTextFromFile('images/gfDanceTitle.json');
@@ -289,6 +542,151 @@ class TitleState extends ScriptedState
 		}
 	}
 
+	function loadTitleTextPools():Void
+	{
+		titleTextPools = [];
+		setTitleTextPool('curWacky', getRandomTitleTextLines('introText', '--'));
+		loadTitleTextPoolConfigs();
+
+		curWacky = getTitleTextPool('curWacky');
+		while (curWacky.length < 2)
+			curWacky.push('');
+	}
+
+	function setTitleTextPool(name:String, lines:Array<String>):Void
+	{
+		if (name == null || name.trim().length < 1)
+			return;
+
+		titleTextPools.set(name.trim(), lines != null ? lines : []);
+	}
+
+	function getTitleTextPool(name:String):Array<String>
+	{
+		if (name != null && titleTextPools.exists(name))
+			return titleTextPools.get(name);
+		return [];
+	}
+
+	function normalizeTitleTextFileName(fileName:String):String
+	{
+		if (fileName == null)
+			return '';
+
+		fileName = fileName.trim().replace('\\', '/');
+		if (fileName.startsWith('data/'))
+			fileName = fileName.substr(5);
+		if (fileName.endsWith('.txt'))
+			fileName = fileName.substr(0, fileName.length - 4);
+		return fileName;
+	}
+
+	function getRandomTitleTextLines(fileName:String, lineBreak:String):Array<String>
+	{
+		fileName = normalizeTitleTextFileName(fileName);
+		if (fileName.length < 1)
+			return [];
+
+		if (lineBreak == null || lineBreak.length < 1)
+			lineBreak = '--';
+
+		var firstArray:Array<String> = getTitleTextFileLines(fileName);
+		var swagGoodArray:Array<Array<String>> = [];
+
+		for (i in firstArray)
+		{
+			var split:Array<String> = i.split(lineBreak);
+			for (partIndex in 0...split.length)
+				split[partIndex] = split[partIndex].trim();
+			swagGoodArray.push(split);
+		}
+
+		var picked:Array<String> = FlxG.random.getObject(swagGoodArray);
+		return picked != null ? picked : [];
+	}
+
+	function getTitleTextFileLines(fileName:String):Array<String>
+	{
+		#if MODS_ALLOWED
+		return Mods.mergeAllTextsNamed('data/$fileName.txt');
+		#else
+		var fullText:String = Assets.getText(Paths.txt(fileName));
+		return fullText.split('\n');
+		#end
+	}
+
+	function loadTitleTextPoolConfigs():Void
+	{
+		#if sys
+		for (folder in Mods.directoriesWithFile(Paths.getSharedPath(), 'data/'))
+		{
+			if (folder == null || !FileSystem.exists(folder) || !FileSystem.isDirectory(folder))
+				continue;
+
+			var dataFolder:String = folder.replace('\\', '/');
+			if (!dataFolder.endsWith('/'))
+				dataFolder += '/';
+
+			for (file in FileSystem.readDirectory(dataFolder))
+			{
+				var lowerFile:String = file.toLowerCase();
+				if (!lowerFile.endsWith('.json') && !lowerFile.endsWith('.xml'))
+					continue;
+
+				var baseName:String = file.substr(0, file.length - (lowerFile.endsWith('.json') ? 5 : 4));
+				if (!FileSystem.exists(dataFolder + baseName + '.txt'))
+					continue;
+
+				loadTitleTextPoolConfig(dataFolder + file, baseName);
+			}
+		}
+		#end
+	}
+
+	function loadTitleTextPoolConfig(path:String, fileName:String):Void
+	{
+		#if sys
+		try
+		{
+			var raw:String = File.getContent(path);
+			if (raw == null || raw.trim().length < 1)
+				return;
+
+			var poolName:String = fileName;
+			var lineBreak:String = '--';
+			var sourceFile:String = fileName;
+
+			if (path.toLowerCase().endsWith('.json'))
+			{
+				var data:Dynamic = Json.parse(raw);
+				if (Reflect.hasField(data, 'name')) poolName = Std.string(Reflect.field(data, 'name'));
+				if (Reflect.hasField(data, 'lineBreak')) lineBreak = Std.string(Reflect.field(data, 'lineBreak'));
+				if (Reflect.hasField(data, 'linebreak')) lineBreak = Std.string(Reflect.field(data, 'linebreak'));
+				if (Reflect.hasField(data, 'separator')) lineBreak = Std.string(Reflect.field(data, 'separator'));
+				if (Reflect.hasField(data, 'file')) sourceFile = Std.string(Reflect.field(data, 'file'));
+			}
+			else
+			{
+				var xml:Xml = Xml.parse(raw).firstElement();
+				if (xml != null)
+				{
+					if (xml.exists('name')) poolName = xml.get('name');
+					if (xml.exists('lineBreak')) lineBreak = xml.get('lineBreak');
+					if (xml.exists('linebreak')) lineBreak = xml.get('linebreak');
+					if (xml.exists('separator')) lineBreak = xml.get('separator');
+					if (xml.exists('file')) sourceFile = xml.get('file');
+				}
+			}
+
+			setTitleTextPool(poolName, getRandomTitleTextLines(sourceFile, lineBreak));
+		}
+		catch(e:haxe.Exception)
+		{
+			trace('[WARN] Title text pool config "$path" might be broken, ignoring issue...\n${e.details()}');
+		}
+		#end
+	}
+
 	function getIntroTextShit():Array<Array<String>>
 	{
 		#if MODS_ALLOWED
@@ -334,6 +732,7 @@ class TitleState extends ScriptedState
 		#end
 
 		var gamepad:FlxGamepad = FlxG.gamepads.lastActive;
+		var blockedFNFInput:Bool = (callOnScripts('onInputUpdate', [elapsed], true) == psychlua.LuaUtils.Function_Stop);
 
 		if (gamepad != null)
 		{
@@ -353,7 +752,7 @@ class TitleState extends ScriptedState
 
 		// EASTER EGG
 
-		if (initialized && !transitioning && skippedIntro)
+		if (initialized && !transitioning && skippedIntro && !blockedFNFInput)
 		{
 			if (newTitle && !pressedEnter)
 			{
@@ -441,7 +840,7 @@ class TitleState extends ScriptedState
 			#end
 		}
 
-		if (initialized && pressedEnter && !skippedIntro)
+		if (initialized && pressedEnter && !skippedIntro && !blockedFNFInput)
 		{
 			skipIntro();
 		}
@@ -514,41 +913,47 @@ class TitleState extends ScriptedState
 
 		if (!closedState && sickBeats <= beat) {
 			for (b in sickBeats ... beat + 1) {
-				switch (b) {
-					case 0:
-						//FlxG.sound.music.stop();
-						FlxG.sound.playMusic(Paths.music('freakyMenu'), 0);
-						FlxG.sound.music.fadeIn(4, 0, 0.7);
-					case 1:
-						createCoolText(['ViroViroIce by'], 40);
-					case 3:
-						addMoreText('mily_0', 40);
-						addMoreText('Shiho', 40);
-					case 4:
-						deleteCoolText();
-					case 5:
-						createCoolText(['Not associated', 'with'], -40);
-					case 7:
-						addMoreText('newgrounds', -40);
-						ngSpr.visible = true;
-					case 8:
-						deleteCoolText();
-						ngSpr.visible = false;
-					case 9:
-						createCoolText([curWacky[0]]);
-					case 11:
-						addMoreText(curWacky[1]);
-					case 12:
-						deleteCoolText();
-					case 13:
-						addMoreText('Friday');
-					case 14:
-						addMoreText('Night');
-					case 15:
-						addMoreText('Funkin'); // credTextShit.text += '\nFunkin';
+				callOnScripts('onIntroBeat', [b]);
+				if (eCustomLegal) {
+					if (introActions.exists(b))
+						for (action in introActions.get(b))
+							runIntroAction(action);
+				} else {
+					switch (b) {
+						case 0:
+							FlxG.sound.playMusic(Paths.music('freakyMenu'), 0);
+							FlxG.sound.music.fadeIn(4, 0, 0.7);
+						case 1:
+							createCoolText(['ViroViroIce by'], 40);
+						case 3:
+							addMoreText('mily_0', 40);
+							addMoreText('Shiho', 40);
+						case 4:
+							deleteCoolText();
+						case 5:
+							createCoolText(['Not associated', 'with'], -40);
+						case 7:
+							addMoreText('newgrounds', -40);
+							ngSpr.visible = true;
+						case 8:
+							deleteCoolText();
+							ngSpr.visible = false;
+						case 9:
+							createCoolText([curWacky[0]]);
+						case 11:
+							addMoreText(curWacky[1]);
+						case 12:
+							deleteCoolText();
+						case 13:
+							addMoreText('Friday');
+						case 14:
+							addMoreText('Night');
+						case 15:
+							addMoreText('Funkin');
 
-					case 16:
-						skipIntro();
+						case 16:
+							skipIntro();
+					}
 				}
 			}
 			
@@ -650,6 +1055,24 @@ class TitleState extends ScriptedState
 				#end
 			}
 			skippedIntro = true;
+			refreshShitScript();
 		}
 	}
+
+	#if LUA_ALLOWED
+	public override function implementLua(lua:psychlua.FunkinLua):Void {
+		super.implementLua(lua);
+
+		lua.addLocalCallback('skipTitleIntro', function() {
+			skipIntro();
+			return skippedIntro;
+		});
+		lua.addLocalCallback('setTitleIntroActions', function(actions:Dynamic) {
+			introActions = cast actions;
+			eCustomLegal = true;
+			refreshShitScript();
+			return true;
+		});
+	}
+	#end
 }

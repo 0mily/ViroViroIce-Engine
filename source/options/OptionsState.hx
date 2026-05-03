@@ -22,8 +22,18 @@ class OptionsState extends ScriptedState
 	var grpOptions:FlxTypedGroup<Alphabet>;
 	var bg:FlxSprite;
 
+	function refreshShitScript():Void {
+		setOnScripts('curSelected', curSelected);
+		setOnScripts('selectedOption', options[curSelected]);
+		setOnScripts('optionsList', options.copy());
+		setOnScripts('optionsGroup', 'grpOptions');
+		setOnScripts('bg', 'bg');
+	}
+
 	function accept(label:String, idx:Int) {
-		if (callOnScripts('onAccept', [label, idx], true) != psychlua.LuaUtils.Function_Stop) {
+		var blockedFNF:Bool = (callOnScripts('onSelected', [label, idx], true) == psychlua.LuaUtils.Function_Stop); // https://open.spotify.com/intl-pt/track/26d3VzErjYpE0buTZV6YKZ
+		blockedFNF = (blockedFNF || callOnScripts('onAccept', [label, idx], true) == psychlua.LuaUtils.Function_Stop);
+		if (!blockedFNF) {
 			var func:Void -> Void = optionFunctions[label];
 			if (func != null)
 				func();
@@ -73,6 +83,7 @@ class OptionsState extends ScriptedState
 		ClientPrefs.saveSettings();
 
 		super.create();
+		refreshShitScript();
 	}
 
 	override function closeSubState()
@@ -88,22 +99,27 @@ class OptionsState extends ScriptedState
 		preUpdate(elapsed);
 		
 		super.update(elapsed);
+		var blockedFNFInput:Bool = (callOnScripts('onInputUpdate', [elapsed], true) == psychlua.LuaUtils.Function_Stop);
 		
-		if (controls.UI_UP_P)
-			changeSelection(-1);
-		if (controls.UI_DOWN_P)
-			changeSelection(1);
+		if (!blockedFNFInput) {
+			if (controls.UI_UP_P)
+				changeSelection(-1);
+			if (controls.UI_DOWN_P)
+				changeSelection(1);
 
-		if (controls.BACK) {
-			FlxG.sound.play(Paths.sound('cancelMenu'));
-			if(onPlayState) {
-				StageData.loadDirectory(PlayState.SONG);
-				LoadingState.loadAndSwitchState(new PlayState());
-				FlxG.sound.music.volume = 0;
+			if (controls.BACK) {
+				if (callOnScripts('onBack', true) != psychlua.LuaUtils.Function_Stop) {
+					FlxG.sound.play(Paths.sound('cancelMenu'));
+					if(onPlayState) {
+						StageData.loadDirectory(PlayState.SONG);
+						LoadingState.loadAndSwitchState(new PlayState());
+						FlxG.sound.music.volume = 0;
+					}
+					else MusicBeatState.switchState(new MainMenuState());
+				}
+			} else if (controls.ACCEPT) {
+				accept(options[curSelected], curSelected);
 			}
-			else MusicBeatState.switchState(new MainMenuState());
-		} else if (controls.ACCEPT) {
-			accept(options[curSelected], curSelected);
 		}
 		
 		postUpdate(elapsed);
@@ -112,12 +128,16 @@ class OptionsState extends ScriptedState
 	function changeSelection(change:Int = 0) {
 		var next:Int = FlxMath.wrap(curSelected + change, 0, options.length - 1);
 		
-		if (callOnScripts('onSelectItem', [options[next], next], true) != psychlua.LuaUtils.Function_Stop) {
+		var blockedFNF:Bool = (callOnScripts('onHighlighted', [options[next], next], true) == psychlua.LuaUtils.Function_Stop);
+		blockedFNF = (blockedFNF || callOnScripts('onSelectItem', [options[next], next], true) == psychlua.LuaUtils.Function_Stop);
+		if (!blockedFNF) {
 			if (change != 0)
 				FlxG.sound.play(Paths.sound('scrollMenu'));
 			
 			curSelected = next;
 			updateItemsVisibility();
+			refreshShitScript();
+			callOnScripts('onHighlightedPost', [options[curSelected], curSelected]);
 		}
 	}
 	
@@ -141,4 +161,92 @@ class OptionsState extends ScriptedState
 		ClientPrefs.loadPrefs();
 		super.destroy();
 	}
+
+	#if LUA_ALLOWED
+	public override function implementLua(lua:psychlua.FunkinLua):Void {
+		super.implementLua(lua);
+
+		lua.addLocalCallback('addOptionMenu', function(label:String, stateName:String = '', insertAt:Int = -1) {
+			if (options.contains(label))
+				return false;
+
+			if (insertAt < 0 || insertAt > options.length)
+				options.push(label);
+			else
+				options.insert(insertAt, label);
+
+			if (stateName != null && stateName.trim().length > 0)
+				optionFunctions[label] = () -> MusicBeatState.switchState(MusicBeatState.buildState(stateName));
+
+			var optionText:Alphabet = new Alphabet(0, 0, Language.getPhrase('options_$label', label), true);
+			optionText.screenCenter();
+			grpOptions.insert(insertAt < 0 ? grpOptions.length : insertAt, optionText);
+			for (i => item in grpOptions.members) {
+				item.screenCenter();
+				item.y = (92 * (i - (options.length / 2))) + 45;
+			}
+			changeSelection();
+			refreshShitScript();
+			return true;
+		});
+		lua.addLocalCallback('removeOptionMenu', function(label:String) {
+			var idx:Int = options.indexOf(label);
+			if (idx < 0)
+				return false;
+
+			options.remove(label);
+			optionFunctions.remove(label);
+			var item = grpOptions.members[idx];
+			if (item != null)
+				grpOptions.remove(item, true);
+
+			if (options.length > 0)
+				curSelected = FlxMath.wrap(curSelected, 0, options.length - 1);
+			else
+				curSelected = 0;
+
+			for (i => member in grpOptions.members) {
+				member.screenCenter();
+				member.y = (92 * (i - (options.length / 2))) + 45;
+			}
+			changeSelection();
+			refreshShitScript();
+			return true;
+		});
+		lua.addLocalCallback('setOptionOrder', function(order:Array<String>) {
+			if (order == null) return options.copy();
+
+			var insertAt:Int = 0;
+			for (label in order) {
+				var idx:Int = options.indexOf(label);
+				if (idx < 0) continue;
+
+				var value:String = options[idx];
+				options.remove(value);
+				options.insert(insertAt, value);
+
+				var item = grpOptions.members[idx];
+				grpOptions.remove(item, false);
+				grpOptions.insert(insertAt, item);
+				insertAt++;
+			}
+
+			for (i => member in grpOptions.members) {
+				member.screenCenter();
+				member.y = (92 * (i - (options.length / 2))) + 45;
+			}
+			changeSelection();
+			refreshShitScript();
+			return options.copy();
+		});
+		lua.addLocalCallback('changeOptionsSelection', function(change:Int = 0) {
+			changeSelection(change);
+			return options[curSelected];
+		});
+		lua.addLocalCallback('acceptOptionsSelection', function() {
+			accept(options[curSelected], curSelected);
+			return options[curSelected];
+		});
+	}
+	#end
 }

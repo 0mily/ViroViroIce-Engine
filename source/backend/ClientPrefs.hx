@@ -15,8 +15,8 @@ import states.TitleState;
 	public var weekpixel:Bool = true;
 	public var mikudside:Bool = false;
 	public var extra:Bool = false;
-	public var neatWindow:Float = 15.0;
-	public var customScore:Bool = false;
+	public var neatWindow:Float = 22.0;
+	//public var customScore:Bool = false;
 
 // deles
 

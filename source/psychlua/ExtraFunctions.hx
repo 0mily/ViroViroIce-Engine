@@ -47,6 +47,13 @@ class ExtraFunctions {
 			var cam:FlxCamera = LuaUtils.cameraFromString(camera);
 			return FlxG.mouse.getViewPosition(cam).y;
 		});
+		FunkinLua.registerFunction('setCustomCursor', function(image:String = 'cursor', scale:Float = 1, hotspotX:Int = 0, hotspotY:Int = 0)
+			return backend.CustomCursor.set(image, scale, hotspotX, hotspotY));
+		FunkinLua.registerFunction('reloadCustomCursor', function()
+			return backend.CustomCursor.reloadFromMods());
+		FunkinLua.registerFunction('resetCustomCursor', function() {
+			backend.CustomCursor.reset();
+		});
 
 		FunkinLua.registerFunction("gamepadAnalogX", function(id:Int, ?leftStick:Bool = true)
 		{

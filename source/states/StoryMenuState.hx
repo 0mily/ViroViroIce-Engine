@@ -46,6 +46,18 @@ class StoryMenuState extends ScriptedState
 
 	var loadedWeeks:Array<WeekData> = [];
 
+	function refreshShitScript():Void {
+		var weekName:String = (loadedWeeks != null && loadedWeeks.length > 0 && curWeek >= 0 && curWeek < loadedWeeks.length) ? loadedWeeks[curWeek].fileName : null;
+		setOnScripts('curWeek', curWeek);
+		setOnScripts('curDifficulty', curDifficulty);
+		setOnScripts('selectedWeek', weekName);
+		setOnScripts('loadedWeeks', [for (week in loadedWeeks) week.fileName]);
+		setOnScripts('weekTextGroup', 'grpWeekText');
+		setOnScripts('weekCharactersGroup', 'grpWeekCharacters');
+		setOnScripts('bgYellow', 'bgYellow');
+		setOnScripts('bgSprite', 'bgSprite');
+	}
+
 	var stickerSubState:StickerSubState;
 	public function new(?stickers:StickerSubState = null)
 	{
@@ -205,6 +217,7 @@ class StoryMenuState extends ScriptedState
 		changeDifficulty();
 
 		super.create();
+		refreshShitScript();
 	}
 
 	override function closeSubState() {
@@ -219,9 +232,11 @@ class StoryMenuState extends ScriptedState
 		
 		if(WeekData.weeksList.length < 1) {
 			if (controls.BACK && !movedBack && !selectedWeek) {
-				FlxG.sound.play(Paths.sound('cancelMenu'));
-				movedBack = true;
-				MusicBeatState.switchState(new MainMenuState());
+				if (callOnScripts('onBack', true) != psychlua.LuaUtils.Function_Stop) {
+					FlxG.sound.play(Paths.sound('cancelMenu'));
+					movedBack = true;
+					MusicBeatState.switchState(new MainMenuState());
+				}
 			}
 			super.update(elapsed);
 			return;
@@ -236,7 +251,8 @@ class StoryMenuState extends ScriptedState
 		
 		// FlxG.watch.addQuick('font', scoreText.font);
 
-		if (!movedBack && !selectedWeek)
+		var blockedFNFInput:Bool = (callOnScripts('onInputUpdate', [elapsed], true) == psychlua.LuaUtils.Function_Stop);
+		if (!movedBack && !selectedWeek && !blockedFNFInput)
 		{
 			var changeDiff = false;
 			if (controls.UI_UP_P) {
@@ -289,10 +305,12 @@ class StoryMenuState extends ScriptedState
 				selectWeek();
 		}
 
-		if (controls.BACK && !movedBack && !selectedWeek) {
-			movedBack = true;
-			FlxG.sound.play(Paths.sound('cancelMenu'));
-			MusicBeatState.switchState(new MainMenuState());
+		if (controls.BACK && !movedBack && !selectedWeek && !blockedFNFInput) {
+			if (callOnScripts('onBack', true) != psychlua.LuaUtils.Function_Stop) {
+				movedBack = true;
+				FlxG.sound.play(Paths.sound('cancelMenu'));
+				MusicBeatState.switchState(new MainMenuState());
+			}
 		}
 
 		super.update(elapsed);
@@ -311,7 +329,9 @@ class StoryMenuState extends ScriptedState
 	var selectedWeek:Bool = false;
 
 	function selectWeek() {
-		if (callOnScripts('onAccept', [loadedWeeks[curWeek], curWeek], true) != psychlua.LuaUtils.Function_Stop) {
+		var blockedFNF:Bool = (callOnScripts('onSelected', [loadedWeeks[curWeek].fileName, curWeek], true) == psychlua.LuaUtils.Function_Stop);
+		blockedFNF = (blockedFNF || callOnScripts('onAccept', [loadedWeeks[curWeek], curWeek], true) == psychlua.LuaUtils.Function_Stop);
+		if (!blockedFNF) {
 			if (!weekIsLocked(loadedWeeks[curWeek].fileName)) {
 				if (loadWeek(loadedWeeks[curWeek], curDifficulty)) {
 					selectedWeek = true;
@@ -371,7 +391,7 @@ class StoryMenuState extends ScriptedState
 		StageData.forceNextDirectory = directory;
 
 		@:privateAccess
-		if (PlayState._lastLoadedModDirectory != Mods.currentModDirectory) {
+		if (PlayState._lastLoadedModDirectory != Mods.getAssetContextKey()) {
 			trace('CHANGED MOD DIRECTORY, RELOADING STUFF');
 			Paths.freeGraphicsFromMemory();
 		}
@@ -443,6 +463,7 @@ class StoryMenuState extends ScriptedState
 			intendedScore = Highscore.getWeekScore(loadedWeeks[curWeek].fileName, curDifficulty);
 			#end
 			
+			refreshShitScript();
 			callOnScripts('onChangeDifficultyPost', [Difficulty.getString(curDifficulty), curDifficulty]);
 		}
 	}
@@ -453,7 +474,9 @@ class StoryMenuState extends ScriptedState
 	function changeWeek(change:Int = 0):Void {
 		var next:Int = FlxMath.wrap(curWeek + change, 0, loadedWeeks.length - 1);
 		
-		if (callOnScripts('onSelectItem', [loadedWeeks[next], next], true) != psychlua.LuaUtils.Function_Stop) {
+		var blockedFNF:Bool = (callOnScripts('onHighlighted', [loadedWeeks[next].fileName, next], true) == psychlua.LuaUtils.Function_Stop);
+		blockedFNF = (blockedFNF || callOnScripts('onSelectItem', [loadedWeeks[next], next], true) == psychlua.LuaUtils.Function_Stop);
+		if (!blockedFNF) {
 			curWeek = next;
 			
 			var leWeek:WeekData = loadedWeeks[curWeek];
@@ -494,6 +517,8 @@ class StoryMenuState extends ScriptedState
 				curDifficulty = newPos;
 			updateText();
 			
+			refreshShitScript();
+			callOnScripts('onHighlightedPost', [leWeek.fileName, curWeek]);
 			callOnScripts('onSelectItemPost', [leWeek.fileName, curWeek]);
 		}
 	}
@@ -531,4 +556,29 @@ class StoryMenuState extends ScriptedState
 		intendedScore = Highscore.getWeekScore(loadedWeeks[curWeek].fileName, curDifficulty);
 		#end
 	}
+
+	#if LUA_ALLOWED
+	public override function implementLua(lua:psychlua.FunkinLua):Void {
+		super.implementLua(lua);
+
+		lua.addLocalCallback('changeStoryWeek', function(change:Int = 0) {
+			changeWeek(change);
+			return loadedWeeks[curWeek]?.fileName;
+		});
+		lua.addLocalCallback('changeStoryDifficulty', function(change:Int = 0) {
+			changeDifficulty(change);
+			return Difficulty.getString(curDifficulty);
+		});
+		lua.addLocalCallback('acceptStoryWeek', function() {
+			selectWeek();
+			return loadedWeeks[curWeek]?.fileName;
+		});
+		lua.addLocalCallback('isStoryWeekLocked', function(name:String) {
+			return weekIsLocked(name);
+		});
+		lua.addLocalCallback('hasBeatenWeek', function(name:String) {
+			return weekCompleted.exists(name) && weekCompleted.get(name);
+		});
+	}
+	#end
 }

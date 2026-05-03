@@ -686,6 +686,7 @@ class LuaUtils
 		if (game != null) {
 			switch (cam.toLowerCase()) {
 				case 'camother' | 'other': return game.camOther;
+				case 'cammain' | 'main': return game.camGame;
 				case 'camgame' | 'game': return game.camGame;
 				case 'camhud' | 'hud': return game.camHUD;
 				default:
@@ -695,20 +696,36 @@ class LuaUtils
 			if (camera == null || !Std.isOfType(camera, FlxCamera))
 				camera = game.camGame;
 		} else {
+			var state:MusicBeatSubstate = MusicBeatState.getState();
 			switch (cam.toLowerCase()) {
-				case 'camgame' | 'game': return FlxG.camera;
+				case 'camother' | 'other':
+					if (state != null && state.hasVar('camOther')) return state.getVar('camOther');
+					return FlxG.camera;
+				case 'camhud' | 'hud':
+					if (state != null && state.hasVar('camHUD')) return state.getVar('camHUD');
+					if (state != null && state.hasVar('camOther')) return state.getVar('camOther');
+					return FlxG.camera;
+				case 'cammain' | 'main':
+					if (state != null && state.hasVar('camMain')) return state.getVar('camMain');
+					if (state != null && state.hasVar('camGame')) return state.getVar('camGame');
+					return FlxG.camera;
+				case 'camgame' | 'game':
+					if (state != null && state.hasVar('camGame')) return state.getVar('camGame');
+					if (state != null && state.hasVar('camMain')) return state.getVar('camMain');
+					return FlxG.camera;
 				default:
 			}
 			
 			camera = MusicBeatState.getVariables().get(cam);
 			if (camera == null || !Std.isOfType(camera, FlxCamera))
-				camera = FlxG.camera;
+				camera = (state != null && state.hasVar('camGame')) ? state.getVar('camGame') : FlxG.camera;
 		}
 		return camera;
 	}
 	
 	public static function cameraString(cam:String):String {
 		switch(cam.toLowerCase()) {
+			case 'cammain' | 'main': return 'camMain';
 			case 'camgame' | 'game': return 'camGame';
 			case 'camhud' | 'hud': return 'camHUD';
 			case 'camother' | 'other': return 'camOther';

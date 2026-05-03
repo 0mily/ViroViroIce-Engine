@@ -3,7 +3,6 @@ package states.editors;
 import flixel.FlxSubState;
 import flixel.util.FlxSave;
 import flixel.util.FlxSort;
-import flixel.util.FlxSpriteUtil;
 import flixel.util.FlxStringUtil;
 import flixel.util.FlxDestroyUtil;
 import flixel.input.keyboard.FlxKey;
@@ -15,6 +14,7 @@ import lime.media.AudioBuffer;
 
 import flash.media.Sound;
 import flash.geom.Rectangle;
+import flash.net.FileFilter;
 
 import haxe.Json;
 import haxe.Exception;
@@ -22,6 +22,8 @@ import haxe.io.Bytes;
 
 import states.editors.content.MetaNote;
 import states.editors.content.VSlice;
+import states.editors.content.MoonchartConverters.MoonchartConversionResult;
+import states.editors.content.MoonchartConverters.MoonchartOpcao;
 import states.editors.content.Prompt;
 import states.editors.content.*;
 
@@ -180,7 +182,6 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 	];
 	var curZoom:Float = 1;
 
-	var mustHitIndicator:FlxSprite;
 	var eventIcon:FlxSprite;
 	var icons:Array<HealthIcon> = [];
 
@@ -377,12 +378,6 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 
 			columns++;
 		}
-
-		mustHitIndicator = FlxSpriteUtil.drawTriangle(new FlxSprite(0, iconY - 20).makeGraphic(16, 16, FlxColor.TRANSPARENT), 0, 0, 16);
-		mustHitIndicator.scrollFactor.set();
-		mustHitIndicator.flipY = true;
-		mustHitIndicator.offset.x += mustHitIndicator.width/2;
-		add(mustHitIndicator);
 
 		var gridStripes:Array<Int> = [];
 		for (i in 0...GRID_PLAYERS)
@@ -676,7 +671,13 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 			player2: 'dad',
 			gfVersion: 'gf',
 			stage: 'stage',
-			format: 'psych_v1'
+			format: Song.VIRO_FORMAT,
+			cameraMove: {
+				enabled: false,
+				intensity: 1,
+				speed: 1,
+				offset: 30
+			}
 		};
 		Song.chartPath = null;
 		loadChart(song);
@@ -728,6 +729,7 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 
 		noteTextureInputText.text = PlayState.SONG.arrowSkin;
 		noteSplashesInputText.text = PlayState.SONG.splashSkin;
+		refreshCameraMoveControls();
 	}
 	
 	var noteSelectionSine:Float = 0;
@@ -1936,6 +1938,7 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 		
 		PlayState.SONG = song;
 		PlayState.EVENTS = events;
+		Song.ensureCameraMoveData(PlayState.SONG);
 		StageData.loadDirectory(PlayState.SONG);
 		Conductor.bpm = PlayState.SONG.bpm;
 	}
@@ -2327,7 +2330,6 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 		var sec = getCurChartSection();
 		if(sec != null)
 		{
-			mustHitCheckBox.checked = sec.mustHitSection;
 			gfSectionCheckBox.checked = sec.gfSection;
 			// altAnimSectionCheckBox.checked = sec.altAnim;
 			changeBpmCheckBox.checked = sec.changeBPM;
@@ -2514,10 +2516,6 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 					iconP2.changeIcon('gf');
 			}
 
-			if(mustHitSection)
-				mustHitIndicator.x = iconP1.x + iconP1.width/2;
-			else
-				mustHitIndicator.x = iconP2.x + iconP2.width/2;
 		}
 		_lastGfSection = isGfSection;
 		_lastSec = curSec;
@@ -2636,6 +2634,11 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 	var noRGBCheckBox:PsychUICheckBox;
 	var noteTextureInputText:PsychUIInputText;
 	var noteSplashesInputText:PsychUIInputText;
+	var cameraMoveCheckBox:PsychUICheckBox;
+	var cameraMoveIntensityStepper:PsychUINumericStepper;
+	var cameraMoveSpeedStepper:PsychUINumericStepper;
+	var cameraMoveOffsetStepper:PsychUINumericStepper;
+	var cameraMoveControls:Array<FlxSprite> = [];
 	function addDataTab()
 	{
 		var tab_group = mainBox.getTab('Data').menu;
@@ -2748,6 +2751,41 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 			PlayState.SONG.splashSkin = cur;
 			if(cur.trim().length < 1) PlayState.SONG.splashSkin = null;
 		}
+
+		var camX:Float = objX + 195;
+		var camY:Float = 25;
+		cameraMoveCheckBox = new PsychUICheckBox(camX, camY, 'Camera Move', 115, function()
+		{
+			Song.ensureCameraMoveData(PlayState.SONG).enabled = cameraMoveCheckBox.checked;
+			refreshCameraMoveControls();
+		});
+
+		camY += 40;
+		cameraMoveIntensityStepper = new PsychUINumericStepper(camX, camY, 0.1, 1, 0, 10, 2, 70);
+		cameraMoveIntensityStepper.onValueChange = function()
+			Song.ensureCameraMoveData(PlayState.SONG).intensity = cameraMoveIntensityStepper.value;
+
+		camY += 40;
+		cameraMoveSpeedStepper = new PsychUINumericStepper(camX, camY, 0.1, 1, 0, 10, 2, 70);
+		cameraMoveSpeedStepper.onValueChange = function()
+			Song.ensureCameraMoveData(PlayState.SONG).speed = cameraMoveSpeedStepper.value;
+
+		camY += 40;
+		cameraMoveOffsetStepper = new PsychUINumericStepper(camX, camY, 1, 30, 0, 999, 0, 70);
+		cameraMoveOffsetStepper.onValueChange = function()
+			Song.ensureCameraMoveData(PlayState.SONG).offset = cameraMoveOffsetStepper.value;
+
+		var cameraMoveIntensityText:FlxText = new FlxText(cameraMoveIntensityStepper.x, cameraMoveIntensityStepper.y - 15, 90, 'Intensity:');
+		var cameraMoveSpeedText:FlxText = new FlxText(cameraMoveSpeedStepper.x, cameraMoveSpeedStepper.y - 15, 90, 'Speed:');
+		var cameraMoveOffsetText:FlxText = new FlxText(cameraMoveOffsetStepper.x, cameraMoveOffsetStepper.y - 15, 90, 'Offset:');
+		cameraMoveControls = [
+			cameraMoveIntensityText,
+			cameraMoveIntensityStepper,
+			cameraMoveSpeedText,
+			cameraMoveSpeedStepper,
+			cameraMoveOffsetText,
+			cameraMoveOffsetStepper
+		];
 	
 		tab_group.add(new FlxText(gameOverCharDropDown.x, gameOverCharDropDown.y - 15, 120, 'Game Over Character:'));
 		tab_group.add(new FlxText(gameOverSndInputText.x, gameOverSndInputText.y - 15, 180, 'Game Over Death Sound (sounds/):'));
@@ -2762,8 +2800,25 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 		tab_group.add(new FlxText(noteSplashesInputText.x, noteSplashesInputText.y - 15, 120, 'Note Splashes Texture:'));
 		tab_group.add(noteTextureInputText);
 		tab_group.add(noteSplashesInputText);
+		tab_group.add(cameraMoveCheckBox);
+		for(control in cameraMoveControls)
+			tab_group.add(control);
 
 		tab_group.add(gameOverCharDropDown); //lowest priority to display properly
+	}
+
+	function refreshCameraMoveControls():Void
+	{
+		if(PlayState.SONG == null || cameraMoveCheckBox == null) return;
+
+		var data = Song.ensureCameraMoveData(PlayState.SONG);
+		cameraMoveCheckBox.checked = data.enabled == true;
+		if(cameraMoveIntensityStepper != null) cameraMoveIntensityStepper.value = data.intensity;
+		if(cameraMoveSpeedStepper != null) cameraMoveSpeedStepper.value = data.speed;
+		if(cameraMoveOffsetStepper != null) cameraMoveOffsetStepper.value = data.offset;
+
+		for(control in cameraMoveControls)
+			if(control != null) control.visible = cameraMoveCheckBox.checked;
 	}
 
 	var eventDropDown:PsychUIDropDownMenu;
@@ -3030,7 +3085,6 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 		tab_group.add(noteTypeDropDown);
 	}
 
-	var mustHitCheckBox:PsychUICheckBox;
 	var gfSectionCheckBox:PsychUICheckBox;
 	// var altAnimSectionCheckBox:PsychUICheckBox;
 
@@ -3114,13 +3168,6 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 			}
 		}
 
-		mustHitCheckBox = new PsychUICheckBox(objX, objY, 'Focus on Player', 100, function()
-		{
-			var sec = getCurChartSection();
-			if(sec != null) sec.mustHitSection = mustHitCheckBox.checked;
-			updateHeads(true);
-		});
-		objY += 20;
 		gfSectionCheckBox = new PsychUICheckBox(objX, objY, 'Girlfriend Sings', 100, function()
 		{
 			var sec = getCurChartSection();
@@ -3295,7 +3342,6 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 		clearButton.normalStyle.bgColor = FlxColor.RED;
 		clearButton.normalStyle.textColor = FlxColor.WHITE;
 
-		tab_group.add(mustHitCheckBox);
 		tab_group.add(gfSectionCheckBox);
 		// tab_group.add(altAnimSectionCheckBox);
 
@@ -3623,6 +3669,165 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 		tab_group.add(girlfriendDropDown);
 		tab_group.add(opponentDropDown);
 		tab_group.add(playerDropDown);
+	}
+
+	function abrirConversor()
+	{
+		if(!fileDialog.completed) return;
+
+		var options = MoonchartConverters.getExternalFormats();
+		if(options.length < 1)
+		{
+			showOutput('No Moonchart converters are available.', true);
+			return;
+		}
+
+		upperBox.isMinimized = true;
+		upperBox.bg.visible = false;
+		ClientPrefs.toggleVolumeKeys(false);
+
+		openSubState(new BasePrompt(560, 280, 'Converters',
+			function(state:BasePrompt)
+			{
+				var closeBtn:PsychUIButton = new PsychUIButton(state.bg.x + state.bg.width - 40, state.bg.y, 'X', state.close, 40);
+				closeBtn.cameras = state.cameras;
+				state.add(closeBtn);
+
+				var labels:Array<String> = [for(option in options) option.label];
+				var centerX:Float = state.bg.x + 55;
+				var topY:Float = state.bg.y + 78;
+
+				var directionText:FlxText = new FlxText(centerX, topY - 18, 120, 'Direction:');
+				directionText.cameras = state.cameras;
+				state.add(directionText);
+
+				var directionGroup:PsychUIRadioGroup = new PsychUIRadioGroup(centerX, topY, ['To Engine', 'From Engine'], 25, 0, true, 120);
+				directionGroup.checked = 0;
+				directionGroup.cameras = state.cameras;
+				state.add(directionGroup);
+
+				var formatText:FlxText = new FlxText(centerX, topY + 48, 120, 'Format:');
+				formatText.cameras = state.cameras;
+				state.add(formatText);
+
+				var formatDropDown:PsychUIDropDownMenu = new PsychUIDropDownMenu(centerX, topY + 66, labels, null, 300);
+				formatDropDown.selectedIndex = 0;
+				formatDropDown.cameras = state.cameras;
+				state.add(formatDropDown);
+
+				var diff:String = Paths.formatToSongPath(Difficulty.getString(false));
+				var difficultyText:FlxText = new FlxText(centerX + 330, topY + 48, 120, 'Difficulty:');
+				difficultyText.cameras = state.cameras;
+				state.add(difficultyText);
+
+				var difficultyInput:PsychUIInputText = new PsychUIInputText(centerX + 330, topY + 66, 120, diff, 8);
+				difficultyInput.forceCase = LOWER_CASE;
+				difficultyInput.cameras = state.cameras;
+				state.add(difficultyInput);
+
+				var convertBtn:PsychUIButton = new PsychUIButton(0, state.bg.y + state.bg.height - 48, 'Convert', function()
+				{
+					var selected = options[formatDropDown.selectedIndex];
+					if(selected == null)
+					{
+						showOutput('Select a valid converter format.', true);
+						return;
+					}
+
+					var difficulty = difficultyInput.text;
+					var toEngine:Bool = directionGroup.checked == 0;
+					state.close();
+
+					if(toEngine)
+						startMoonchartToEngine(selected, difficulty);
+					else
+						startEngineToMoonchart(selected, difficulty);
+				}, 100);
+				convertBtn.normalStyle.bgColor = FlxColor.GREEN;
+				convertBtn.normalStyle.textColor = FlxColor.WHITE;
+				convertBtn.screenCenter(X);
+				convertBtn.cameras = state.cameras;
+				state.add(convertBtn);
+			}
+		));
+	}
+
+	function startEngineToMoonchart(option:MoonchartOpcao, difficulty:String)
+	{
+		if(!fileDialog.completed) return;
+
+		upperBox.isMinimized = true;
+		upperBox.bg.visible = false;
+
+		fileDialog.openDirectory('Save Converted ${option.label}', function()
+		{
+			try
+			{
+				updateChartData();
+				var result = MoonchartConverters.convertEngineToFormat(PlayState.SONG, option.format, fileDialog.path, difficulty);
+				showOutput(moonchartResultMessage('Converted from engine', result));
+			}
+			catch(e:Exception)
+			{
+				showOutput('Moonchart error: ${e.message}', true);
+				trace(e.stack);
+			}
+		});
+	}
+
+	function startMoonchartToEngine(option:MoonchartOpcao, difficulty:String)
+	{
+		if(!fileDialog.completed) return;
+
+		upperBox.isMinimized = true;
+		upperBox.bg.visible = false;
+
+		fileDialog.open(null, 'Open ${MoonchartConverters.getFormatName(option.format)} Chart', moonchartFileFilter(option), function()
+		{
+			var chartPath:String = fileDialog.path.replace('\\', '/');
+			function chooseOutput(?metadataPath:String)
+			{
+				fileDialog.openDirectory('Save Converted Engine JSON', function()
+				{
+					try
+					{
+						var result = MoonchartConverters.convertFileToEngine(option.format, chartPath, metadataPath, fileDialog.path, difficulty);
+						showOutput(moonchartResultMessage('Converted to engine', result));
+					}
+					catch(e:Exception)
+					{
+						showOutput('Moonchart error: ${e.message}', true);
+						trace(e.stack);
+					}
+				});
+			}
+
+			if(MoonchartConverters.needsMetadata(option.format))
+			{
+				fileDialog.open(null, 'Open ${MoonchartConverters.getFormatName(option.format)} Metadata', [new FileFilter('JSON', '*.json')], function()
+				{
+					chooseOutput(fileDialog.path.replace('\\', '/'));
+				});
+			}
+			else chooseOutput();
+		});
+	}
+
+	function moonchartFileFilter(option:MoonchartOpcao):Array<FileFilter>
+	{
+		#if mac
+		return null;
+		#else
+		return [new FileFilter(MoonchartConverters.getFormatName(option.format), '*.${option.extension}')];
+		#end
+	}
+
+	function moonchartResultMessage(prefix:String, result:MoonchartConversionResult):String
+	{
+		var message = '$prefix as ${result.formatName}:\n${result.dataPath}';
+		if(result.metaPath != null && result.metaPath.length > 0)
+			message += '\n${result.metaPath}';
+		return message;
 	}
 
 	function addFileTab()
@@ -3963,6 +4168,12 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 		btn.text.alignment = LEFT;
 		tab_group.add(btn);
 		
+		btnY++;
+		btnY += 20;
+		var btn:PsychUIButton = new PsychUIButton(btnX, btnY, '  Converters...', abrirConversor, btnWid);
+		btn.text.alignment = LEFT;
+		tab_group.add(btn);
+
 		btnY++;
 		btnY += 20;
 		var btn:PsychUIButton = new PsychUIButton(btnX, btnY, '  Save (V-Slice)...', function()
@@ -4322,12 +4533,18 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 					if(fmt == null || fmt.length < 1)
 						fmt = loadedChart.format = 'unknown';
 
-					if(!fmt.startsWith('psych_v1'))
+					if(!Song.isPsychLikeFormat(fmt))
 					{
-						loadedChart.format = 'psych_v1_convert';
 						Song.convert(loadedChart);
+						Song.normalizeChart(loadedChart);
 						File.saveContent(fileDialog.path, PsychJsonPrinter.print(loadedChart, ['sectionNotes', 'events']));
-						showOutput('Updated "$filePath" from format "$fmt" to "psych_v1" successfully!');
+						showOutput('Updated "$filePath" from format "$fmt" to "${Song.VIRO_FORMAT}" successfully!');
+					}
+					else if(fmt != Song.VIRO_FORMAT)
+					{
+						Song.normalizeChart(loadedChart);
+						File.saveContent(fileDialog.path, PsychJsonPrinter.print(loadedChart, ['sectionNotes', 'events']));
+						showOutput('Updated "$filePath" from format "$fmt" to "${Song.VIRO_FORMAT}" successfully!');
 					}
 					else showOutput('Chart is already up-to-date! Format: "$fmt"', true);
 				}
@@ -4963,6 +5180,7 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 	function saveChart(canQuickSave:Bool = true)
 	{
 		updateChartData();
+		Song.normalizeChart(PlayState.SONG);
 		var chartData:String = PsychJsonPrinter.print(PlayState.SONG, ['sectionNotes', 'events']);
 		#if sys if(canQuickSave && Song.chartPath != null)
 		{
@@ -5129,6 +5347,7 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 		chartEditorSave.flush();
 		
 		updateChartData();
+		Song.normalizeChart(PlayState.SONG);
 		StageData.loadDirectory(PlayState.SONG);
 		LoadingState.prepareToSong();
 		LoadingState.loadAndSwitchState(new PlayState());
