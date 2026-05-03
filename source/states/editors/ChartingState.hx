@@ -3691,7 +3691,6 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 			{
 				var closeBtn:PsychUIButton = new PsychUIButton(state.bg.x + state.bg.width - 40, state.bg.y, 'X', state.close, 40);
 				closeBtn.cameras = state.cameras;
-				state.add(closeBtn);
 
 				var labels:Array<String> = [for(option in options) option.label];
 				var centerX:Float = state.bg.x + 55;
@@ -3699,31 +3698,25 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 
 				var directionText:FlxText = new FlxText(centerX, topY - 18, 120, 'Direction:');
 				directionText.cameras = state.cameras;
-				state.add(directionText);
 
 				var directionGroup:PsychUIRadioGroup = new PsychUIRadioGroup(centerX, topY, ['To Engine', 'From Engine'], 25, 0, true, 120);
 				directionGroup.checked = 0;
 				directionGroup.cameras = state.cameras;
-				state.add(directionGroup);
 
 				var formatText:FlxText = new FlxText(centerX, topY + 48, 120, 'Format:');
 				formatText.cameras = state.cameras;
-				state.add(formatText);
 
 				var formatDropDown:PsychUIDropDownMenu = new PsychUIDropDownMenu(centerX, topY + 66, labels, null, 300);
 				formatDropDown.selectedIndex = 0;
 				formatDropDown.cameras = state.cameras;
-				state.add(formatDropDown);
 
 				var diff:String = Paths.formatToSongPath(Difficulty.getString(false));
 				var difficultyText:FlxText = new FlxText(centerX + 330, topY + 48, 120, 'Difficulty:');
 				difficultyText.cameras = state.cameras;
-				state.add(difficultyText);
 
 				var difficultyInput:PsychUIInputText = new PsychUIInputText(centerX + 330, topY + 66, 120, diff, 8);
 				difficultyInput.forceCase = LOWER_CASE;
 				difficultyInput.cameras = state.cameras;
-				state.add(difficultyInput);
 
 				var convertBtn:PsychUIButton = new PsychUIButton(0, state.bg.y + state.bg.height - 48, 'Convert', function()
 				{
@@ -3747,7 +3740,15 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 				convertBtn.normalStyle.textColor = FlxColor.WHITE;
 				convertBtn.screenCenter(X);
 				convertBtn.cameras = state.cameras;
+
+				state.add(closeBtn);
+				state.add(directionText);
+				state.add(directionGroup);
 				state.add(convertBtn);
+				state.add(formatText);
+				state.add(formatDropDown);
+				state.add(difficultyText);
+				state.add(difficultyInput);
 			}
 		));
 	}
