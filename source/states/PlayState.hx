@@ -2692,6 +2692,92 @@ class PlayState extends ScriptedState
 		}
 	}
 
+
+		function getCameraZoomEase(ease:String):Float->Float
+			{
+				switch (ease.toLowerCase())
+				{
+					case 'linear':
+						return FlxEase.linear;
+
+					case 'sinein':
+						return FlxEase.sineIn;
+					case 'sineout':
+						return FlxEase.sineOut;
+					case 'sineinout':
+						return FlxEase.sineInOut;
+
+					case 'quadin':
+						return FlxEase.quadIn;
+					case 'quadout':
+						return FlxEase.quadOut;
+					case 'quadinout':
+						return FlxEase.quadInOut;
+
+					case 'cubein':
+						return FlxEase.cubeIn;
+					case 'cubeout':
+						return FlxEase.cubeOut;
+					case 'cubeinout':
+						return FlxEase.cubeInOut;
+
+					case 'quartin':
+						return FlxEase.quartIn;
+					case 'quartout':
+						return FlxEase.quartOut;
+					case 'quartinout':
+						return FlxEase.quartInOut;
+
+					case 'quintin':
+						return FlxEase.quintIn;
+					case 'quintout':
+						return FlxEase.quintOut;
+					case 'quintinout':
+						return FlxEase.quintInOut;
+
+					case 'expoin':
+						return FlxEase.expoIn;
+					case 'expoout':
+						return FlxEase.expoOut;
+					case 'expoinout':
+						return FlxEase.expoInOut;
+
+					case 'circin':
+						return FlxEase.circIn;
+					case 'circout':
+						return FlxEase.circOut;
+					case 'circinout':
+						return FlxEase.circInOut;
+
+					case 'backin':
+						return FlxEase.backIn;
+					case 'backout':
+						return FlxEase.backOut;
+					case 'backinout':
+						return FlxEase.backInOut;
+
+					case 'bouncein':
+						return FlxEase.bounceIn;
+					case 'bounceout':
+						return FlxEase.bounceOut;
+					case 'bounceinout':
+						return FlxEase.bounceInOut;
+
+					case 'elasticin':
+						return FlxEase.elasticIn;
+					case 'elasticout':
+						return FlxEase.elasticOut;
+					case 'elasticinout':
+						return FlxEase.elasticInOut;
+
+					default:
+						return FlxEase.linear;
+				}
+			}
+
+
+
+
 	/**
 	 * Triggers an event.
 	 * 
@@ -2955,6 +3041,63 @@ class PlayState extends ScriptedState
 							});
 						}
 					}
+
+			case 'Camera Zoom':
+						var v1:Array<String> = value1.split(',');
+						var v2:Array<String> = value2.split(',');
+
+						var num:Float = Std.parseFloat(v1[0].trim());
+						var steps:Float = 0;
+
+						if (v1.length > 1)
+							steps = Std.parseFloat(v1[1].trim());
+
+						var ease:String = 'OG';
+						var type:String = 'nll';
+
+						if (v2.length > 0 && v2[0].trim() != '')
+							ease = v2[0].trim();
+
+						if (v2.length > 1 && v2[1].trim() != '')
+							type = v2[1].trim().toLowerCase();
+
+						if (Math.isNaN(num)) num = defaultCamZoom;
+						if (Math.isNaN(steps)) steps = 0;
+
+						var targetZoom:Float = FlxG.camera.zoom;
+
+						switch (type)
+						{
+							case 'nll':
+								targetZoom = num;
+
+							case 'mr':
+								targetZoom = FlxG.camera.zoom + num;
+
+							case 'lss':
+								targetZoom = FlxG.camera.zoom - num;
+
+							default:
+								targetZoom = num;
+						}
+
+						if (ease.toUpperCase() == 'OG' || steps <= 0)
+						{
+							FlxG.camera.zoom = targetZoom;
+							defaultCamZoom = targetZoom;
+						}
+						else
+						{
+							var time:Float = steps * Conductor.stepCrochet / 1000;
+
+							FlxTween.tween(FlxG.camera, {zoom: targetZoom}, time, {
+								ease: getCameraZoomEase(ease),
+								onComplete: function(twn:FlxTween)
+								{
+									defaultCamZoom = targetZoom;
+								}
+							});
+						}
 
 			case 'Set Property':
 				try {
