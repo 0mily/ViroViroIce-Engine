@@ -13,6 +13,7 @@ haxelib install tjson
 haxelib install hxdiscord_rpc
 haxelib install hxvlc --skip-dependencies
 haxelib install funkin-modchart
+haxelib install moonchart
 haxelib git hscript-iris https://github.com/pisayesiwsi/hscript-iris.git dev
 haxelib git flxanimate https://github.com/Dot-Stuff/flxanimate.git dev
 haxelib git linc_luajit https://github.com/superpowers04/linc_luajit.git
