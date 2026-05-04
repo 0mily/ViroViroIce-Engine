@@ -669,10 +669,22 @@ class FunkinLua {
 			// oi shihooooo
 			// oi milyyyyyy
 
+		registerFunction("lightenColor", function(color:String, value:Float) {
+            if (color != null && value > 0) return FlxColor.fromString('#$color').getLightened(value);
+			return FlxColor.fromString('#FFFFFF');
+			luaTrace("lightenColor: fudeu algo", false, false, ERROR);
+        });
+
+		registerFunction("darkenColor", function(color:String, value:Float) {
+            if (color != null && value > 0) return FlxColor.fromString('#$color').getDarkened(value);
+			return FlxColor.fromString('#FFFFFF');
+			luaTrace("darkenColor: fudeu algo", false, false, ERROR);
+        });
+
 		registerFunction("changeTransStickers", function(stickerSet:String = null, stickerPack:String = null) {
-                if (stickerSet != null && stickerSet != '') StickerSubState.STICKER_SET = stickerSet;
-                if (stickerPack != null && stickerPack != '') StickerSubState.STICKER_PACK = stickerPack;
-            });
+            if (stickerSet != null && stickerSet != '') StickerSubState.STICKER_SET = stickerSet;
+            if (stickerPack != null && stickerPack != '') StickerSubState.STICKER_PACK = stickerPack;
+        });
 
 		registerFunction("createLabel", function(spr:String, txt:String, box:String, tab:String){
 			if (box != null && tab != null)
