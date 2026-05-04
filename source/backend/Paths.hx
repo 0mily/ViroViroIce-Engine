@@ -304,19 +304,20 @@ class Paths
 	}
 
 	public static function fileExists(key:String, type:AssetType, ?ignoreMods:Bool = false, ?parentFolder:String = null)
+{
+	#if MODS_ALLOWED
+	if(!ignoreMods)
 	{
-		#if MODS_ALLOWED
-		if(!ignoreMods)
-		{
-			var modKey:String = key;
-			if(parentFolder == 'songs') modKey = 'songs/$key/song';
+		var modKey:String = key;
+		if(parentFolder != null) modKey = '$parentFolder/$key';
 
-			if (FileSystem.exists(modFolders(modKey)) || FileSystem.exists(mods(modKey)))
-				return true;
-		}
-		#end
-		return (OpenFlAssets.exists(getPath(key, type, parentFolder, false)));
+		if (FileSystem.exists(modFolders(modKey)) || FileSystem.exists(mods(modKey)))
+			return true;
 	}
+	#end
+
+	return OpenFlAssets.exists(getPath(key, type, parentFolder, false), type);
+}
 
 	static public function getAtlas(key:String, ?parentFolder:String = null, ?allowGPU:Bool = true):FlxAtlasFrames
 	{

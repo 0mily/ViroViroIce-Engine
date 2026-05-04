@@ -588,9 +588,7 @@ class PlayState extends ScriptedState
 		camGame = initPsychCamera();
 		camHUD = new FlxCamera();
 		camHUD.bgColor.alpha = 0;
-		// https://media1.tenor.com/m/fP1Qr3rwSHkAAAAd/praying-angel.gif caralho
 		FlxG.cameras.add(camHUD, false);
-		backend.CameraResizeFix.aplyAll();
 
 		persistentUpdate = true;
 		persistentDraw = true;
@@ -704,6 +702,11 @@ class PlayState extends ScriptedState
 		generateStaticArrows(true);
 		
 		preCreate();
+		setVar('camGame', camGame);
+		setVar('camMain', camGame);
+		setVar('camHUD', camHUD);
+		setVar('camOther', camOther);
+
 		backend.CameraResizeFix.aplyAll();
 		
 		#if (SCRIPTS_ALLOWED)
@@ -3081,22 +3084,35 @@ class PlayState extends ScriptedState
 								targetZoom = num;
 						}
 
-						if (ease.toUpperCase() == 'OG' || steps <= 0)
-						{
-							FlxG.camera.zoom = targetZoom;
-							defaultCamZoom = targetZoom;
-						}
-						else
-						{
-							var time:Float = steps * Conductor.stepCrochet / 1000;
+						var zoomMode:String = ease.toLowerCase().trim();
 
-							FlxTween.tween(FlxG.camera, {zoom: targetZoom}, time, {
-								ease: getCameraZoomEase(ease),
-								onComplete: function(twn:FlxTween)
+						switch (zoomMode)
+						{
+							case 'instant':
+								FlxG.camera.zoom = targetZoom;
+								defaultCamZoom = targetZoom;
+
+							case 'classic' | 'og': // melhorando isso
+								defaultCamZoom = targetZoom;
+
+							default:
+								if (steps <= 0)
 								{
+									FlxG.camera.zoom = targetZoom;
 									defaultCamZoom = targetZoom;
 								}
-							});
+								else
+								{
+									var time:Float = (steps * Conductor.stepCrochet / 1000) / playbackRate;
+
+									FlxTween.tween(FlxG.camera, {zoom: targetZoom}, time, {
+										ease: getCameraZoomEase(ease),
+										onComplete: function(twn:FlxTween)
+										{
+											defaultCamZoom = targetZoom;
+										}
+									});
+								}
 						}
 
 			case 'Set Property':

@@ -554,12 +554,12 @@ class LoadingState extends ScriptedState
 			
 			loadNextDirectory();
 			
-			songsToPrepare.push('$folder/Inst');
+			songsToPrepare.push('$folder/song/Inst'); // Arrumando o softlock da tela de loading
 
 			var player1:String = song.player1;
 			var player2:String = song.player2;
 			var gfVersion:String = song.gfVersion;
-			var prefixVocals:String = song.needsVoices ? '$folder/Voices' : null;
+			var prefixVocals:String = song.needsVoices ? '$folder/song/Voices' : null;
 			if (gfVersion == null) gfVersion = 'gf';
 
 			dontPreloadDefaultVoices = false;
@@ -608,7 +608,7 @@ class LoadingState extends ScriptedState
 	{
 		clearInvalidFrom(imagesToPrepare, 'images', '.png', IMAGE);
 		clearInvalidFrom(soundsToPrepare, 'sounds', '.${Paths.SOUND_EXT}', SOUND);
-		clearInvalidFrom(musicToPrepare, 'music',' .${Paths.SOUND_EXT}', SOUND);
+		clearInvalidFrom(musicToPrepare, 'music', '.${Paths.SOUND_EXT}', SOUND); // erro pequeno
 		clearInvalidFrom(songsToPrepare, 'songs', '.${Paths.SOUND_EXT}', SOUND, 'songs');
 
 		for (arr in [imagesToPrepare, soundsToPrepare, musicToPrepare, songsToPrepare])
@@ -652,7 +652,7 @@ class LoadingState extends ScriptedState
 			if(member.endsWith('/') || (!Paths.fileExists(myKey, type, false, parentFolder) && (doTrace = true)))
 			{
 				arr.remove(member);
-				if(doTrace) trace('Removed invalid $prefix: $member');
+				if(doTrace) trace('Removed invalid $prefix: $member'); // consertando isso.
 			}
 			else i++;
 		}

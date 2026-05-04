@@ -166,8 +166,13 @@ class LuaUtils
 		function getVariableFR(id:String):Dynamic {
 			if (allowMaps && isMap(object))
 				return object.get(id);
+
+			if (desistiDessaPorra(object, id))
+				return Reflect.getProperty(object, id);
+
 			if (object.hasVar != null && object.hasVar(id))
 				return object.getVar(id);
+
 			return Reflect.getProperty(object, id);
 		}
 		
@@ -213,33 +218,41 @@ class LuaUtils
 			throw 'Null Object Reference';
 			return value;
 		}
-		
+
 		if (id.indexOf('[') == -1) {
 			if (allowMaps && isMap(object)) {
 				object.set(id, value);
 				return value;
 			}
+
+			if (desistiDessaPorra(object, id)) {
+				Reflect.setProperty(object, id, value);
+				return value;
+			}
+
 			if (object.hasVar != null && object.hasVar(id))
 				return object.setVar(id, value);
+
 			Reflect.setProperty(object, id, value);
-		} else { // array / map access
+			return value;
+		} else {
 			if (id.indexOf('[') == 0) {
 				throw 'Malformed variable "$id"';
 				return value;
 			}
-			
+
 			var access:Array<String> = id.split('[');
 			var gotObj:Dynamic = getVariable(object, access.shift());
-			
+
 			for (i => item in access) {
 				if (item.indexOf(']') < item.length - 1) {
 					throw 'Malformed variable "$id"';
 					return value;
 				}
-				
+
 				var keyID:String = item.substr(0, -1);
 				var isLast:Bool = (i == access.length - 1);
-				
+
 				if (Std.isOfType(gotObj, Array)) {
 					if (isLast) {
 						gotObj[Std.parseInt(keyID)] = value;
@@ -247,25 +260,27 @@ class LuaUtils
 						gotObj = gotObj[Std.parseInt(keyID)];
 					}
 				} else if (isMap(gotObj) && isQuote(keyID, 0) && isQuote(keyID, keyID.length - 1)) {
-					var keyID:Dynamic = keyID.substring(1, keyID.length - 1);
+					var realKeyID:Dynamic = keyID.substring(1, keyID.length - 1);
+
 					switch (Type.typeof(gotObj)) {
-						case TClass(haxe.ds.IntMap): keyID = Std.parseInt(keyID);
+						case TClass(haxe.ds.IntMap):
+							realKeyID = Std.parseInt(realKeyID);
 						default:
 					}
-					
+
 					if (isLast) {
-						gotObj.set(keyID, value);
+						gotObj.set(realKeyID, value);
 					} else {
-						gotObj = gotObj.get(keyID);
+						gotObj = gotObj.get(realKeyID);
 					}
 				} else {
 					throw 'Array access is not allowed on ${Type.getClassName(Type.getClass(gotObj))}';
-					return null;
+					return value;
 				}
 			}
+
+			return value;
 		}
-		
-		return value;
 	}
 	
 	public static function getPropertyLoop(variable:String, allowMaps:Bool = false, ?base:Dynamic):Dynamic {
@@ -327,6 +342,17 @@ class LuaUtils
 		
 		return fieldCache[name].contains(id);
 	}
+
+		static inline function desistiDessaPorra(object:Dynamic, id:String):Bool {
+		return switch (id) {
+			case 'camGame', 'camHUD', 'camOther':
+				hasField(object, id);
+			default:
+				false;
+		}
+	}
+
+
 	public static function isOfTypes(value:Any, types:Array<Dynamic>)
 	{
 		for (type in types)
