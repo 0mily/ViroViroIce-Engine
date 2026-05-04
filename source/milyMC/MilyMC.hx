@@ -7,6 +7,7 @@ import psychlua.FunkinLua;
 import states.PlayState;
 import sys.FileSystem;
 import sys.io.File;
+import backend.ClientPrefs;
 #end
 
 // LLM ASSISTED BECAUSE I'M TOO STUPID TO MAKE THIS SHIT LOOKS "OKAY"
@@ -34,6 +35,9 @@ class MilyMC
 	#if LUA_ALLOWED
 	public static function load(state:PlayState):Void
 	{
+		if (!ClientPrefs.data.modchart) // po esqueci legal da opçãoooo
+		return;
+
 		if (state == null || state.luaArray == null || hasScript(state, CORE_SCRIPT_NAME))
 			return;
 
