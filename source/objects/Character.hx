@@ -12,6 +12,8 @@ import haxe.Json;
 import backend.Song;
 import states.stages.objects.TankmenBG;
 
+import shaders.DropShadowShader;
+
 typedef CharacterFile = {
 	var animations:Array<AnimArray>;
 	var image:String;
@@ -86,6 +88,8 @@ class Character extends FlxSprite
 	
 	public var comboNoteCounts:Array<Int> = [];
 	public var dropNoteCounts:Array<Int> = [];
+
+    public var dropShadow:DropShadowShader;
 
 	public function new(x:Float, y:Float, ?character:String = 'bf', ?isPlayer:Bool = false)
 	{

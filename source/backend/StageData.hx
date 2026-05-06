@@ -5,6 +5,8 @@ import haxe.Json;
 import backend.Song;
 import psychlua.ModchartSprite;
 
+import backend.DropShadowData;
+
 typedef StageFile = {
 	var directory:String;
 	var defaultZoom:Float;
@@ -20,6 +22,8 @@ typedef StageFile = {
 	var camera_opponent:Array<Float>;
 	var camera_girlfriend:Array<Float>;
 	var camera_speed:Null<Float>;
+
+    var dropshadow:DropShadowFile;
 
 	@:optional var preload:Dynamic;
 	@:optional var objects:Array<Dynamic>;
@@ -57,7 +61,8 @@ class StageData {
 				gf: "gf",
 				dad: "dad",
 				boyfriend: "bf"
-			}
+			},
+            dropshadow: null
 		};
 	}
 

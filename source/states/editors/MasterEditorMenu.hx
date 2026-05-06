@@ -14,6 +14,7 @@ class MasterEditorMenu extends ScriptedSubState
 		'Chart Editor',
 		'Character Editor',
 		'Stage Editor',
+		'Dropshadow Editor',
 		'Week Editor',
 		'Menu Character Editor',
 		'Dialogue Editor',
@@ -69,6 +70,7 @@ class MasterEditorMenu extends ScriptedSubState
 		optionFunctions['Chart Editor'] = () -> LoadingState.loadAndSwitchState(new ChartingState(), false);
 		optionFunctions['Character Editor'] = () -> LoadingState.loadAndSwitchState(new CharacterEditorState(Character.DEFAULT_CHARACTER, false));
 		optionFunctions['Stage Editor'] = () -> LoadingState.loadAndSwitchState(new StageEditorState());
+        if (PlayState.SONG != null) optionFunctions['Drop Shadow Editor'] =  () -> LoadingState.loadAndSwitchState(new DropShadowEditor(), false);
 		optionFunctions['Week Editor'] = () -> MusicBeatState.switchState(new WeekEditorState());
 		optionFunctions['Menu Character Editor'] = () -> MusicBeatState.switchState(new MenuCharacterEditorState());
 		optionFunctions['Dialogue Editor'] = () -> LoadingState.loadAndSwitchState(new DialogueEditorState(), false);
