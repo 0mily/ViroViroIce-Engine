@@ -287,7 +287,7 @@ class MainMenuState extends ScriptedState
 			if (item == null)
 				continue;
 
-			menuItems.remove(item, false);
+			menuItems.remove(item, true);
 			menuItems.insert(insertAt, item);
 			insertAt++;
 		}
@@ -378,7 +378,7 @@ class MainMenuState extends ScriptedState
 					var dist:Float = -1;
 					var distItem:Int = -1;
 					for (i => memb in menuItems.members) {
-						if (memb.column != CENTER) continue;
+						if (memb == null || memb.column != CENTER) continue;
 						
 						if (FlxG.mouse.overlaps(memb)) {
 							var distance:Float = Math.sqrt(Math.pow(memb.getGraphicMidpoint().x - FlxG.mouse.viewX, 2) + Math.pow(memb.getGraphicMidpoint().y - FlxG.mouse.viewY, 2));
@@ -502,6 +502,12 @@ class MainMenuState extends ScriptedState
 			case RIGHT:
 				newSelectedItem = rightItem;
 		}
+
+		if (newSelectedItem == null) {
+			curColumn = oldColumn;
+			curSelected = oldSelected;
+			return;
+		}
 		
 		var blockedFNF:Bool = false;
 		if (!forced) {
@@ -563,7 +569,7 @@ class MainMenuState extends ScriptedState
 					if (imagePath != null && imagePath.trim().length > 0)
 						added.loadSprite(item, imagePath, fps);
 					if (insertAt >= 0) {
-						menuItems.remove(added, false);
+						menuItems.remove(added, true);
 						menuItems.insert(Std.int(Math.min(insertAt, menuItems.length)), added);
 						positionMenuItems();
 					}

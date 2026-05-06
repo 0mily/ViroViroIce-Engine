@@ -13,6 +13,7 @@ haxelib install flixel
 haxelib install flixel-addons
 haxelib install flixel-tools
 haxelib install tjson
+haxelib install flixel-animate
 haxelib install hxdiscord_rpc
 haxelib install hxvlc --skip-dependencies
 haxelib install funkin-modchart
