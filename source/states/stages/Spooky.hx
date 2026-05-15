@@ -99,7 +99,7 @@ class Spooky extends BaseStage
 		inCutscene = true;
 		camHUD.visible = false;
 
-		FlxG.camera.focusOn(new FlxPoint(dad.getMidpoint().x + 150, dad.getMidpoint().y - 100));
+		backend.CameraResizeFix.focarEm(FlxG.camera, new FlxPoint(dad.getMidpoint().x + 150, dad.getMidpoint().y - 100));
 
 		// character anims
 		FlxG.sound.play(Paths.soundRandom('thunder_', 1, 2));

@@ -290,7 +290,7 @@ class PhillyStreets extends BaseStage
 		{
 			moveCamera(true);
 			camFollow.x += 100;
-			FlxTween.tween(FlxG.camera.scroll, {x: camFollow.x + 100 - FlxG.width/2, y: camFollow.y - FlxG.height/2}, 2.5, {ease: FlxEase.quadInOut});
+			FlxTween.tween(FlxG.camera.scroll, {x: backend.CameraResizeFix.pegarScrollX(FlxG.camera, camFollow.x + 100), y: backend.CameraResizeFix.pegarScrollY(FlxG.camera, camFollow.y)}, 2.5, {ease: FlxEase.quadInOut});
 			FlxTween.tween(FlxG.camera, {zoom: 0.66}, 2.5, {ease: FlxEase.quadInOut});
 		});
 		cutsceneHandler.timer(cutsceneDelay + 3, function() //darnell lights can
@@ -301,7 +301,7 @@ class PhillyStreets extends BaseStage
 		cutsceneHandler.timer(cutsceneDelay + 4, function() //pico reloads
 		{
 			boyfriend.playAnim('cock', true);
-			FlxTween.tween(FlxG.camera.scroll, {x: camFollow.x + 180 - FlxG.width/2}, 0.4, {ease: FlxEase.backOut});
+			FlxTween.tween(FlxG.camera.scroll, {x: backend.CameraResizeFix.pegarScrollX(FlxG.camera, camFollow.x + 180)}, 0.4, {ease: FlxEase.backOut});
 			gunPrepSnd.play(true);
 		});
 		cutsceneHandler.timer(cutsceneDelay + 4.166, function() createCasing());
@@ -323,7 +323,7 @@ class PhillyStreets extends BaseStage
 
 			FlxG.sound.play(Paths.soundRandom('shots/shot', 1, 4));
 
-			FlxTween.tween(FlxG.camera.scroll, {x: camFollow.x + 100 - FlxG.width/2}, 2.5, {ease: FlxEase.quadInOut});
+			FlxTween.tween(FlxG.camera.scroll, {x: backend.CameraResizeFix.pegarScrollX(FlxG.camera, camFollow.x + 100)}, 2.5, {ease: FlxEase.quadInOut});
 
 			spraycan.playCanShot();
 			new FlxTimer().start(1/24, function(_)
@@ -362,7 +362,7 @@ class PhillyStreets extends BaseStage
 
 			game.cameraSpeed = 0;
 			FlxTween.tween(FlxG.camera, {zoom: 0.77}, 2, {ease: FlxEase.sineInOut});
-			FlxTween.tween(FlxG.camera.scroll, {x: camFollow.x + 180 - FlxG.width/2}, 2, {ease: FlxEase.sineInOut, onComplete: function(_) game.cameraSpeed = 1});
+			FlxTween.tween(FlxG.camera.scroll, {x: backend.CameraResizeFix.pegarScrollX(FlxG.camera, camFollow.x + 180)}, 2, {ease: FlxEase.sineInOut, onComplete: function(_) game.cameraSpeed = 1});
 			game.inCutscene = false;
 
 			spraycan.visible = spraycan.active = spraycan.cutscene = false;
@@ -383,7 +383,7 @@ class PhillyStreets extends BaseStage
 			game.cameraSpeed = 1;
 			FlxTween.cancelTweensOf(FlxG.camera);
 			FlxTween.cancelTweensOf(FlxG.camera.scroll);
-			FlxG.camera.scroll.set(camFollow.x - FlxG.width/2, camFollow.y - FlxG.height/2);
+			backend.CameraResizeFix.centralizarScroll(FlxG.camera, camFollow.x, camFollow.y);
 			FlxG.camera.zoom = defaultCamZoom;
 		};
 		FlxG.camera.fade(FlxColor.BLACK, 2, true, null, true);
@@ -396,7 +396,7 @@ class PhillyStreets extends BaseStage
 		else
 			abot.lookLeft();
 
-		if(finishInstantly) abot.eyes.anim.curFrame = abot.eyes.anim.length - 1;
+		if(finishInstantly) abot.eyes.setAtlasCurFrame(abot.eyes.getAtlasLength() - 1);
 	}
 
 	override function startSong()

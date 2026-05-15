@@ -26,6 +26,7 @@
 	<define name="TRANSLATIONS_ALLOWED" />
 	<define name="IRIS_DEBUG" />
 	<define name="EMIMOD"/>
+	<define name="flxanimate" />
 	
 	<define name="INCLUDE_ALL_CLASSES" /> <!-- Removes DCE and compiles (most) classes, for use in scripting -->
 	<define name="MULTITHREADED_LOADING" /> <!-- UNCOMMENTING THIS LINE WILL ENABLE MULTITHREADED LOADING, WHICH IMPROVES LOADING TIMES, BUT APPARENTLY CAN FREEZE THE GAME ON SONG LOAD IN OLDER PCs? -->
@@ -124,7 +125,6 @@
 	<haxelib name="linc_luajit" if="LUA_ALLOWED"/>
 	<haxelib name="hscript-iris" if="HSCRIPT_ALLOWED" />
 	<haxelib name="hxdiscord_rpc" if="DISCORD_ALLOWED" />
-	<haxelib name="flxanimate" />
 	<haxelib name="flixel-animate" />
 	<haxelib name="moonchart" />
 	

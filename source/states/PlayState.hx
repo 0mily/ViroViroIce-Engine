@@ -1700,6 +1700,12 @@ class PlayState extends ScriptedState
 		return name;
 	}
 
+	public function refreshSongNameText():Void
+	{
+		if(timeTxt != null && SONG != null && ClientPrefs.data.timeBarType == 'Song Name')
+			timeTxt.text = remixesPorraMerda(SONG.song);
+	}
+
 	/**
 	 * Updates the FC status and saves it in the `ratingFC` variable.
 	*/
@@ -2002,6 +2008,9 @@ class PlayState extends ScriptedState
 		if (ghostNotesCaught > 0)
 			trace('(${SONG.song}) $ghostNotesCaught duplicate notes ignored');
 		
+		if(Song.hasEventsNamed(EVENTS, Song.CAMERA_FOCUS_EVENT))
+			Song.removeEventsByName(songData, Song.CAMERA_FOCUS_EVENT);
+
 		for (event in songData.events) //Event Notes
 			for (i in 0...event[1].length)
 				makeEvent(event, i);
@@ -2075,7 +2084,7 @@ class PlayState extends ScriptedState
 	 * @return 	The time (in milliseconds) of how early the event should play to it's chart time.
 	*/
 	function eventEarlyTrigger(event:EventNote):Float {
-		var returnedValue:Dynamic = callOnScripts('eventEarlyTrigger', [event.event, event.value1, event.value2, event.strumTime], true);
+		var returnedValue:Dynamic = callOnScripts('eventEarlyTrigger', buildEventCallbackArgs(event.event, event.value1, event.value2, event.strumTime, event.values), true);
 		if (returnedValue != null && Std.isOfType(returnedValue, Float) && returnedValue != 0) {
 			return returnedValue;
 		}
@@ -2100,15 +2109,23 @@ class PlayState extends ScriptedState
 
 	@:dox(hide) function makeEvent(event:Array<Dynamic>, i:Int)
 	{
+		var eventData:Array<Dynamic> = cast event[1][i];
+		var eventValues:Array<String> = [];
+		for(valueIndex in 1...eventData.length)
+			eventValues.push(eventData[valueIndex] != null ? Std.string(eventData[valueIndex]) : '');
+		while(eventValues.length < 2)
+			eventValues.push('');
+
 		var subEvent:EventNote = {
 			strumTime: event[0] + ClientPrefs.data.noteOffset,
-			event: event[1][i][0],
-			value1: event[1][i][1],
-			value2: event[1][i][2]
+			event: eventData[0] != null ? Std.string(eventData[0]) : '',
+			value1: eventValues[0],
+			value2: eventValues[1],
+			values: eventValues
 		};
 		eventNotes.push(subEvent);
 		eventPushed(subEvent);
-		callOnScripts('onEventPushed', [subEvent.event, subEvent.value1 != null ? subEvent.value1 : '', subEvent.value2 != null ? subEvent.value2 : '', subEvent.strumTime]);
+		callOnScripts('onEventPushed', buildEventCallbackArgs(subEvent.event, subEvent.value1, subEvent.value2, subEvent.strumTime, subEvent.values));
 	}
 	
 	/**
@@ -2690,7 +2707,7 @@ class PlayState extends ScriptedState
 			if(eventNotes[0].value2 != null)
 				value2 = eventNotes[0].value2;
 
-			triggerEvent(eventNotes[0].event, value1, value2, leStrumTime);
+			triggerEvent(eventNotes[0].event, value1, value2, leStrumTime, eventNotes[0].values);
 			eventNotes.shift();
 		}
 	}
@@ -2789,7 +2806,7 @@ class PlayState extends ScriptedState
 	 * @param 	value2 		The second value of the event.
 	 * @param 	strumTime 	The time (in milliseconds) this event is triggered on.
 	*/
-	public function triggerEvent(eventName:String, value1:String, value2:String, strumTime:Float) {
+	public function triggerEvent(eventName:String, value1:String, value2:String, strumTime:Float, ?values:Array<String>) {
 		var flValue1:Null<Float> = Std.parseFloat(value1);
 		var flValue2:Null<Float> = Std.parseFloat(value2);
 		if(Math.isNaN(flValue1)) flValue1 = null;
@@ -3147,7 +3164,18 @@ class PlayState extends ScriptedState
 		}
 
 		stagesFunc(function(stage:BaseStage) stage.eventCalled(eventName, value1, value2, flValue1, flValue2, strumTime));
-		callOnScripts('onEvent', [eventName, value1, value2, strumTime]);
+		callOnScripts('onEvent', buildEventCallbackArgs(eventName, value1, value2, strumTime, values));
+	}
+
+	function buildEventCallbackArgs(eventName:String, value1:String, value2:String, strumTime:Float, ?values:Array<String>):Array<Dynamic>
+	{
+		var args:Array<Dynamic> = [eventName, value1 != null ? value1 : '', value2 != null ? value2 : '', strumTime];
+		if(values != null && values.length > 2)
+		{
+			for(i in 2...values.length)
+				args.push(values[i] != null ? values[i] : '');
+		}
+		return args;
 	}
 
 	function parseCameraFocusEvent(value1:String, value2:String):Array<String> {
@@ -3583,16 +3611,17 @@ class PlayState extends ScriptedState
 				}
 				else
 				{
-					var difficulty:String = Difficulty.getFilePath();
+					var nextSong:String = Paths.formatToSongPath(PlayState.storyPlaylist[0]);
+					var difficulty:String = Highscore.formatSong(nextSong, storyDifficulty);
 					
 					trace('LOADING NEXT SONG');
-					trace(Paths.formatToSongPath(PlayState.storyPlaylist[0]) + difficulty);
+					trace('$nextSong/$difficulty');
 
 					FlxTransitionableState.skipNextTransIn = true;
 					FlxTransitionableState.skipNextTransOut = true;
 					prevCamFollow = camFollow;
 
-					Song.loadFromJson(PlayState.storyPlaylist[0] + difficulty, PlayState.storyPlaylist[0]);
+					Song.loadFromJson(difficulty, nextSong);
 					FlxG.sound.music.stop();
 
 					canResync = false;
@@ -4455,7 +4484,7 @@ class PlayState extends ScriptedState
 
 	public override function sectionHit(section:Int):Void {
 		if (SONG.notes[section] != null) {
-			if (camZooming && FlxG.camera.zoom < 1.35 && ClientPrefs.data.camZooms) {
+			if (camZooming && FlxG.camera.zoom < defaultCamZoom + 0.35 && ClientPrefs.data.camZooms) {
 				FlxG.camera.zoom += 0.015 * camZoomingMult;
 				camHUD.zoom += 0.03 * camZoomingMult;
 			}

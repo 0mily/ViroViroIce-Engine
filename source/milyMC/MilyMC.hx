@@ -27,6 +27,8 @@ class MilyMC
 			return true;
 		if (fileName == 'modchart.lua' && normalized.indexOf('/songs/') >= 0)
 			return true;
+		if (fileName == 'modchart.lua' && normalized.indexOf('/data/scripts/') >= 0) // i forgor
+			return true;
 		#end
 
 		return false;
@@ -40,6 +42,8 @@ class MilyMC
 
 		if (state == null || state.luaArray == null || hasScript(state, CORE_SCRIPT_NAME))
 			return;
+
+		MilyMCOptimizations.registerLuaCallbacks();
 
 		var modchartFiles:Array<String> = findSongModcharts(state.songName);
 		var source:String = buildSource(modchartFiles);
@@ -73,8 +77,8 @@ class MilyMC
 		addCoreModule(modules, 'core/default_callbacks', MilyMCMacros.luaFile('core/default_callbacks'));
 
 		var source:String = modules.join('\n\n');
-		source += '\n\n__milyMCSourceMode = true\n';
-		source += '\n\nlocal function __milyMCLoadSongModchart(path, code)\n';
+		source += '\n\n_milyMCSourceMode = true\n';
+		source += '\n\nlocal function _milyMCLoadSongModchart(path, code)\n';
 		source += '\tlocal loader = loadstring or load\n';
 		source += '\tlocal chunk, err = loader(code, path)\n';
 		source += '\tif not chunk then\n';
@@ -92,7 +96,7 @@ class MilyMC
 			try
 			{
 				source += '\n\n-- MilyMC song modchart: $file\n';
-				source += '__milyMCLoadSongModchart(' + luaStringLiteral(file) + ', ' + luaStringLiteral(File.getContent(file)) + ')\n';
+				source += '_milyMCLoadSongModchart(' + luaStringLiteral(file) + ', ' + luaStringLiteral(File.getContent(file)) + ')\n';
 			}
 			catch(e:Dynamic)
 			{

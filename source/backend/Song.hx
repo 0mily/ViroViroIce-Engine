@@ -230,6 +230,68 @@ class Song
 		return cast data;
 	}
 
+	public static function hasEventsNamed(songJson:Dynamic, eventName:String):Bool
+	{
+		if(songJson == null)
+			return false;
+		return eventArrayHasEvent(songJson.events, eventName);
+	}
+
+	public static function eventArrayHasEvent(events:Array<Dynamic>, eventName:String):Bool
+	{
+		if(events == null)
+			return false;
+
+		for (event in events)
+		{
+			if(event == null || event[1] == null) continue;
+			var pack:Array<Dynamic> = event[1];
+			for (subEvent in pack)
+			{
+				if(subEvent == null || subEvent.length < 1) continue;
+				if(subEventMatchesName(cast subEvent, eventName))
+					return true;
+			}
+		}
+		return false;
+	}
+
+	public static function removeEventsByName(songJson:Dynamic, eventName:String):Void
+	{
+		if(songJson == null)
+			return;
+		removeEventsFromArray(songJson.events, eventName);
+	}
+
+	public static function removeEventsFromArray(events:Array<Dynamic>, eventName:String):Void
+	{
+		if(events == null)
+			return;
+
+		var i:Int = events.length - 1;
+		while(i >= 0)
+		{
+			var event:Array<Dynamic> = events[i];
+			if(event != null && event[1] != null)
+			{
+				var pack:Array<Dynamic> = event[1];
+				var j:Int = pack.length - 1;
+				while(j >= 0)
+				{
+					var subEvent:Array<Dynamic> = cast pack[j];
+					if(subEvent != null && subEventMatchesName(subEvent, eventName))
+						pack.remove(subEvent);
+					j--;
+				}
+
+				if(pack.length < 1)
+					events.remove(event);
+			}
+			i--;
+		}
+		sortEvents(events);
+	}
+
 	static function normalizeFocusEvent(event:Array<Dynamic>):Array<String>
 	{
 		var name:String = Std.string(event[0] ?? '').trim();
@@ -255,6 +317,19 @@ class Song
 		}
 
 		return null;
+	}
+
+	static function subEventMatchesName(event:Array<Dynamic>, eventName:String):Bool
+	{
+		if(event == null || event.length < 1)
+			return false;
+
+		var expected:String = Std.string(eventName ?? '').toLowerCase().replace(' ', '').trim();
+		var actual:String = Std.string(event[0] ?? '').toLowerCase().replace(' ', '').trim();
+		if(actual == expected)
+			return true;
+
+		return expected == CAMERA_FOCUS_EVENT.toLowerCase().replace(' ', '') && normalizeFocusEvent(event) != null;
 	}
 
 	static function buildFocusValues(value1:Dynamic, value2:Dynamic):Array<String>

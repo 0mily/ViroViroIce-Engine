@@ -16,37 +16,38 @@ class PsychUISlider extends FlxSpriteGroup
 	public var min(default, set):Float = -999;
 	public var max(default, set):Float = 999;
 	public var decimals(default, set):Int = 2;
-	public function new(x:Float = 0, y:Float = 0, callback:Float->Void, def:Float = 0, min:Float = -999, max:Float = 999, wid:Float = 200, mainColor:FlxColor = FlxColor.WHITE, handleColor:FlxColor = 0xFFAAAAAA)
+	public function new(x:Float = 0, y:Float = 0, callback:Float->Void, def:Float = 0, min:Float = -999, max:Float = 999, wid:Float = 200, mainColor:FlxColor = HaxeUITheme.PURPLE, handleColor:FlxColor = HaxeUITheme.PANEL_LIGHT)
 	{
 		super(x, y);
 		this.onChange = callback;
 
-		bar = new FlxSprite().makeGraphic(1, 1, FlxColor.WHITE);
-		bar.scale.set(wid, 5);
-		bar.updateHitbox();
-		bar.color = mainColor;
+		bar = new FlxSprite();
+		HaxeUITheme.drawRoundedBox(bar, wid, 5, mainColor, 1, 3, HaxeUITheme.BLACK, HaxeUITheme.BORDER);
 		add(bar);
 
 		minText = new FlxText(0, 0, 80, '', 8);
+		HaxeUITheme.applyText(minText, 8);
 		minText.alignment = CENTER;
 		minText.color = mainColor;
 		add(minText);
 		maxText = new FlxText(0, 0, 80, '', 8);
+		HaxeUITheme.applyText(maxText, 8);
 		maxText.alignment = CENTER;
 		maxText.color = mainColor;
 		add(maxText);
 		valueText = new FlxText(0, 0, 80, '', 8);
+		HaxeUITheme.applyText(valueText, 8);
 		valueText.alignment = CENTER;
 		valueText.color = handleColor;
 		add(valueText);
 		labelText = new FlxText(0, 0, wid, '', 8);
+		HaxeUITheme.applyText(labelText, 8);
 		labelText.alignment = CENTER;
+		labelText.color = HaxeUITheme.TEXT;
 		add(labelText);
 
-		handle = new FlxSprite().makeGraphic(1, 1, FlxColor.WHITE);
-		handle.scale.set(5, 15);
-		handle.updateHitbox();
-		handle.color = handleColor;
+		handle = new FlxSprite();
+		HaxeUITheme.drawRoundedBox(handle, 6, 15, handleColor, 1, 4, HaxeUITheme.BLACK, HaxeUITheme.BORDER);
 		add(handle);
 
 		this.min = min;
@@ -95,7 +96,7 @@ class PsychUISlider extends FlxSpriteGroup
 		labelText.x = bar.x + bar.width/2 - labelText.width/2;
 		if(label.length > 0) bar.y = labelText.y + 24;
 		
-		minText.y = maxText.y = valueText.y = bar.y + 12;
+		minText.y = maxText.y = valueText.y = HaxeUITheme.snap(bar.y + 12);
 
 		_updateHandleX();
 		handle.y = bar.y + bar.height/2 - handle.height/2;

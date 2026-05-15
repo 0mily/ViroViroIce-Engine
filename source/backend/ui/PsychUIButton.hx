@@ -13,33 +13,35 @@ class PsychUIButton extends FlxSpriteGroup
 
 	public var onChangeState:String->Void;
 	public var onClick:Void->Void;
+	var _buttonWidth:Int = 1;
+	var _buttonHeight:Int = 1;
 	
 	public var clickStyle:UIStyleData = {
-		bgColor: FlxColor.BLACK,
+		bgColor: HaxeUITheme.PURPLE_DARK,
 		textColor: FlxColor.WHITE,
 		bgAlpha: 1
 	};
 	public var hoverStyle:UIStyleData = {
-		bgColor: FlxColor.WHITE,
-		textColor: FlxColor.BLACK,
+		bgColor: HaxeUITheme.PANEL_LIGHT,
+		textColor: FlxColor.WHITE,
 		bgAlpha: 1
 	};
 	public var normalStyle:UIStyleData = {
-		bgColor: 0xFFAAAAAA,
-		textColor: FlxColor.BLACK,
+		bgColor: HaxeUITheme.PANEL,
+		textColor: HaxeUITheme.TEXT,
 		bgAlpha: 1
 	};
 
 	public function new(x:Float = 0, y:Float = 0, label:String = '', ?onClick:Void->Void = null, ?wid:Int = 80, ?hei:Int = 20)
 	{
 		super(x, y);
-		bg = new FlxSprite().makeGraphic(1, 1, FlxColor.WHITE);
+		bg = new FlxSprite();
 		add(bg);
-		bg.color = 0xFFAAAAAA;
-		bg.alpha = 0.6;
 
 		text = new FlxText(0, 0, 1, '');
+		HaxeUITheme.applyText(text);
 		text.alignment = CENTER;
+		text.color = normalStyle.textColor;
 		add(text);
 		resize(wid, hei);
 		this.label = label;
@@ -58,9 +60,7 @@ class PsychUIButton extends FlxSpriteGroup
 
 		if(_firstFrame)
 		{
-			bg.color = normalStyle.bgColor;
-			bg.alpha = normalStyle.bgAlpha;
-			text.color = normalStyle.textColor;
+			applyStyle(normalStyle);
 			_firstFrame = false;
 		}
 		
@@ -79,17 +79,13 @@ class PsychUIButton extends FlxSpriteGroup
 			if(!isClicked)
 			{
 				var style:UIStyleData = (overlapped) ? hoverStyle : normalStyle;
-				bg.color = style.bgColor;
-				bg.alpha = style.bgAlpha;
-				text.color = style.textColor;
+				applyStyle(style);
 			}
 
 			if(overlapped && FlxG.mouse.justPressed)
 			{
 				isClicked = true;
-				bg.color = clickStyle.bgColor;
-				bg.alpha = clickStyle.bgAlpha;
-				text.color = clickStyle.textColor;
+				applyStyle(clickStyle);
 				if(onClick != null) onClick();
 				if(broadcastButtonEvent) PsychUIEventHandler.event(CLICK_EVENT, this);
 			}
@@ -98,11 +94,18 @@ class PsychUIButton extends FlxSpriteGroup
 
 	public function resize(width:Int, height:Int)
 	{
-		bg.setGraphicSize(width, height);
-		bg.updateHitbox();
+		_buttonWidth = width;
+		_buttonHeight = height;
+		applyStyle(normalStyle);
 		text.fieldWidth = width;
 		text.x = bg.x;
-		text.y = bg.y + height/2 - text.height/2;
+		text.y = HaxeUITheme.snap(bg.y + height/2 - text.height/2);
+	}
+
+	function applyStyle(style:UIStyleData)
+	{
+		HaxeUITheme.drawRoundedBox(bg, _buttonWidth, _buttonHeight, style.bgColor, style.bgAlpha);
+		text.color = style.textColor;
 	}
 
 	function set_label(v:String)

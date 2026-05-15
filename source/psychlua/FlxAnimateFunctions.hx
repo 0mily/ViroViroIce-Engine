@@ -30,7 +30,7 @@ class FlxAnimateFunctions {
 			if (obj == null) return false;
 
 			obj.addAtlasAnimation(name, symbol, null, framerate, loop, matX, matY);
-			if(obj.anim.curSymbol == null) {
+			if(!obj.hasActiveAtlasAnimation()) {
 				var obj2:ModchartAnimateSprite = cast (obj, ModchartAnimateSprite);
 				if(obj2 != null) obj2.playAnim(name, true); //is ModchartAnimateSprite
 				else obj.anim.play(name, true);
@@ -56,7 +56,7 @@ class FlxAnimateFunctions {
 
 			var animIndices:Array<Int> = cast indices;
 			obj.addAtlasAnimation(name, symbol, animIndices, framerate, loop, matX, matY);
-			if(obj.anim.curSymbol == null)
+			if(!obj.hasActiveAtlasAnimation())
 			{
 				var obj2:ModchartAnimateSprite = cast (obj, ModchartAnimateSprite);
 				if(obj2 != null) obj2.playAnim(name, true); //is ModchartAnimateSprite

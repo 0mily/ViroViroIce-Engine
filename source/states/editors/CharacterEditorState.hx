@@ -221,17 +221,37 @@ class CharacterEditorState extends ScriptedState implements PsychUIEventHandler.
 		add(helpTexts);
 	}
 
+	function clearGhostSprites()
+	{
+		if(ghost != null)
+		{
+			ghost.visible = false;
+			ghost.makeGraphic(1, 1, FlxColor.TRANSPARENT);
+			ghost.alpha = ghostAlpha;
+		}
+
+		if(animateGhost != null)
+		{
+			remove(animateGhost, true);
+			animateGhost = FlxDestroyUtil.destroy(animateGhost);
+		}
+		animateGhostImage = null;
+	}
+
 	function addCharacter(reload:Bool = false)
 	{
 		var pos:Int = -1;
+		var wasPlayer:Null<Bool> = null;
 		if(character != null)
 		{
+			wasPlayer = character.isPlayer;
 			pos = members.indexOf(character);
-			remove(character);
-			character.destroy();
+			clearGhostSprites();
+			remove(character, true);
+			character = FlxDestroyUtil.destroy(character);
 		}
 
-		var isPlayer = (reload ? character.isPlayer : !predictCharacterIsNotPlayer(_char));
+		var isPlayer = (reload && wasPlayer != null ? wasPlayer == true : !predictCharacterIsNotPlayer(_char));
 		character = new Character(0, 0, _char, isPlayer);
 		if(!reload && character.editorIsPlayer != null && isPlayer != character.editorIsPlayer)
 		{
@@ -304,7 +324,7 @@ class CharacterEditorState extends ScriptedState implements PsychUIEventHandler.
 					
 					animateGhost.addAtlasAnimation('anim', myAnim.name, myAnim.indices, 0, false);
 
-					animateGhost.anim.play('anim', true, false, character.atlas.anim.curFrame);
+					animateGhost.anim.play('anim', true, false, character.atlas.getAtlasCurFrame());
 					animateGhost.anim.pause();
 
 					animateGhostImage = character.imageFile;
@@ -607,7 +627,7 @@ class CharacterEditorState extends ScriptedState implements PsychUIEventHandler.
 					if(character.hasAnimation(animationInputText.text))
 					{
 						if(!character.isAnimateAtlas) character.animation.remove(animationInputText.text);
-						else @:privateAccess character.atlas.anim.animsMap.remove(animationInputText.text);
+						else character.atlas.anim.remove(animationInputText.text);
 					}
 					character.animationsArray.remove(anim);
 				}
@@ -636,7 +656,7 @@ class CharacterEditorState extends ScriptedState implements PsychUIEventHandler.
 					if(character.hasAnimation(anim.anim))
 					{
 						if(!character.isAnimateAtlas) character.animation.remove(anim.anim);
-						else @:privateAccess character.atlas.anim.animsMap.remove(anim.anim);
+						else character.atlas.anim.remove(anim.anim);
 						character.animOffsets.remove(anim.anim);
 						character.animationsArray.remove(anim);
 					}
@@ -868,6 +888,7 @@ class CharacterEditorState extends ScriptedState implements PsychUIEventHandler.
 		var lastAnim:String = character.getAnimationName();
 		var anims:Array<AnimArray> = character.animationsArray.copy();
 
+		clearGhostSprites();
 		character.atlas = FlxDestroyUtil.destroy(character.atlas);
 		character.isAnimateAtlas = false;
 		character.color = FlxColor.WHITE;
@@ -1106,8 +1127,8 @@ class CharacterEditorState extends ScriptedState implements PsychUIEventHandler.
 			}
 			else if(character.isAnimateAtlas && character.atlas.anim != null)
 			{
-				frames = character.atlas.anim.curFrame;
-				length = character.atlas.anim.length;
+				frames = character.atlas.getAtlasCurFrame();
+				length = character.atlas.getAtlasLength();
 			}
 
 			if(length >= 0)
@@ -1122,7 +1143,7 @@ class CharacterEditorState extends ScriptedState implements PsychUIEventHandler.
 					{
 						frames = FlxMath.wrap(frames + Std.int(isLeft ? -shiftMult : shiftMult), 0, length-1);
 						if(!character.isAnimateAtlas) character.animation.curAnim.curFrame = frames;
-						else character.atlas.anim.curFrame = frames;
+						else character.atlas.setAtlasCurFrame(frames);
 						holdingFrameElapsed -= 0.1;
 					}
 				}

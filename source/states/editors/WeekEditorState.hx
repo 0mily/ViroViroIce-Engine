@@ -9,6 +9,8 @@ import openfl.events.IOErrorEvent;
 import flash.net.FileFilter;
 import lime.system.Clipboard;
 import haxe.Json;
+import flixel.addons.display.shapes.FlxShapeCircle;
+import flixel.util.FlxGradient;
 
 import objects.HealthIcon;
 import objects.MenuCharacter;
@@ -272,12 +274,10 @@ class WeekEditorState extends MusicBeatState implements PsychUIEventHandler.Psyc
 			txtTracklist.text += stringThing[i] + '\n';
 		}
 
-		txtTracklist.text = txtTracklist.text.toUpperCase();
-
 		txtTracklist.screenCenter(X);
 		txtTracklist.x -= FlxG.width * 0.35;
 		
-		txtWeekTitle.text = weekFile.storyName.toUpperCase();
+		txtWeekTitle.text = weekFile.storyName;
 		txtWeekTitle.x = FlxG.width - (txtWeekTitle.width + 10);
 	}
 
@@ -594,7 +594,7 @@ class WeekEditorFreeplayState extends MusicBeatState implements PsychUIEventHand
 		var tabs = [
 			{name: 'Freeplay', label: 'Freeplay'},
 		];
-		UI_box = new PsychUIBox(FlxG.width, FlxG.height, 250, 200, ['Freeplay']);
+		UI_box = new PsychUIBox(FlxG.width, FlxG.height, 250, 320, ['Freeplay']);
 		UI_box.x -= UI_box.width + 100;
 		UI_box.y -= UI_box.height + 60;
 		UI_box.scrollFactor.set();
@@ -637,32 +637,55 @@ class WeekEditorFreeplayState extends MusicBeatState implements PsychUIEventHand
 			weekFile.songs[curSelected][1] = iconInputText.text;
 			iconArray[curSelected].changeIcon(iconInputText.text);
 		}
-		else if(id == PsychUINumericStepper.CHANGE_EVENT && (sender is PsychUINumericStepper))
-		{
-			if(sender == bgColorStepperR || sender == bgColorStepperG || sender == bgColorStepperB)
-				updateBG();
-		}
 	}
 
-	var bgColorStepperR:PsychUINumericStepper;
-	var bgColorStepperG:PsychUINumericStepper;
-	var bgColorStepperB:PsychUINumericStepper;
+	var colorWheel:FlxSprite;
+	var colorWheelSelector:FlxShapeCircle;
+	var colorGradient:FlxSprite;
+	var colorGradientSelector:FlxSprite;
+	var colorPreview:FlxSprite;
+	var colorHexText:FlxText;
+	var holdingColorPicker:FlxSprite;
+	var holdingPickerRawPosition:Bool = false;
+	var storedPickerColor:FlxColor = FlxColor.WHITE;
 	var iconInputText:PsychUIInputText;
 	function addFreeplayUI() {
 		var tab_group = UI_box.getTab('Freeplay').menu;
 
-		bgColorStepperR = new PsychUINumericStepper(10, 40, 20, 255, 0, 255, 0);
-		bgColorStepperG = new PsychUINumericStepper(80, 40, 20, 255, 0, 255, 0);
-		bgColorStepperB = new PsychUINumericStepper(150, 40, 20, 255, 0, 255, 0);
+		colorGradient = FlxGradient.createGradientFlxSprite(18, 118, [FlxColor.WHITE, FlxColor.BLACK]);
+		colorGradient.setPosition(12, 48);
 
-		var copyColor:PsychUIButton = new PsychUIButton(10, bgColorStepperR.y + 25, "Copy Color", function() Clipboard.text = bg.color.red + ',' + bg.color.green + ',' + bg.color.blue);
+		colorGradientSelector = new FlxSprite(colorGradient.x - 4, colorGradient.y).makeGraphic(26, 6, FlxColor.WHITE);
+		colorGradientSelector.offset.y = 3;
 
-		var pasteColor:PsychUIButton = new PsychUIButton(140, copyColor.y, "Paste Color", function()
+		colorWheel = new FlxSprite(42, 48).loadGraphic(Paths.image('noteColorMenu/colorWheel'));
+		colorWheel.setGraphicSize(118, 118);
+		colorWheel.updateHitbox();
+
+		colorWheelSelector = new FlxShapeCircle(0, 0, 5, {thickness: 0}, FlxColor.WHITE);
+		colorWheelSelector.offset.set(5, 5);
+		colorWheelSelector.alpha = 0.72;
+
+		colorPreview = new FlxSprite(176, 48).makeGraphic(44, 44, FlxColor.WHITE);
+		colorHexText = new FlxText(164, 98, 72, '#FFFFFF', 12);
+		colorHexText.alignment = CENTER;
+
+		var copyColor:PsychUIButton = new PsychUIButton(160, 124, "Copy", function() Clipboard.text = getSelectedFreeplayColor().toHexString(false, false), 74);
+
+		var pasteColor:PsychUIButton = new PsychUIButton(160, 148, "Paste", function()
 		{
 			if(Clipboard.text != null)
 			{
 				var leColor:Array<Int> = [];
-				var splitted:Array<String> = Clipboard.text.trim().split(',');
+				var raw:String = Clipboard.text.trim();
+				if(raw.startsWith('#') || raw.startsWith('0x') || raw.startsWith('0X'))
+				{
+					var parsed:FlxColor = CoolUtil.colorFromString(raw);
+					setSelectedFreeplayColor(parsed);
+					return;
+				}
+
+				var splitted:Array<String> = raw.split(',');
 				for (i in 0...splitted.length)
 				{
 					var toPush:Int = Std.parseInt(splitted[i]);
@@ -676,15 +699,12 @@ class WeekEditorFreeplayState extends MusicBeatState implements PsychUIEventHand
 
 				if(leColor.length > 2)
 				{
-					bgColorStepperR.value = leColor[0];
-					bgColorStepperG.value = leColor[1];
-					bgColorStepperB.value = leColor[2];
-					updateBG();
+					setSelectedFreeplayColor(FlxColor.fromRGB(leColor[0], leColor[1], leColor[2]));
 				}
 			}
-		});
+		}, 74);
 
-		iconInputText = new PsychUIInputText(10, bgColorStepperR.y + 70, 100, '', 8);
+		iconInputText = new PsychUIInputText(10, 204, 100, '', 8);
 
 		var hideFreeplayCheckbox:PsychUICheckBox = new PsychUICheckBox(10, iconInputText.y + 30, "Hide Week from Freeplay?", 100);
 		hideFreeplayCheckbox.checked = weekFile.hideFreeplay;
@@ -694,11 +714,14 @@ class WeekEditorFreeplayState extends MusicBeatState implements PsychUIEventHand
 			WeekEditorState.unsavedProgress = true;
 		};
 		
-		tab_group.add(new FlxText(10, bgColorStepperR.y - 18, 0, 'Selected background Color R/G/B:'));
+		tab_group.add(new FlxText(10, 28, 0, 'Selected background Color:'));
 		tab_group.add(new FlxText(10, iconInputText.y - 18, 0, 'Selected icon:'));
-		tab_group.add(bgColorStepperR);
-		tab_group.add(bgColorStepperG);
-		tab_group.add(bgColorStepperB);
+		tab_group.add(colorGradient);
+		tab_group.add(colorWheel);
+		tab_group.add(colorGradientSelector);
+		tab_group.add(colorWheelSelector);
+		tab_group.add(colorPreview);
+		tab_group.add(colorHexText);
 		tab_group.add(copyColor);
 		tab_group.add(pasteColor);
 		tab_group.add(iconInputText);
@@ -706,11 +729,156 @@ class WeekEditorFreeplayState extends MusicBeatState implements PsychUIEventHand
 	}
 
 	function updateBG() {
-		weekFile.songs[curSelected][2][0] = Math.round(bgColorStepperR.value);
-		weekFile.songs[curSelected][2][1] = Math.round(bgColorStepperG.value);
-		weekFile.songs[curSelected][2][2] = Math.round(bgColorStepperB.value);
-		bg.color = FlxColor.fromRGB(weekFile.songs[curSelected][2][0], weekFile.songs[curSelected][2][1], weekFile.songs[curSelected][2][2]);
+		bg.color = getSelectedFreeplayColor();
+		updateColorPicker();
 	}
+
+	function ensureSelectedFreeplayColor():Array<Dynamic>
+	{
+		if(weekFile.songs[curSelected][2] == null || weekFile.songs[curSelected][2].length < 3)
+			weekFile.songs[curSelected][2] = [146, 113, 253];
+		return weekFile.songs[curSelected][2];
+	}
+
+	function getSelectedFreeplayColor():FlxColor
+	{
+		var colors:Array<Dynamic> = ensureSelectedFreeplayColor();
+		return FlxColor.fromRGB(Std.int(colors[0]), Std.int(colors[1]), Std.int(colors[2]));
+	}
+
+	function setSelectedFreeplayColor(color:FlxColor):Void
+	{
+		var colors:Array<Dynamic> = ensureSelectedFreeplayColor();
+		colors[0] = color.red;
+		colors[1] = color.green;
+		colors[2] = color.blue;
+		bg.color = color;
+		WeekEditorState.unsavedProgress = true;
+		updateColorPicker();
+	}
+
+	function updateColorPicker(?specific:Null<FlxColor>):Void
+	{
+		if(colorWheel == null) return;
+
+		var color:FlxColor = getSelectedFreeplayColor();
+		var wheelColor:FlxColor = specific == null ? color : specific;
+		colorPreview.color = color;
+		colorHexText.text = '#' + color.toHexString(false, false);
+		colorWheel.color = FlxColor.fromHSB(0, 0, color.brightness);
+
+		colorWheelSelector.setPosition(colorWheel.x + colorWheel.width / 2, colorWheel.y + colorWheel.height / 2);
+		if(wheelColor.brightness != 0)
+		{
+			var hueWrap:Float = wheelColor.hue * Math.PI / 180;
+			colorWheelSelector.x += Math.sin(hueWrap) * colorWheel.width / 2 * wheelColor.saturation;
+			colorWheelSelector.y -= Math.cos(hueWrap) * colorWheel.height / 2 * wheelColor.saturation;
+		}
+		colorGradientSelector.y = colorGradient.y + colorGradient.height * (1 - color.brightness);
+	}
+
+	function updateColorPickerInput():Void
+	{
+		if(holdingColorPicker == null) return;
+
+		if(holdingColorPicker == colorGradient)
+		{
+			var newBrightness:Float = 1 - FlxMath.bound((FlxG.mouse.y - pickerScreenY(colorGradient)) / colorGradient.height, 0, 1);
+			if(storedPickerColor.brightness == 0)
+				setSelectedFreeplayColor(FlxColor.fromRGBFloat(newBrightness, newBrightness, newBrightness));
+			else
+				setSelectedFreeplayColor(FlxColor.fromHSB(storedPickerColor.hue, storedPickerColor.saturation, newBrightness));
+			updateColorPicker(storedPickerColor);
+		}
+		else if(holdingColorPicker == colorWheel)
+		{
+			var center:FlxPoint = FlxPoint.get(pickerScreenX(colorWheel) + colorWheel.width / 2, pickerScreenY(colorWheel) + colorWheel.height / 2);
+			var mouse:FlxPoint = FlxPoint.get(FlxG.mouse.x, FlxG.mouse.y);
+			var cX:Float = (center.x - mouse.x) / colorWheel.width * 2;
+			var cY:Float = (center.y - mouse.y) / colorWheel.height * 2;
+			var hue:Float = FlxMath.wrap(FlxMath.wrap(Std.int(mouse.degreesTo(center)), 0, 360) - 90, 0, 360);
+			var sat:Float = FlxMath.bound(Math.sqrt(cX * cX + cY * cY), 0, 1);
+			if(sat != 0)
+				setSelectedFreeplayColor(FlxColor.fromHSB(hue, sat, storedPickerColor.brightness));
+			else
+				setSelectedFreeplayColor(FlxColor.fromRGBFloat(storedPickerColor.brightness, storedPickerColor.brightness, storedPickerColor.brightness));
+			center.put();
+			mouse.put();
+		}
+	}
+
+	function updateColorPickerHold():Void
+	{
+		if(UI_box == null || UI_box.selectedName != 'Freeplay' || UI_box.isMinimized)
+			return;
+
+		if(FlxG.mouse.justPressed)
+		{
+			if(mouseOverPickerSprite(colorWheel))
+				holdingColorPicker = colorWheel;
+			else if(mouseOverPickerSprite(colorGradient))
+				holdingColorPicker = colorGradient;
+			else
+				holdingColorPicker = null;
+
+			if(holdingColorPicker != null)
+			{
+				storedPickerColor = getSelectedFreeplayColor();
+				updateColorPickerInput();
+			}
+		}
+		else if(holdingColorPicker != null)
+		{
+			if(FlxG.mouse.justReleased)
+			{
+				holdingColorPicker = null;
+				storedPickerColor = getSelectedFreeplayColor();
+				updateColorPicker();
+				FlxG.sound.play(Paths.sound('scrollMenu'), 0.45);
+			}
+			else if(FlxG.mouse.pressed && (FlxG.mouse.justMoved || FlxG.mouse.deltaViewX != 0 || FlxG.mouse.deltaViewY != 0))
+				updateColorPickerInput();
+		}
+	}
+
+	function mouseOverPickerSprite(sprite:FlxSprite):Bool
+	{
+		if(sprite == null) return false;
+
+		if(FlxG.mouse.overlaps(sprite, sprite.camera))
+		{
+			holdingPickerRawPosition = true;
+			return true;
+		}
+
+		if(mouseOverBounds(sprite.x, sprite.y, sprite.width, sprite.height))
+		{
+			holdingPickerRawPosition = true;
+			return true;
+		}
+
+		if(mouseOverBounds(menuScreenX(sprite), menuScreenY(sprite), sprite.width, sprite.height))
+		{
+			holdingPickerRawPosition = false;
+			return true;
+		}
+		return false;
+	}
+
+	function mouseOverBounds(x:Float, y:Float, width:Float, height:Float):Bool
+		return FlxG.mouse.x >= x && FlxG.mouse.x <= x + width && FlxG.mouse.y >= y && FlxG.mouse.y <= y + height;
+
+	function pickerScreenX(sprite:FlxSprite):Float
+		return holdingPickerRawPosition ? sprite.x : menuScreenX(sprite);
+
+	function pickerScreenY(sprite:FlxSprite):Float
+		return holdingPickerRawPosition ? sprite.y : menuScreenY(sprite);
+
+	function menuScreenX(sprite:FlxSprite):Float
+		return UI_box.x + sprite.x;
+
+	function menuScreenY(sprite:FlxSprite):Float
+		return UI_box.y + UI_box.tabHeight + sprite.y;
 
 	function changeSelection(change:Int = 0) {
 		FlxG.sound.play(Paths.sound('scrollMenu'), 0.4);
@@ -730,11 +898,6 @@ class WeekEditorFreeplayState extends MusicBeatState implements PsychUIEventHand
 		}
 		//trace(weekFile.songs[curSelected]);
 		iconInputText.text = weekFile.songs[curSelected][1];
-
-		var colors = weekFile.songs[curSelected][2];
-		bgColorStepperR.value = Math.round(colors[0]);
-		bgColorStepperG.value = Math.round(colors[1]);
-		bgColorStepperB.value = Math.round(colors[2]);
 		updateBG();
 	}
 
@@ -765,6 +928,7 @@ class WeekEditorFreeplayState extends MusicBeatState implements PsychUIEventHand
 			if(controls.UI_UP_P) changeSelection(-1);
 			if(controls.UI_DOWN_P) changeSelection(1);
 		}
+		updateColorPickerHold();
 		super.update(elapsed);
 	}
 }

@@ -48,7 +48,7 @@ import states.PlayState;
 import states.LoadingState;
 
 #if flxanimate
-import flxanimate.*;
+import animate.*;
 import flxanimate.PsychFlxAnimate as FlxAnimate;
 #end
 

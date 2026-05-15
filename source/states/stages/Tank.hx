@@ -196,7 +196,7 @@ class Tank extends BaseStage
 
 			FlxTween.cancelTweensOf(FlxG.camera);
 			FlxTween.cancelTweensOf(camFollow);
-			FlxG.camera.scroll.set(camFollow.x - FlxG.width/2, camFollow.y - FlxG.height/2);
+			backend.CameraResizeFix.centralizarScroll(FlxG.camera, camFollow.x, camFollow.y);
 			FlxG.camera.zoom = defaultCamZoom;
 			moveCameraSection();
 			startCountdown();
@@ -313,9 +313,9 @@ class Tank extends BaseStage
 		cutsceneHandler.push(pico);
 
 		// prepare pico animation cycle
-		function picoStressCycle() {
-			switch (pico.anim.curInstance.symbol.name) {
-				case "dieBitch", "GF Time to Die sequence":
+		function picoStressCycle(name:String) {
+			switch (name) {
+				case "dieBitch":
 					pico.anim.play('picoAppears', true);
 					boyfriendGroup.alpha = 1;
 					boyfriendCutscene.visible = false;
@@ -326,16 +326,16 @@ class Tank extends BaseStage
 							boyfriend.animation.curAnim.finish(); //Instantly goes to last frame
 						}
 					});
-				case "picoAppears", "Pico Saves them sequence":
+				case "picoAppears":
 					pico.anim.play('picoEnd', true);
-				case "picoEnd", "Pico Dual Wield on Speaker idle":
+				case "picoEnd":
 					gfGroup.alpha = 1;
 					pico.visible = false;
-					if (pico.anim.onComplete.has(picoStressCycle)) // for safety
-						pico.anim.onComplete.remove(picoStressCycle);
+					if (pico.anim.onFinish.has(picoStressCycle)) // for safety
+						pico.anim.onFinish.remove(picoStressCycle);
 			}
 		}
-		pico.anim.onComplete.add(picoStressCycle);
+		pico.anim.onFinish.add(picoStressCycle);
 
 		boyfriendCutscene = new FlxSprite(boyfriend.x + 5, boyfriend.y + 20);
 		boyfriendCutscene.antialiasing = ClientPrefs.data.antialiasing;

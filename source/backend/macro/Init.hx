@@ -24,7 +24,6 @@ class Init {
 	
 	public static function init():Void {
 		Compiler.addMetadata('@:build(backend.macro.Scripting.ExtraDataMacro.build())', 'flixel.FlxBasic');
-		Compiler.addMetadata('@:build(backend.macro.Flixel.FlixelMacro.buildFlxText())', 'flixel.text.FlxText');
 	}
 }
 #end

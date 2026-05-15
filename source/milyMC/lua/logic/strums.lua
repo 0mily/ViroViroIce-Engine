@@ -109,7 +109,7 @@ local function tweenSimpleMod(defaultTag, modName, a, b, c, d, e)
         tag, target, val, dur, ease = a, b, c, d, e
     else
         target, val, dur, ease = a, b, c, d
-        tag = defaultTag .. "_" .. tostring(target or Strum_Gen) .. "_" .. tostring(os.clock())
+        tag = defaultTag .. "_" .. getTargetKey(target or Strum_Gen) .. "_" .. tostring(os.clock())
     end
     easeModchart(tag, modName, checkOg(val, 0), dur, ease, target or Strum_Gen)
 end
@@ -127,7 +127,7 @@ easeTransformZ = tweenTransformZ
 function easeScroll(target, scrollType, a, b, c, d)
     local targetKey = normalizeTarget(target or Strum_Gen)
     local scrollName = normalizeScrollType(scrollType)
-    local key = scrollName .. "_" .. tostring(targetKey)
+    local key = scrollName .. "_" .. getTargetKey(targetKey)
     local targetVal, duration, easeName, tag
 
     if type(b) == "number" or d ~= nil then
@@ -154,7 +154,7 @@ end
 function setScroll(target, scrollType, value, duration, easeName, tag)
     local targetKey = normalizeTarget(target or Strum_Gen)
     local scrollName = normalizeScrollType(scrollType)
-    easeModchart(tag or (scrollName .. "_" .. tostring(targetKey)), scrollName, value, duration, easeName, targetKey)
+    easeModchart(tag or (scrollName .. "_" .. getTargetKey(targetKey)), scrollName, value, duration, easeName, targetKey)
 end
 
 function kickModchart(modchart, val1, val2, duration, easeName, target)
@@ -173,10 +173,11 @@ function kickShot(tag, target, modName, startVal, endVal, duration, easeName) --
     setModchart(modName, startVal, target)
     easeModchart(tag, modName, endVal, duration, easeName, target)
 
-    if modName == 'beat' then
-        local beatTag = tostring(tag or 'beat') .. '_kick'
-        setModchart('beatKick', startVal, target)
-        easeModchart(beatTag, 'beatKick', endVal, duration, easeName, target)
+    if modName == 'beat' or modName == 'beatY' then
+        local kickMod = modName == 'beatY' and 'beatYKick' or 'beatKick'
+        local beatTag = tostring(tag or modName) .. '_kick'
+        setModchart(kickMod, startVal, target)
+        easeModchart(beatTag, kickMod, endVal, duration, easeName, target)
     end
 end
 

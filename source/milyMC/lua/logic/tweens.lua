@@ -1,15 +1,22 @@
 local function getTweenKey(tag, modName, target)
     modName = normalizeModName(modName)
     target = normalizeTarget(target or Strum_Gen)
-    return tostring(tag) .. '::' .. tostring(modName) .. '::' .. tostring(target)
+    return tostring(tag) .. '::' .. tostring(modName) .. '::' .. getTargetKey(target)
 end
 
 local function clearModTweens(modName, target, exceptKey)
     modName = normalizeModName(modName)
     target = normalizeTarget(target or Strum_Gen)
 
+    if isTargetList(target) then
+        eachTargetLane(target, function(i)
+            clearModTweens(modName, i, exceptKey)
+        end)
+        return
+    end
+
     for key, data in pairs(modTweens) do
-        if key ~= exceptKey and data.modName == modName and tostring(normalizeTarget(data.target or Strum_Gen)) == tostring(target) then
+        if key ~= exceptKey and data.modName == modName and targetsOverlap(data.target or Strum_Gen, target) then
             modTweens[key] = nil
         end
     end
@@ -82,6 +89,14 @@ end
 function setModchart(modchart, value, target)
     modchart = normalizeModName(modchart)
     target = normalizeTarget(target or Strum_Gen)
+
+    if isTargetList(target) then
+        eachTargetLane(target, function(i)
+            setModchart(modchart, value, i)
+        end)
+        return
+    end
+
     clearModTweens(modchart, target)
     applyModValue(modchart, value, target)
 end
@@ -102,11 +117,19 @@ function easeModchart(a, b, c, d, e, f)
         duration = c
         ease = d
         target = e
-        tag = tostring(modchart) .. "_" .. tostring(target or Strum_Gen) .. "_" .. tostring(os.clock())
+        tag = tostring(modchart) .. "_" .. getTargetKey(target or Strum_Gen) .. "_" .. tostring(os.clock())
     end
 
     modchart = normalizeModName(modchart)
     target = normalizeTarget(target or Strum_Gen)
+
+    if isTargetList(target) then
+        eachTargetLane(target, function(i)
+            easeModchart(tostring(tag) .. "_" .. tostring(i), modchart, intensity, duration, ease, i)
+        end)
+        return
+    end
+
     initMod(modchart)
     local tweenKey = getTweenKey(tag, modchart, target)
 
