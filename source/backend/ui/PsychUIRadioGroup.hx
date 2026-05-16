@@ -35,11 +35,13 @@ class PsychUIRadioGroup extends FlxSpriteGroup
 		arrowUp.animation.add('normal', [0]);
 		arrowUp.animation.add('press', [1]);
 		arrowUp.animation.play('normal');
+		arrowUp.color = HaxeUITheme.PURPLE;
 		arrowUp.visible = false;
 		arrowDown = new FlxSprite().loadGraphic(Paths.image('psych-ui/arrow_down', 'embed'), true, 24, 18);
 		arrowDown.animation.add('normal', [0]);
 		arrowDown.animation.add('press', [1]);
 		arrowDown.animation.play('normal');
+		arrowDown.color = HaxeUITheme.PURPLE;
 		arrowDown.visible = false;
 
 		this.space = space;
@@ -332,5 +334,6 @@ class PsychUIRadioItem extends PsychUICheckBox
 		box.animation.add('false', [0]);
 		box.animation.add('true', [1]);
 		box.animation.play('false');
+		box.color = HaxeUITheme.PURPLE;
 	}
 }

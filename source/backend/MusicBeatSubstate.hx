@@ -6,12 +6,16 @@ import shaders.ErrorHandledShader;
 import psychlua.GlobalScriptHandler;
 #end
 
+using StringTools;
+
 /**
  * MusicBeatSubstate is the base for most states and sub-states in the game.
  * It automatically handles rhythm events (step/beat/measure hits) and some scripting features.
 */
 class MusicBeatSubstate extends flixel.FlxSubState {
+	static var editorFpsHideDepth:Int = 0;
 	var stepsToDo:Int = 0;
+	var _hidingFpsForEditor:Bool = false;
 	
 	/**
 	 * The current measure in the music.
@@ -73,12 +77,46 @@ class MusicBeatSubstate extends flixel.FlxSubState {
 	public override function create() {
 		parent = _parentState;
 		subStateClosed.add((_) -> updatePresence());
-		
+
 		if (!_pre) preCreate();
 		super.create();
+
+		verFPSsla(true);
 		
 		updatePresence();
 		postCreate();
+	}
+
+	override function destroy():Void
+	{
+		verFPSsla(false);
+		super.destroy();
+	}
+
+	function verFPSsla(created:Bool):Void
+	{
+		#if !mobile
+		var stateClass = Type.getClass(this);
+		var className:String = stateClass == null ? '' : Type.getClassName(stateClass);
+		var isEditor:Bool = className != null && className.startsWith('states.editors.');
+
+		if(created)
+		{
+			if(isEditor && !_hidingFpsForEditor)
+			{
+				_hidingFpsForEditor = true;
+				editorFpsHideDepth++;
+			}
+		}
+		else if(_hidingFpsForEditor)
+		{
+			_hidingFpsForEditor = false;
+			editorFpsHideDepth = Std.int(Math.max(0, editorFpsHideDepth - 1));
+		}
+
+		if(Main.fpsVar != null)
+			Main.fpsVar.visible = editorFpsHideDepth <= 0 && ClientPrefs.data.showFPS;
+		#end
 	}
 	/**
 	 * Called in a state before finishing creation.

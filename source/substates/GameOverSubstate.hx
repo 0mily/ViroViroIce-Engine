@@ -79,7 +79,7 @@ class GameOverSubstate extends ScriptedSubState
 
 		camFollow = new FlxObject(0, 0, 1, 1);
 		camFollow.setPosition(boyfriend.getGraphicMidpoint().x + boyfriend.cameraPosition[0], boyfriend.getGraphicMidpoint().y + boyfriend.cameraPosition[1]);
-		FlxG.camera.focusOn(new FlxPoint(FlxG.camera.scroll.x + (FlxG.camera.width / 2), FlxG.camera.scroll.y + (FlxG.camera.height / 2)));
+		backend.CameraResizeFix.focarEm(FlxG.camera, new FlxPoint(backend.CameraResizeFix.desgracaX(FlxG.camera), backend.CameraResizeFix.desgracaY(FlxG.camera)));
 		FlxG.camera.follow(camFollow, LOCKON, 0.01);
 		add(camFollow);
 		

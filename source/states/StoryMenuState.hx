@@ -16,11 +16,15 @@ import substates.StickerSubState;
 
 import backend.StageData;
 
+using StringTools;
+
 class StoryMenuState extends ScriptedState
 {
 	public static var weekCompleted:Map<String, Bool> = new Map<String, Bool>();
+	public static var levelPreviewOverrides:Map<String, Array<String>> = new Map<String, Array<String>>();
 
 	var scoreText:FlxText;
+	var weekScoreTextFormat:String = null;
 
 	private static var lastDifficultyName:String = '';
 	var curDifficulty:Int = 1;
@@ -46,16 +50,61 @@ class StoryMenuState extends ScriptedState
 
 	var loadedWeeks:Array<WeekData> = [];
 
+	function setStoryValue(variable:String, value:Dynamic):Void
+	{
+		variables.set(variable, value);
+		setOnScripts(variable, value);
+	}
+
+	function setStoryObject(variable:String, value:Dynamic):Void
+	{
+		variables.set(variable, value);
+		setOnLuas(variable, variable);
+		setOnHScript(variable, value);
+	}
+
+	function getSelectedWeekName():String
+	{
+		return (loadedWeeks != null && loadedWeeks.length > 0 && curWeek >= 0 && curWeek < loadedWeeks.length) ? loadedWeeks[curWeek].fileName : null;
+	}
+
+	function getSelectedWeekGlobalIndex():Int
+	{
+		var weekName:String = getSelectedWeekName();
+		var globalIndex:Int = weekName != null ? WeekData.weeksList.indexOf(weekName) : -1;
+		return globalIndex >= 0 ? globalIndex : curWeek;
+	}
+
 	function refreshShitScript():Void {
-		var weekName:String = (loadedWeeks != null && loadedWeeks.length > 0 && curWeek >= 0 && curWeek < loadedWeeks.length) ? loadedWeeks[curWeek].fileName : null;
-		setOnScripts('curWeek', curWeek);
-		setOnScripts('curDifficulty', curDifficulty);
-		setOnScripts('selectedWeek', weekName);
-		setOnScripts('loadedWeeks', [for (week in loadedWeeks) week.fileName]);
-		setOnScripts('weekTextGroup', 'grpWeekText');
-		setOnScripts('weekCharactersGroup', 'grpWeekCharacters');
-		setOnScripts('bgYellow', 'bgYellow');
-		setOnScripts('bgSprite', 'bgSprite');
+		var weekName:String = getSelectedWeekName();
+		var globalIndex:Int = getSelectedWeekGlobalIndex();
+		setStoryValue('curWeek', curWeek);
+		setStoryValue('curStoryWeek', curWeek);
+		setStoryValue('storyWeek', globalIndex);
+		setStoryValue('curDifficulty', curDifficulty);
+		setStoryValue('selectedWeek', weekName);
+		setStoryValue('loadedWeeks', [for (week in loadedWeeks) week.fileName]);
+		setStoryValue('levelPreviewOverrides', levelPreviewOverrides);
+		setStoryValue('weekScoreTextFormat', weekScoreTextFormat);
+
+		setStoryObject('scoreText', scoreText);
+		setStoryObject('weekScoreText', scoreText);
+		setStoryObject('txtWeekTitle', txtWeekTitle);
+		setStoryObject('weekTitle', txtWeekTitle);
+		setStoryObject('txtTracklist', txtTracklist);
+		setStoryObject('tracklistText', txtTracklist);
+		setStoryObject('blackBar', blackBar);
+		setStoryObject('bgYellow', bgYellow);
+		setStoryObject('bgSprite', bgSprite);
+		setStoryObject('grpWeekText', grpWeekText);
+		setStoryObject('weekTextGroup', grpWeekText);
+		setStoryObject('grpWeekCharacters', grpWeekCharacters);
+		setStoryObject('weekCharactersGroup', grpWeekCharacters);
+		setStoryObject('grpLocks', grpLocks);
+		setStoryObject('difficultySelectors', difficultySelectors);
+		setStoryObject('sprDifficulty', sprDifficulty);
+		setStoryObject('leftArrow', leftArrow);
+		setStoryObject('rightArrow', rightArrow);
 	}
 
 	var stickerSubState:StickerSubState;
@@ -99,10 +148,8 @@ class StoryMenuState extends ScriptedState
 
 		if (curWeek >= WeekData.weeksList.length)
 			curWeek = WeekData.weeksList.length - 1;
-		
-		preCreate();
 
-		scoreText = new FlxText(10, 10, 0, Language.getPhrase('week_score', 'WEEK SCORE: {1}', [Std.string(lerpScore)]), 36);
+		scoreText = new FlxText(10, 10, 0, formatWeekScore(lerpScore), 36);
 		scoreText.setFormat(Paths.font("vcr.ttf"), 32);
 
 		txtWeekTitle = new FlxText(FlxG.width * 0.7, 10, 0, "", 32);
@@ -152,12 +199,22 @@ class StoryMenuState extends ScriptedState
 					lock.frames = ui_tex;
 					lock.animation.addByPrefix('lock', 'lock');
 					lock.animation.play('lock');
-					lock.ID = i;
+					lock.ID = num;
 					grpLocks.add(lock);
 				}
 				num++;
 			}
 		}
+
+		if (loadedWeeks.length < 1) {
+			FlxTransitionableState.skipNextTransIn = true;
+			persistentUpdate = false;
+			MusicBeatState.switchState(new states.ErrorState("NO VISIBLE WEEKS AVAILABLE FOR STORY MODE\n\nPress ACCEPT to go to the Week Editor Menu.\nPress BACK to return to Main Menu.",
+				function() MusicBeatState.switchState(new states.editors.WeekEditorState()),
+				function() MusicBeatState.switchState(new states.MainMenuState())));
+			return;
+		}
+		curWeek = Std.int(FlxMath.bound(curWeek, 0, loadedWeeks.length - 1));
 
 		WeekData.setDirectoryFromWeek(loadedWeeks[0]);
 		var charArray:Array<String> = loadedWeeks[0].weekCharacters;
@@ -213,8 +270,12 @@ class StoryMenuState extends ScriptedState
 		add(scoreText);
 		add(txtWeekTitle);
 
+		refreshShitScript();
+		preCreate();
+		refreshShitScript();
 		changeWeek();
 		changeDifficulty();
+		refreshShitScript();
 
 		super.create();
 		refreshShitScript();
@@ -246,7 +307,7 @@ class StoryMenuState extends ScriptedState
 			lerpScore = Math.floor(FlxMath.lerp(intendedScore, lerpScore, Math.exp(-elapsed * 30)));
 			if(Math.abs(intendedScore - lerpScore) < 10) lerpScore = intendedScore;
 	
-			scoreText.text = Language.getPhrase('week_score', 'WEEK SCORE: {1}', [Std.string(lerpScore)]);
+			scoreText.text = formatWeekScore(lerpScore);
 		}
 		
 		// FlxG.watch.addQuick('font', scoreText.font);
@@ -298,7 +359,7 @@ class StoryMenuState extends ScriptedState
 				openSubState(new GameplayChangersSubState());
 			} else if(controls.RESET) {
 				persistentUpdate = false;
-				openSubState(new ResetScoreSubState('', curDifficulty, '', curWeek));
+				openSubState(new ResetScoreSubState('', curDifficulty, '', getSelectedWeekGlobalIndex()));
 				//FlxG.sound.play(Paths.sound('scrollMenu'));
 			}
 			else if (controls.ACCEPT)
@@ -320,7 +381,11 @@ class StoryMenuState extends ScriptedState
 			item.y = FlxMath.lerp(item.targetY - offY + 480, item.y, Math.exp(-elapsed * 10.2));
 
 		for (num => lock in grpLocks.members)
-			lock.y = grpWeekText.members[lock.ID].y + grpWeekText.members[lock.ID].height/2 - lock.height/2;
+		{
+			var item = grpWeekText.members[lock.ID];
+			if(item != null)
+				lock.y = item.y + item.height/2 - lock.height/2;
+		}
 		
 		postUpdate(elapsed);
 	}
@@ -329,8 +394,11 @@ class StoryMenuState extends ScriptedState
 	var selectedWeek:Bool = false;
 
 	function selectWeek() {
-		var blockedFNF:Bool = (callOnScripts('onSelected', [loadedWeeks[curWeek].fileName, curWeek], true) == psychlua.LuaUtils.Function_Stop);
-		blockedFNF = (blockedFNF || callOnScripts('onAccept', [loadedWeeks[curWeek], curWeek], true) == psychlua.LuaUtils.Function_Stop);
+		if(loadedWeeks.length < 1) return;
+
+		var globalIndex:Int = getSelectedWeekGlobalIndex();
+		var blockedFNF:Bool = (callOnScripts('onSelected', [loadedWeeks[curWeek].fileName, curWeek, globalIndex], true) == psychlua.LuaUtils.Function_Stop);
+		blockedFNF = (blockedFNF || callOnScripts('onAccept', [loadedWeeks[curWeek], curWeek, globalIndex], true) == psychlua.LuaUtils.Function_Stop);
 		if (!blockedFNF) {
 			if (!weekIsLocked(loadedWeeks[curWeek].fileName)) {
 				if (loadWeek(loadedWeeks[curWeek], curDifficulty)) {
@@ -351,16 +419,27 @@ class StoryMenuState extends ScriptedState
 	}
 	
 	static function prepareWeek(week:WeekData, difficultyIdx:Int = -1) {
+		if(week == null)
+			throw 'No week data available to load.';
+
+		WeekData.setDirectoryFromWeek(week);
+		Difficulty.loadFromWeek(week);
+		if(Difficulty.list.length < 1)
+			Difficulty.resetList();
+
 		if (difficultyIdx == -1)
 			difficultyIdx = PlayState.storyDifficulty;
-		
-		var diffName:String = Difficulty.getFilePath(difficultyIdx) ?? '';
+		difficultyIdx = Std.int(FlxMath.bound(difficultyIdx, 0, Difficulty.list.length - 1));
 		
 		PlayState.storyWeekData = week;
 		PlayState.storyDifficulty = difficultyIdx;
 		PlayState.storyPlaylist = [for (song in week.songs) song[0]];
+		var globalIndex:Int = WeekData.weeksList.indexOf(week.fileName);
+		if(globalIndex >= 0)
+			PlayState.storyWeek = globalIndex;
 		
-		Song.loadFromJson(PlayState.storyPlaylist[0].toLowerCase() + diffName, PlayState.storyPlaylist[0].toLowerCase());
+		var firstSong:String = Paths.formatToSongPath(PlayState.storyPlaylist[0]);
+		Song.loadFromJson(Highscore.formatSong(firstSong, difficultyIdx), firstSong);
 		PlayState.isStoryMode = true;
 		PlayState.campaignMisses = 0;
 		PlayState.campaignScore = 0;
@@ -472,10 +551,14 @@ class StoryMenuState extends ScriptedState
 	var intendedScore:Int = 0;
 
 	function changeWeek(change:Int = 0):Void {
+		if(loadedWeeks.length < 1) return;
+
 		var next:Int = FlxMath.wrap(curWeek + change, 0, loadedWeeks.length - 1);
 		
-		var blockedFNF:Bool = (callOnScripts('onHighlighted', [loadedWeeks[next].fileName, next], true) == psychlua.LuaUtils.Function_Stop);
-		blockedFNF = (blockedFNF || callOnScripts('onSelectItem', [loadedWeeks[next], next], true) == psychlua.LuaUtils.Function_Stop);
+		var nextWeekName:String = loadedWeeks[next].fileName;
+		var nextGlobalIndex:Int = WeekData.weeksList.indexOf(nextWeekName);
+		var blockedFNF:Bool = (callOnScripts('onHighlighted', [nextWeekName, next, nextGlobalIndex], true) == psychlua.LuaUtils.Function_Stop);
+		blockedFNF = (blockedFNF || callOnScripts('onSelectItem', [loadedWeeks[next], next, nextGlobalIndex], true) == psychlua.LuaUtils.Function_Stop);
 		if (!blockedFNF) {
 			curWeek = next;
 			
@@ -483,7 +566,7 @@ class StoryMenuState extends ScriptedState
 			WeekData.setDirectoryFromWeek(leWeek);
 
 			var leName:String = Language.getPhrase('storyname_${leWeek.fileName}', leWeek.storyName);
-			txtWeekTitle.text = leName.toUpperCase();
+			txtWeekTitle.text = leName;
 			txtWeekTitle.x = FlxG.width - (txtWeekTitle.width + 10);
 
 			var unlocked:Bool = !weekIsLocked(leWeek.fileName);
@@ -500,7 +583,7 @@ class StoryMenuState extends ScriptedState
 			} else {
 				bgSprite.loadGraphic(Paths.image('menubackgrounds/menu_' + assetName));
 			}
-			PlayState.storyWeek = curWeek;
+			PlayState.storyWeek = getSelectedWeekGlobalIndex();
 
 			Difficulty.loadFromWeek();
 			difficultySelectors.visible = unlocked;
@@ -518,14 +601,100 @@ class StoryMenuState extends ScriptedState
 			updateText();
 			
 			refreshShitScript();
-			callOnScripts('onHighlightedPost', [leWeek.fileName, curWeek]);
-			callOnScripts('onSelectItemPost', [leWeek.fileName, curWeek]);
+			callOnScripts('onHighlightedPost', [leWeek.fileName, curWeek, PlayState.storyWeek]);
+			callOnScripts('onSelectItemPost', [leWeek.fileName, curWeek, PlayState.storyWeek]);
 		}
 	}
 
 	function weekIsLocked(name:String):Bool {
+		if(name == null || name.length < 1) return true;
 		var leWeek:WeekData = WeekData.weeksLoaded.get(name);
+		if(leWeek == null) return true;
 		return (!leWeek.startUnlocked && leWeek.weekBefore.length > 0 && (!weekCompleted.exists(leWeek.weekBefore) || !weekCompleted.get(leWeek.weekBefore)));
+	}
+
+	static function previewSongsFromDynamic(songs:Dynamic):Array<String>
+	{
+		if(songs == null) return null;
+		if(Std.isOfType(songs, Bool))
+			return (songs == true) ? [] : null;
+
+		var list:Array<String> = [];
+		if(Std.isOfType(songs, Array))
+		{
+			for(song in cast(songs, Array<Dynamic>))
+				addPreviewSong(list, song);
+		}
+		else
+		{
+			var raw:String = Std.string(songs).trim();
+			var lower:String = raw.toLowerCase();
+			if(raw.length < 1 || lower == 'false' || lower == 'null')
+				return null;
+			if(lower == 'true')
+				return [];
+
+			for(song in raw.split(','))
+				addPreviewSong(list, song);
+		}
+		return list;
+	}
+
+	static function addPreviewSong(list:Array<String>, value:Dynamic):Void
+	{
+		if(value == null) return;
+		var song:String = Std.string(value).trim();
+		if(song.length > 0)
+			list.push(song);
+	}
+
+	function setLevelPreviewInternal(weekName:String, songs:Dynamic):Bool
+	{
+		if(weekName == null || weekName.trim().length < 1)
+			weekName = getSelectedWeekName();
+		if(weekName == null || weekName.length < 1)
+			return false;
+
+		var parsed:Array<String> = previewSongsFromDynamic(songs);
+		if(parsed == null)
+			levelPreviewOverrides.remove(weekName);
+		else
+			levelPreviewOverrides.set(weekName, parsed);
+
+		if(getSelectedWeekName() == weekName)
+			updateText();
+		refreshShitScript();
+		return true;
+	}
+
+	function setWeekScoreTextFormat(format:String):Bool
+	{
+		weekScoreTextFormat = (format == null || format.trim().length < 1) ? null : format;
+		if(scoreText != null)
+			scoreText.text = formatWeekScore(lerpScore);
+		refreshShitScript();
+		return true;
+	}
+
+	function formatWeekScore(score:Int):String
+	{
+		var scoreString:String = Std.string(score);
+		if(weekScoreTextFormat != null && weekScoreTextFormat.length > 0)
+			return weekScoreTextFormat.replace('{score}', scoreString).replace('{1}', scoreString);
+		return Language.getPhrase('week_score', 'WEEK SCORE: {1}', [scoreString]);
+	}
+
+	function getLevelPreviewSongs(week:WeekData):Array<String>
+	{
+		if(week == null) return [];
+		if(levelPreviewOverrides.exists(week.fileName))
+			return levelPreviewOverrides.get(week.fileName).copy();
+
+		var songs:Array<String> = [];
+		for(song in week.songs)
+			if(song != null && song.length > 0)
+				songs.push(Std.string(song[0]));
+		return songs;
 	}
 
 	function updateText()
@@ -536,18 +705,13 @@ class StoryMenuState extends ScriptedState
 		}
 
 		var leWeek:WeekData = loadedWeeks[curWeek];
-		var stringThing:Array<String> = [];
-		for (i in 0...leWeek.songs.length) {
-			stringThing.push(leWeek.songs[i][0]);
-		}
+		var stringThing:Array<String> = getLevelPreviewSongs(leWeek);
 
 		txtTracklist.text = '';
 		for (i in 0...stringThing.length)
 		{
 			txtTracklist.text += stringThing[i] + '\n';
 		}
-
-		txtTracklist.text = txtTracklist.text.toUpperCase();
 
 		txtTracklist.screenCenter(X);
 		txtTracklist.x -= FlxG.width * 0.35;
@@ -578,6 +742,27 @@ class StoryMenuState extends ScriptedState
 		});
 		lua.addLocalCallback('hasBeatenWeek', function(name:String) {
 			return weekCompleted.exists(name) && weekCompleted.get(name);
+		});
+		lua.addLocalCallback('setLevelPreview', function(?weekName:String, ?songs:Dynamic) {
+			return setLevelPreviewInternal(weekName, songs);
+		});
+		lua.addLocalCallback('setWeekPreview', function(?weekName:String, ?songs:Dynamic) {
+			return setLevelPreviewInternal(weekName, songs);
+		});
+		lua.addLocalCallback('resetLevelPreview', function(?weekName:String) {
+			return setLevelPreviewInternal(weekName, null);
+		});
+		lua.addLocalCallback('getLevelPreview', function(?weekName:String) {
+			if(weekName == null || weekName.trim().length < 1)
+				weekName = getSelectedWeekName();
+			var week:WeekData = WeekData.weeksLoaded.get(weekName);
+			return getLevelPreviewSongs(week);
+		});
+		lua.addLocalCallback('setWeekScoreText', function(?format:String) {
+			return setWeekScoreTextFormat(format);
+		});
+		lua.addLocalCallback('setStoryScoreText', function(?format:String) {
+			return setWeekScoreTextFormat(format);
 		});
 	}
 	#end

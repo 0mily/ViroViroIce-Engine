@@ -100,7 +100,15 @@ local function getOtherSideStrumID(strumID)
     return (strumID > 3) and (strumID - 4) or (strumID + 4)
 end
 
-local function buildLaneState(strumID)
+local laneStateCache = {}
+local linePivotCache = {}
+
+function _milyMCClearMathCache()
+    laneStateCache = {}
+    linePivotCache = {}
+end
+
+local function createLaneState(strumID)
     local isPlayer = (strumID > 3)
     local col = strumID % 4
     local def = defaultStrums[strumID]
@@ -139,6 +147,17 @@ local function buildLaneState(strumID)
     return state
 end
 
+local function buildLaneState(strumID)
+    local cached = laneStateCache[strumID]
+    if cached ~= nil then
+        return cached
+    end
+
+    local state = createLaneState(strumID)
+    laneStateCache[strumID] = state
+    return state
+end
+
 local function blendLaneStates(fromState, toState, ratio)
     return {
         strumID = fromState.strumID,
@@ -156,6 +175,11 @@ local function blendLaneStates(fromState, toState, ratio)
 end
 
 local function getCurrentLinePivot(strumID)
+    local cached = linePivotCache[strumID]
+    if cached ~= nil then
+        return cached.x, cached.y
+    end
+
     local isPlayer = (strumID > 3)
     local base = isPlayer and 4 or 0
     local swapBlend = getOppSwapBlend(isPlayer, strumID)
@@ -183,6 +207,7 @@ local function getCurrentLinePivot(strumID)
         pivotY = lerp(pivotY, otherSumY / 4, swapBlend)
     end
 
+    linePivotCache[strumID] = {x = pivotX, y = pivotY}
     return pivotX, pivotY
 end
 

@@ -21,33 +21,36 @@ class PsychUIBox extends FlxSpriteGroup
 	public var bg:FlxSprite;
 
 	public var selectedStyle:UIStyleData = {
-		bgColor: FlxColor.WHITE,
-		textColor: FlxColor.BLACK,
+		bgColor: HaxeUITheme.PURPLE_DARK,
+		textColor: FlxColor.WHITE,
 		bgAlpha: 1
 	};
 	public var hoverStyle:UIStyleData = {
-		bgColor: FlxColor.WHITE,
-		textColor: FlxColor.BLACK,
-		bgAlpha: 0.6
+		bgColor: HaxeUITheme.PANEL_LIGHT,
+		textColor: FlxColor.WHITE,
+		bgAlpha: 1
 	};
 	public var unselectedStyle:UIStyleData = {
-		bgColor: FlxColor.BLACK,
-		textColor: FlxColor.WHITE,
-		bgAlpha: 0.6
+		bgColor: HaxeUITheme.PANEL,
+		textColor: HaxeUITheme.TEXT_MUTED,
+		bgAlpha: 1
 	};
 
 	public var canMove:Bool = true;
 	public var canMinimize(default, set):Bool = true;
 	public var isMinimized(default, set):Bool = false;
 	public var minimizeOnFocusLost:Bool = false;
+	public var fitSelectedTabContent:Bool = false;
+	public var minFitHeight:Int = 0;
+	public var maxFitHeight:Int = 0;
 
 	public function new(x:Float, y:Float, width:Int, height:Int, tabs:Array<String> = null)
 	{
 		super(x, y);
 		
 		bg = new FlxSprite().makeGraphic(1, 1, FlxColor.WHITE);
-		bg.color = FlxColor.BLACK;
-		bg.alpha = 0.6;
+		bg.color = HaxeUITheme.BG;
+		bg.alpha = 0.94;
 		add(bg);
 
 		if(tabs != null)
@@ -74,6 +77,7 @@ class PsychUIBox extends FlxSpriteGroup
 
 	public var forceCheckNext:Bool = false;
 	public var broadcastBoxEvents:Bool = true;
+	var _boxWidth:Int = 1;
 	override function update(elapsed:Float)
 	{
 		super.update(elapsed);
@@ -112,9 +116,7 @@ class PsychUIBox extends FlxSpriteGroup
 			{
 				if(FlxG.mouse.overlaps(tab, camera))
 				{
-					tab.color = hoverStyle.bgColor;
-					tab.alpha = hoverStyle.bgAlpha;
-					tab.text.color = hoverStyle.textColor;
+					tab.applyStyle(hoverStyle);
 	
 					if(FlxG.mouse.justPressed)
 						_pressedBox = true;
@@ -151,9 +153,7 @@ class PsychUIBox extends FlxSpriteGroup
 				}
 				
 				var style:UIStyleData = (selectedTab == tab) ? selectedStyle : unselectedStyle;
-				tab.color = style.bgColor;
-				tab.alpha = style.bgAlpha;
-				tab.text.color = style.textColor;
+				tab.applyStyle(style);
 			}
 		}
 
@@ -163,7 +163,11 @@ class PsychUIBox extends FlxSpriteGroup
 				PsychUIEventHandler.event(MINIMIZE_EVENT, this);
 		}
 		else if(selectedTab != null && !isMinimized)
+		{
 			selectedTab.updateMenu(this, elapsed);
+			if(fitSelectedTabContent)
+				fitToSelectedTabContent();
+		}
 
 		if(minimizeOnFocusLost && FlxG.mouse.justPressed && !isMinimized && !FlxG.mouse.overlaps(bg, camera))
 		{
@@ -226,10 +230,39 @@ class PsychUIBox extends FlxSpriteGroup
 	var _originalHeight:Int = 0;
 	public function resize(width:Int, height:Int)
 	{
+		_boxWidth = width;
 		_originalHeight = height;
-		bg.setGraphicSize(width, height);
-		bg.updateHitbox();
+		drawBackground(height);
 		updateTabs();
+	}
+
+	function drawBackground(height:Int)
+	{
+		HaxeUITheme.drawRoundedBox(bg, _boxWidth, height, HaxeUITheme.BG, 0.94);
+	}
+
+	public function fitToSelectedTabContent():Void
+	{
+		if(selectedTab == null || selectedTab.menu == null)
+			return;
+
+		var contentBottom:Float = 0;
+		for(member in selectedTab.menu.members)
+		{
+			if(member == null || !member.exists || !member.visible)
+				continue;
+
+			var localY:Float = member.y;
+			if(localY >= selectedTab.menu.y - 1)
+				localY -= selectedTab.menu.y;
+			contentBottom = Math.max(contentBottom, localY + member.height);
+		}
+
+		var minHeight:Int = minFitHeight > 0 ? minFitHeight : tabHeight + 45;
+		var maxHeight:Int = maxFitHeight > 0 ? maxFitHeight : _originalHeight;
+		var targetHeight:Int = Std.int(FlxMath.bound(Math.ceil(tabHeight + contentBottom + 18), minHeight, maxHeight));
+		if(Std.int(bg.height) != targetHeight)
+			drawBackground(targetHeight);
 	}
 
 	private function set_selectedTab(v:PsychUITab)
@@ -244,7 +277,8 @@ class PsychUIBox extends FlxSpriteGroup
 			@:bypassAccessor selectedName = null;
 			@:bypassAccessor selectedIndex = -1;
 		}
-		return (selectedTab = v);
+		selectedTab = v;
+		return selectedTab;
 	}
 
 	private function set_selectedName(v:String)
@@ -289,13 +323,11 @@ class PsychUIBox extends FlxSpriteGroup
 	{
 		if(!v)
 		{
-			bg.scale.y = _originalHeight;
-			bg.updateHitbox();
+			drawBackground(_originalHeight);
 		}
 		else
 		{
-			bg.scale.y = tabHeight + 20;
-			bg.updateHitbox();
+			drawBackground(tabHeight + 20);
 			selectedTab = null;
 		}
 		return (isMinimized = v);

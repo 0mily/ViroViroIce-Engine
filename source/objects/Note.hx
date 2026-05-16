@@ -16,7 +16,8 @@ typedef EventNote = {
 	strumTime:Float,
 	event:String,
 	value1:String,
-	value2:String
+	value2:String,
+	?values:Array<String>
 }
 
 typedef NoteSplashData = {
@@ -328,6 +329,8 @@ class Note extends FlxSprite
 	}
 
 	var _lastNoteOffX:Float = 0;
+	var _lastSustainScaleY:Float = Math.NaN;
+	var _lastSustainFrameHeight:Int = -1;
 	
 	public function reloadNote(texture:String = '', postfix:String = '') {
 		var skin:String = texture + postfix;
@@ -491,8 +494,14 @@ class Note extends FlxSprite
 	}
 	public function updateSustain(myStrum:StrumNote, noteSpeed:Float = 1) {
 		if (!isSustainEnd) {
-			scale.y = Note.getDistance(sustainLength, noteSpeed) / frameHeight;
-			updateHitbox();
+			var sustainScaleY:Float = Note.getDistance(sustainLength, noteSpeed) / frameHeight; // PROVAVELMENTE otimiza principalmente no mily mc 
+			scale.y = sustainScaleY;
+
+			if (_lastSustainScaleY != sustainScaleY || _lastSustainFrameHeight != frameHeight) {
+				_lastSustainScaleY = sustainScaleY;
+				_lastSustainFrameHeight = frameHeight;
+				updateHitbox();
+			}
 		}
 		origin.set(frameWidth * .5, 0);
 		offset.set();

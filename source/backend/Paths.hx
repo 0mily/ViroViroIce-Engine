@@ -17,6 +17,7 @@ import lime.utils.Assets;
 import flash.media.Sound;
 
 import haxe.Json;
+import haxe.io.Path as HaxePath;
 
 
 #if MODS_ALLOWED
@@ -486,6 +487,13 @@ class Paths
 				return fileToCheck;
 		}
 
+		for(packageFolder in Mods.getPackageSearchDirectories(key, false, true))
+		{
+			var fileToCheck:String = mods(packageFolder + '/' + key);
+			if(FileSystem.exists(fileToCheck))
+				return fileToCheck;
+		}
+
 		for(mod in Mods.getGlobalMods())
 		{
 			var fileToCheck:String = mods(mod + '/' + key);
@@ -516,6 +524,17 @@ class Paths
 			var originalPath:String = Std.string(folderOrImg).trim();
 			while(originalPath.length > 0 && (originalPath.endsWith('/') || originalPath.endsWith('\\')))
 				originalPath = originalPath.substr(0, originalPath.length - 1);
+
+			if(spriteJson == null)
+			{
+				var folderPath:String = getAnimateAtlasFolderPath(originalPath);
+				if(folderPath != null)
+				{
+					spr.loadAtlasFolder(folderPath);
+					return;
+				}
+			}
+
 			animationJson = getAnimateAtlasText(animationJson);
 			if(animationJson == null)
 				animationJson = getTextFromFile('images/$originalPath/Animation.json');
@@ -543,6 +562,16 @@ class Paths
 		}
 
 		spr.loadAtlasEx(folderOrImg, spriteJson, animationJson);
+	}
+
+	static function getAnimateAtlasFolderPath(imageKey:String):String
+	{
+		var animationFile:String = getPath('images/$imageKey/Animation.json', TEXT, null, true);
+		#if sys
+		if(FileSystem.exists(animationFile)) return HaxePath.directory(animationFile);
+		#end
+
+		return OpenFlAssets.exists(animationFile, TEXT) ? HaxePath.directory(animationFile) : null;
 	}
 
 	static function getAnimateAtlasText(data:Dynamic):Dynamic

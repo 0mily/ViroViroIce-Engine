@@ -1,110 +1,122 @@
 {
 	"animations": [
 		{
+			"offsets_player": [299, -190],
+			"loop": false,
 			"offsets": [299, -198],
-			"loop": false,
-			"fps": 24,
 			"anim": "singLEFTmiss",
-			"indices": [],
-			"name": "BF NOTE LEFT MISS"
-		},
-		{
-			"offsets": [-8, -41],
-			"loop": false,
 			"fps": 24,
-			"anim": "singDOWNmiss",
-			"indices": [],
-			"name": "BF NOTE DOWN MISS"
-		},
-		{
-			"offsets": [-8, 64],
-			"loop": false,
-			"fps": 24,
-			"anim": "singUPmiss",
-			"indices": [],
-			"name": "BF NOTE UP MISS"
-		},
-		{
-			"offsets": [300, -203],
-			"loop": false,
-			"fps": 24,
-			"anim": "singRIGHTmiss",
-			"indices": [],
-			"name": "BF NOTE RIGHT MISS"
-		},
-		{
-			"offsets": [298, -201],
-			"loop": false,
-			"fps": 24,
-			"anim": "hey",
-			"indices": [],
-			"name": "BF HEY"
-		},
-		{
-			"offsets": [292, -200],
-			"loop": true,
-			"fps": 24,
-			"anim": "scared",
-			"indices": [],
-			"name": "BF idle shaking"
-		},
-		{
-			"loop": false,
-			"offsets": [290, -200],
-			"anim": "singLEFT",
-			"fps": 24,
-			"name": "BF NOTE LEFT",
-			"indices": [0, 1, 2, 3, 4]
-		},
-		{
-			"loop": false,
-			"offsets": [-13, -38],
-			"anim": "singDOWN",
-			"fps": 24,
-			"name": "BF NOTE DOWN",
-			"indices": [0, 1, 2, 3, 4]
-		},
-		{
-			"loop": false,
-			"offsets": [-9, 65],
-			"anim": "singUP",
-			"fps": 24,
-			"name": "BF NOTE UP",
-			"indices": [0, 1, 2, 3, 4]
-		},
-		{
-			"loop": false,
-			"offsets": [296, -200],
-			"anim": "idle",
-			"fps": 24,
-			"name": "BF idle dance",
+			"name": "BF NOTE LEFT MISS",
 			"indices": []
 		},
 		{
+			"offsets_player": [281, -228],
 			"loop": false,
-			"offsets": [293, -201],
-			"anim": "singRIGHT",
+			"offsets": [-8, -41],
+			"anim": "singDOWNmiss",
 			"fps": 24,
-			"name": "BF NOTE RIGHT",
-			"indices": [0, 1, 2, 3, 4]
+			"name": "BF NOTE DOWN MISS",
+			"indices": []
 		},
 		{
-			"offsets": [484, -112],
-			"indices": [0, 1, 2, 3, 4, 5, 6, 7, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8],
-			"fps": 24,
-			"anim": "cheer",
+			"offsets_player": [283, -139],
 			"loop": false,
-			"name": "Boyfriend YEAH cheer"
+			"offsets": [-8, 64],
+			"anim": "singUPmiss",
+			"fps": 24,
+			"name": "BF NOTE UP MISS",
+			"indices": []
+		},
+		{
+			"offsets_player": [257, -190],
+			"loop": false,
+			"offsets": [300, -203],
+			"anim": "singRIGHTmiss",
+			"fps": 24,
+			"name": "BF NOTE RIGHT MISS",
+			"indices": []
+		},
+		{
+			"offsets_player": [295, -192],
+			"loop": false,
+			"offsets": [298, -201],
+			"anim": "hey",
+			"fps": 24,
+			"name": "BF HEY",
+			"indices": []
+		},
+		{
+			"offsets_player": [285, -207],
+			"loop": true,
+			"offsets": [292, -200],
+			"anim": "scared",
+			"fps": 24,
+			"name": "BF idle shaking",
+			"indices": []
+		},
+		{
+			"offsets_player": [300, -201],
+			"offsets": [290, -200],
+			"loop": false,
+			"fps": 24,
+			"anim": "singLEFT",
+			"indices": [0, 1, 2, 3, 4],
+			"name": "BF NOTE LEFT"
+		},
+		{
+			"offsets_player": [283, -247],
+			"offsets": [-13, -38],
+			"loop": false,
+			"fps": 24,
+			"anim": "singDOWN",
+			"indices": [0, 1, 2, 3, 4],
+			"name": "BF NOTE DOWN"
+		},
+		{
+			"offsets_player": [288, -142],
+			"offsets": [-9, 65],
+			"loop": false,
+			"fps": 24,
+			"anim": "singUP",
+			"indices": [0, 1, 2, 3, 4],
+			"name": "BF NOTE UP"
+		},
+		{
+			"offsets_player": [298, -202],
+			"offsets": [296, -200],
+			"loop": false,
+			"fps": 24,
+			"anim": "idle",
+			"indices": [],
+			"name": "BF idle dance"
+		},
+		{
+			"offsets_player": [252, -193],
+			"offsets": [293, -201],
+			"loop": false,
+			"fps": 24,
+			"anim": "singRIGHT",
+			"indices": [0, 1, 2, 3, 4],
+			"name": "BF NOTE RIGHT"
+		},
+		{
+			"offsets_player": [273, -155],
+			"loop": false,
+			"offsets": [484, -112],
+			"anim": "cheer",
+			"fps": 24,
+			"name": "Boyfriend YEAH cheer",
+			"indices": [0, 1, 2, 3, 4, 5, 6, 7, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8]
 		}
 	],
 	"vocals_file": "",
 	"no_antialiasing": false,
 	"image": "characters/bf",
-	"position": [0, 350],
+	"position": [290, 140],
 	"healthicon": "bf",
 	"flip_x": true,
 	"healthbar_colors": [49, 176, 209],
-	"camera_position": [-210, 240],
+	"camera_position": [140, 420],
 	"sing_duration": 4,
 	"scale": 1,
 	"_editor_isPlayer": true

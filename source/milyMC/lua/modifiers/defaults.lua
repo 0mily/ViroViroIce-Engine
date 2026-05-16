@@ -133,6 +133,19 @@ local function getBeatPulse(beat)
     return amount
 end
 
+local function getBeatWave(strumE, noteDistance)
+    local visualDiff = strumE and 0 or math.abs(noteDistance)
+    return math.sin((visualDiff / 30) + (math.pi * 0.5))
+end
+
+local function getNoteBeatWave(strumE, noteDistance, isPlayer, strumID)
+    local beatWave = getBeatWave(strumE, noteDistance)
+    if not strumE then
+        beatWave = lerp(1, beatWave, getModDef('beatIntensity', isPlayer, 1, strumID))
+    end
+    return beatWave
+end
+
 local function getReceptorScrollY(vDiff)
     refreshScrollAnchors()
 
@@ -146,7 +159,11 @@ local function getReceptorScrollSpeed()
     return math.max(1, (crochet or ((stepCrochet or 125) * 4)) * 3)
 end
 
-local function getNoteSpeed(group, objID)
+local function getNoteSpeed(group, objID, noteInfo)
+    if noteInfo ~= nil and noteInfo[MILYMC_NOTE_SPEED] ~= nil then
+        return tonumber(noteInfo[MILYMC_NOTE_SPEED]) or 1
+    end
+
     local songSpeed = tonumber(getProperty('songSpeed')) or 1
     local multSpeed = tonumber(getPropertyFromGroup(group, objID, 'multSpeed')) or 1
     local playbackRate = tonumber(getProperty('playbackRate')) or 1
@@ -160,9 +177,27 @@ local function getStrumTimeFromDistance(songPos, distance, noteSpeed)
     return songPos + (distance / math.max(0.001, 0.45 * math.abs(noteSpeed)))
 end
 
+local brightnessCache = {}
+
 local function applyNoteBrightness(group, objID, brightness)
     brightness = clamp(brightness or 0, 0, 1)
     local offset = brightness * 255
+    local groupCache = brightnessCache[group]
+
+    if groupCache == nil then
+        groupCache = {}
+        brightnessCache[group] = groupCache
+    end
+
+    if offset <= 0.001 then
+        if groupCache[objID] == 0 then
+            return
+        end
+
+        groupCache[objID] = 0
+    else
+        groupCache[objID] = brightness
+    end
 
     setPropertyFromGroup(group, objID, 'colorTransform.redMultiplier', 1)
     setPropertyFromGroup(group, objID, 'colorTransform.greenMultiplier', 1)
@@ -216,7 +251,7 @@ local function getRotateValue(prefix, axis, isPlayer, strumID, col)
     return getMod(prefix .. axis, isPlayer, strumID) + getMod(prefix .. tostring(col) .. axis, isPlayer, strumID)
 end
 
-local function calculateNoteState(objID, strumE, strumID, songPos, beat, distanceOverride, includeCustom, includeProjection)
+local function calculateNoteState(objID, strumE, strumID, songPos, beat, distanceOverride, includeCustom, includeProjection, noteInfo, beatWaveAnchor)
     local isPlayer = (strumID > 3)
     local col = strumID % 4
     local def = defaultStrums[strumID]
@@ -236,16 +271,16 @@ local function calculateNoteState(objID, strumE, strumID, songPos, beat, distanc
     local curAlpha = 1
     local curZ = laneState.z or 0
     local curBrightness = 0
-    local eLonga = (not strumE) and getPropertyFromGroup('notes', objID, 'isSustainNote')
+    local eLonga = (not strumE) and (noteInfo and noteInfo[MILYMC_NOTE_IS_SUSTAIN] or getPropertyFromGroup('notes', objID, 'isSustainNote'))
     local noteDistance = 0
 
     if not strumE then
-        local offsetX = getPropertyFromGroup('notes', objID, 'offsetX') or 0
-        local offsetY = getPropertyFromGroup('notes', objID, 'offsetY') or 0
+        local offsetX = (noteInfo and noteInfo[MILYMC_NOTE_OFFSET_X]) or getPropertyFromGroup('notes', objID, 'offsetX') or 0
+        local offsetY = (noteInfo and noteInfo[MILYMC_NOTE_OFFSET_Y]) or getPropertyFromGroup('notes', objID, 'offsetY') or 0
         noteDistance = distanceOverride
 
         if noteDistance == nil then
-            noteDistance = getPropertyFromGroup('notes', objID, 'distance')
+            noteDistance = noteInfo and noteInfo[MILYMC_NOTE_DISTANCE] or getPropertyFromGroup('notes', objID, 'distance')
         end
 
         if noteDistance == nil then
@@ -261,7 +296,7 @@ local function calculateNoteState(objID, strumE, strumID, songPos, beat, distanc
         curY = curY + offsetY + (travelDistance * scrollSign)
 
         if receptorScrollVal ~= 0 then
-            local noteSpeed = getNoteSpeed('notes', objID)
+            local noteSpeed = getNoteSpeed('notes', objID, noteInfo)
             local strumTime = getStrumTimeFromDistance(songPos, noteDistance, noteSpeed)
             local targetY = getReceptorScrollY(strumTime / getReceptorScrollSpeed()) + offsetY
             curY = lerp(curY, targetY, receptorScrollVal)
@@ -354,12 +389,18 @@ local function calculateNoteState(objID, strumE, strumID, songPos, beat, distanc
 
     local beatVal = getMod('beat', isPlayer, strumID)
     local beatKickVal = getMod('beatKick', isPlayer, strumID)
-    if beatVal ~= 0 or beatKickVal ~= 0 then
-        local visualDiff = strumE and 0 or math.abs(noteDistance)
-        local beatWave = math.sin((visualDiff / 30) + (math.pi * 0.5))
+    local beatYVal = getMod('beatY', isPlayer, strumID)
+    local beatYKickVal = getMod('beatYKick', isPlayer, strumID)
+    if beatVal ~= 0 or beatKickVal ~= 0 or beatYVal ~= 0 or beatYKickVal ~= 0 then
+        local beatWave = getNoteBeatWave(strumE, noteDistance, isPlayer, strumID)
+        if eLonga and beatWaveAnchor ~= nil then
+            beatWave = lerp(beatWaveAnchor, beatWave, getModDef('beatSusIntensity', isPlayer, 1, strumID))
+        end
         local beatPulse = getBeatPulse(beat)
         local beatShift = (beatVal * beatPulse * 40 * beatWave) + (beatKickVal * 150 * beatWave)
+        local beatYShift = (beatYVal * beatPulse * 40 * beatWave) + (beatYKickVal * 150 * beatWave)
         curX = curX + beatShift
+        curY = curY + beatYShift
     end
 
     local beatZVal = getMod('beatZ', isPlayer, strumID)
@@ -551,23 +592,33 @@ local function calculateNoteState(objID, strumE, strumID, songPos, beat, distanc
     }
 end
 
-function updateNoteMath(objID, strumE, strumID, songPos, beat)
-    local state = calculateNoteState(objID, strumE, strumID, songPos, beat, nil, true, true)
+function updateNoteMath(objID, strumE, strumID, songPos, beat, noteInfo)
+    local state = calculateNoteState(objID, strumE, strumID, songPos, beat, nil, true, true, noteInfo)
     if not state then return end
 
     local group = strumE and 'strumLineNotes' or 'notes'
-    setPropertyFromGroup(group, objID, 'x', state.x)
-    setPropertyFromGroup(group, objID, 'y', state.y)
-    setPropertyFromGroup(group, objID, 'angle', state.angle)
-    setPropertyFromGroup(group, objID, 'scale.x', state.scaleX)
+    if strumE and _milyMCApplyStrumState then
+        _milyMCApplyStrumState(objID, state.x, state.y, state.angle, state.scaleX, state.scaleY, state.alpha, state.brightness or 0)
+        return
+    end
+
     local finalAlpha = state.alpha
     if not strumE and state.isSustainNote then
-        finalAlpha = finalAlpha * (getPropertyFromGroup(group, objID, 'multAlpha') or 0.6)
+        finalAlpha = finalAlpha * ((noteInfo and noteInfo[MILYMC_NOTE_MULT_ALPHA]) or getPropertyFromGroup(group, objID, 'multAlpha') or 0.6)
     end
-    setPropertyFromGroup(group, objID, 'alpha', finalAlpha)
-    applyNoteBrightness(group, objID, state.brightness or 0)
 
     if not state.isSustainNote then
+        if _milyMCApplyNoteState then
+            _milyMCApplyNoteState(objID, strumID, state.x, state.y, state.angle, state.scaleX, state.scaleY, finalAlpha, state.brightness or 0, false, false, state.angle, 1)
+            return
+        end
+
+        setPropertyFromGroup(group, objID, 'x', state.x)
+        setPropertyFromGroup(group, objID, 'y', state.y)
+        setPropertyFromGroup(group, objID, 'angle', state.angle)
+        setPropertyFromGroup(group, objID, 'scale.x', state.scaleX)
+        setPropertyFromGroup(group, objID, 'alpha', finalAlpha)
+        applyNoteBrightness(group, objID, state.brightness or 0)
         setPropertyFromGroup(group, objID, 'scale.y', state.scaleY)
         return
     end
@@ -577,22 +628,43 @@ function updateNoteMath(objID, strumE, strumID, songPos, beat)
     local strumHeight = getPropertyFromGroup('strumLineNotes', strumID, 'height') or 112
     local frameWidth = getPropertyFromGroup(group, objID, 'frameWidth') or getPropertyFromGroup(group, objID, 'width') or strumWidth
     local frameHeight = getPropertyFromGroup(group, objID, 'frameHeight') or getPropertyFromGroup(group, objID, 'height') or 44
-    local sustainLength = getPropertyFromGroup(group, objID, 'sustainLength') or (stepCrochet or 0)
-    local noteSpeed = getNoteSpeed(group, objID)
-    local sustainPixels = math.abs(0.45 * sustainLength * noteSpeed)
+    local sustainPixels = (noteInfo and noteInfo[MILYMC_NOTE_SUSTAIN_PIXELS])
+    if sustainPixels == nil then
+        local sustainLength = getPropertyFromGroup(group, objID, 'sustainLength') or (stepCrochet or 0)
+        local noteSpeed = getNoteSpeed(group, objID, noteInfo)
+        sustainPixels = math.abs(0.45 * sustainLength * noteSpeed)
+    end
     local isPlayer = (strumID > 3)
     local receptorScrollVal = clamp(getMod('receptorScroll', isPlayer, strumID), 0, 1)
     local tangentAngle = state.angle
     local tangentLength = sustainPixels
-    local nextState = calculateNoteState(objID, strumE, strumID, songPos, beat, state.distance + math.max(1, sustainPixels), false, true)
+    local lengthDistance = math.max(1, sustainPixels)
+    local tangentCenterDistance = state.distance + (lengthDistance * 0.5)
+    local tangentSample = math.max(4, math.min(36, sustainPixels * 0.35))
+    local beatWaveAnchor = getNoteBeatWave(false, state.distance, isPlayer, strumID)
+    local nextState = calculateNoteState(objID, strumE, strumID, songPos, beat, state.distance + lengthDistance, false, true, noteInfo, beatWaveAnchor)
+    local tangentNextState = calculateNoteState(objID, strumE, strumID, songPos, beat, tangentCenterDistance + tangentSample, false, true, noteInfo, beatWaveAnchor)
+    local tangentPrevState = calculateNoteState(objID, strumE, strumID, songPos, beat, tangentCenterDistance - tangentSample, false, true, noteInfo, beatWaveAnchor)
+    local chordAngle = tangentAngle
     if nextState then
         local dx = nextState.x - state.x
         local dy = nextState.y - state.y
         local distSq = (dx * dx) + (dy * dy)
 
         if distSq > 0.0001 then
-            tangentAngle = math.deg(atan2(dy, dx)) - 90
             tangentLength = math.sqrt(distSq)
+            chordAngle = math.deg(atan2(dy, dx)) - 90
+            tangentAngle = chordAngle
+        end
+
+        if tangentNextState and tangentPrevState then
+            dx = tangentNextState.x - tangentPrevState.x
+            dy = tangentNextState.y - tangentPrevState.y
+            distSq = (dx * dx) + (dy * dy)
+        end
+
+        if distSq > 0.0001 then
+            tangentAngle = math.deg(atan2(dy, dx)) - 90
         end
     end
 
@@ -603,11 +675,26 @@ function updateNoteMath(objID, strumE, strumID, songPos, beat)
     end
 
     local drawLength = math.max(1, tangentLength + overlap)
+    local angleDelta = math.abs(((tangentAngle - chordAngle + 180) % 360) - 180)
+    if angleDelta > 1 then
+        drawLength = drawLength + (clamp(angleDelta / 60, 0, 1) * 3)
+    end
     local receptorAlpha = drunkPressure > 0 and 0.28 or 0.4
     if receptorScrollVal ~= 0 then
-        setPropertyFromGroup(group, objID, 'alpha', finalAlpha * lerp(1, receptorAlpha, receptorScrollVal))
+        finalAlpha = finalAlpha * lerp(1, receptorAlpha, receptorScrollVal)
     end
 
+    if _milyMCApplyNoteState then
+        _milyMCApplyNoteState(objID, strumID, state.x, state.y, state.angle, state.scaleX, state.scaleY, finalAlpha, state.brightness or 0, true, not isUpscroll, tangentAngle, drawLength)
+        return
+    end
+
+    setPropertyFromGroup(group, objID, 'x', state.x)
+    setPropertyFromGroup(group, objID, 'y', state.y)
+    setPropertyFromGroup(group, objID, 'angle', state.angle)
+    setPropertyFromGroup(group, objID, 'scale.x', state.scaleX)
+    setPropertyFromGroup(group, objID, 'alpha', finalAlpha)
+    applyNoteBrightness(group, objID, state.brightness or 0)
     setPropertyFromGroup(group, objID, 'origin.x', frameWidth * 0.5)
     setPropertyFromGroup(group, objID, 'origin.y', 0)
     setPropertyFromGroup(group, objID, 'offset.x', 0)
@@ -618,7 +705,7 @@ function updateNoteMath(objID, strumE, strumID, songPos, beat)
     setPropertyFromGroup(group, objID, 'x', state.x + ((strumWidth - frameWidth) * 0.5))
     setPropertyFromGroup(group, objID, 'y', state.y + (strumHeight * 0.5))
 
-    local isSustainEnd = getPropertyFromGroup(group, objID, 'isSustainEnd')
+    local isSustainEnd = (noteInfo and noteInfo[MILYMC_NOTE_IS_SUSTAIN_END]) or getPropertyFromGroup(group, objID, 'isSustainEnd')
     if not isSustainEnd and drawLength > 1 and frameHeight > 0 then
         local scaleY = drawLength / math.max(1, frameHeight - 1)
         setPropertyFromGroup(group, objID, 'scale.y', math.max(0.001, scaleY))

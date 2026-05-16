@@ -112,7 +112,7 @@ class PhillyBlazin extends BaseStage
 	
 	override function createPost()
 	{
-		FlxG.camera.focusOn(camFollow.getPosition());
+		backend.CameraResizeFix.focarEm(FlxG.camera, camFollow.getPosition());
 		FlxG.camera.fade(FlxColor.BLACK, 1.5, true, null, true);
 
 		for (character in boyfriendGroup.members)

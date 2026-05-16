@@ -21,7 +21,9 @@ class PsychUICheckBox extends FlxSpriteGroup
 		add(box);
 
 		text = new FlxText(box.width + 4, 0, textWid, label);
-		text.y += box.height/2 - text.height/2;
+		HaxeUITheme.applyText(text);
+		text.color = HaxeUITheme.TEXT;
+		text.y = HaxeUITheme.snap(text.y + box.height/2 - text.height/2);
 		add(text);
 
 		this.onClick = callback;
@@ -33,6 +35,7 @@ class PsychUICheckBox extends FlxSpriteGroup
 		box.animation.add('false', [0]);
 		box.animation.add('true', [1]);
 		box.animation.play('false');
+		box.color = HaxeUITheme.PURPLE;
 	}
 
 	public var broadcastCheckBoxEvent:Bool = true;

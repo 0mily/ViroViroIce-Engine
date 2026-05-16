@@ -222,13 +222,37 @@ class ScriptedSubState extends MusicBeatSubstate {
 
 		for (scriptRoot in getScriptFolders()) {
 			var file:String = '$scriptRoot/$prefix$scriptName$extension';
-			var path:String = Paths.modFolders(file);
-			if(!FileSystem.exists(path))
-				path = Paths.getSharedPath(file);
-			if (FileSystem.exists(path))
+			var path:String = getModOnlyScriptPath(file);
+			if (path != null)
 				return path;
 		}
 		return null;
+	}
+
+	function getModOnlyScriptPath(file:String):String
+	{
+		#if MODS_ALLOWED
+		if (Mods.currentModDirectory != null && Mods.currentModDirectory.length > 0)
+		{
+			var modPath:String = Paths.mods(Mods.currentModDirectory + '/' + file);
+			if (FileSystem.exists(modPath))
+				return modPath;
+		}
+
+		var rootPath:String = Paths.mods(file);
+		if (FileSystem.exists(rootPath))
+			return rootPath;
+
+		for (mod in Mods.getGlobalMods())
+		{
+			var globalPath:String = Paths.mods(mod + '/' + file);
+			if (FileSystem.exists(globalPath))
+				return globalPath;
+		}
+		#end
+
+		var sharedPath:String = Paths.getSharedPath(file);
+		return FileSystem.exists(sharedPath) ? sharedPath : null;
 	}
 	
 	#if SCRIPTS_ALLOWED
@@ -284,10 +308,8 @@ class ScriptedSubState extends MusicBeatSubstate {
 		} else {
 			for (scriptRoot in getScriptFolders()) {
 				var file:String = '$scriptRoot/$prefix${scriptStateName()}.lua';
-				var path:String = Paths.modFolders(file);
-				if(!FileSystem.exists(path))
-					path = Paths.getSharedPath(file);
-				if (FileSystem.exists(path))
+				var path:String = getModOnlyScriptPath(file);
+				if (path != null)
 					loaded = (initLuaScript(path) != null || loaded);
 			}
 		}
@@ -368,10 +390,8 @@ class ScriptedSubState extends MusicBeatSubstate {
 		} else {
 			for (scriptRoot in getScriptFolders()) {
 				var file:String = '$scriptRoot/$prefix${scriptStateName()}.hx';
-				var path:String = Paths.modFolders(file);
-				if(!FileSystem.exists(path))
-					path = Paths.getSharedPath(file);
-				if (FileSystem.exists(path))
+				var path:String = getModOnlyScriptPath(file);
+				if (path != null)
 					loaded = (initHScript(path) != null || loaded);
 			}
 		}

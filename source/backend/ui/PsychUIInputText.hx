@@ -67,6 +67,7 @@ class PsychUIInputText extends FlxSpriteGroup
 		this.behindText = new FlxSprite(1, 1).makeGraphic(1, 1, FlxColor.WHITE);
 		this.selection = new FlxSprite().makeGraphic(1, 1, FlxColor.WHITE);
 		this.textObj = new FlxText(1, 1, Math.max(1, wid - 2), '', size);
+		HaxeUITheme.applyText(this.textObj, size);
 		this.caret = new FlxSprite().makeGraphic(1, 1, FlxColor.WHITE);
 		add(this.bg);
 		add(this.behindText);
@@ -74,11 +75,12 @@ class PsychUIInputText extends FlxSpriteGroup
 		add(this.textObj);
 		add(this.caret);
 
-		this.textObj.color = FlxColor.BLACK;
+		this.textObj.color = HaxeUITheme.INPUT_TEXT;
 		this.textObj.textField.selectable = false;
 		this.textObj.textField.wordWrap = false;
 		this.textObj.textField.multiline = false;
-		this.selection.color = FlxColor.BLUE;
+		this.selection.color = HaxeUITheme.SELECTION;
+		this.caret.color = HaxeUITheme.PURPLE_DARK;
 
 		@:bypassAccessor fieldWidth = wid;
 		setGraphicSize(wid + 2, this.textObj.height + 2);
@@ -571,12 +573,22 @@ class PsychUIInputText extends FlxSpriteGroup
 	override public function setGraphicSize(width:Float = 0, height:Float = 0)
 	{
 		super.setGraphicSize(width, height);
-		bg.setGraphicSize(width, height);
-		behindText.setGraphicSize(width - 2, height - 2);
+		bg.makeGraphic(Std.int(Math.max(1, Math.ceil(width))), Std.int(Math.max(1, Math.ceil(height))), HaxeUITheme.BLACK, true);
+		bg.scale.set(1, 1);
+		bg.color = HaxeUITheme.BLACK;
+		bg.updateHitbox();
+		behindText.makeGraphic(Std.int(Math.max(1, Math.ceil(width - 2))), Std.int(Math.max(1, Math.ceil(height - 2))), HaxeUITheme.INPUT_FILL, true);
+		behindText.scale.set(1, 1);
+		behindText.color = HaxeUITheme.INPUT_FILL;
+		behindText.updateHitbox();
+		bg.visible = behindText.visible = true;
+		bg.alpha = behindText.alpha = 1;
 		if(textObj != null && textObj.exists)
 		{
+			HaxeUITheme.applyText(textObj);
 			textObj.scale.x = 1;
 			textObj.scale.y = 1;
+			textObj.color = HaxeUITheme.INPUT_TEXT;
 			if(caret != null && caret.exists) caret.setGraphicSize(1, textObj.height - 4);
 		}
 	}

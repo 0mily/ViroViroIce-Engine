@@ -22,6 +22,8 @@ typedef MoonchartOpcao =
 	var format:Format;
 	var label:String;
 	var extension:String;
+	@:optional var nightmareVision:Bool;
+	@:optional var sourceOnly:Bool;
 }
 
 typedef MoonchartConversionResult =
@@ -75,6 +77,13 @@ class MoonchartConverters
 				extension: extension
 			});
 		}
+		options.push({
+			format: ENGINE_FORMAT,
+			label: 'Nightmare Vision (.json)',
+			extension: 'json',
+			nightmareVision: true,
+			sourceOnly: true
+		});
 		return options;
 	}
 
@@ -125,6 +134,11 @@ class MoonchartConverters
 		normalizeEngineSave(save);
 
 		return resultFromSave(save, ENGINE_FORMAT);
+	}
+
+	public static function convertNightmareVisionToEngine(chartPath:String, outputFolder:String, difficulty:String):MoonchartConversionResult
+	{
+		return convertFileToEngine(ENGINE_FORMAT, chartPath, null, outputFolder, difficulty);
 	}
 
 	static function loadSourceFormat(sourceFormat:Format, chartPath:String, ?metadataPath:String, difficulty:String):DynamicFormat

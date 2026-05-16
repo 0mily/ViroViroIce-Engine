@@ -239,7 +239,7 @@ class VSlice
 				while(noteSec + 1 < sectionTimes.length && sectionTimes[noteSec + 1] <= note.t)
 					noteSec++;
 
-				var psychNote:Array<Dynamic> = [note.t, note.d, (note.l != null ? note.l : 0)];
+				var psychNote:Array<Dynamic> = [note.t, (note.d + 4) % 8, (note.l != null ? note.l : 0)];
 				if(note.k != null && note.k.length > 0 && note.k != 'normal') psychNote.push(note.k);
 
 				if(sectionData[noteSec] != null)
@@ -345,7 +345,8 @@ class VSlice
 				{
 					for (note in section.sectionNotes)
 					{
-						var vsliceNote:VSliceNote = {t: note[0], d: note[1]};
+						var lane:Int = Std.int(note[1] ?? 0);
+						var vsliceNote:VSliceNote = {t: note[0], d: (lane + 4) % 8};
 						if(note[2] > 0)
 							vsliceNote.l = note[2];
 						if(note[3] != null && note[3].length > 0)
@@ -383,31 +384,32 @@ class VSlice
 		else if(Reflect.hasField(songData, 'composer')) composer = Reflect.field(songData, 'composer');
 		
 		var charter:String = 'Unknown';
-		if(Reflect.hasField(songData, 'charter')) composer = Reflect.field(songData, 'charter');
+		if(Reflect.hasField(songData, 'charter')) charter = Reflect.field(songData, 'charter');
 
 		// Has to add all difficulties or it might crash on V-Slice's Freeplay
-		var diffs:Array<String> = null;
+		var diffs:Array<String> = [];
 		
 		var scrollSpeed:Map<String, Float> = [];
 		var notesMap:Map<String, Array<VSliceNote>> = [];
 		if(difficultyName == null) //Fill all difficulties to attempt to prevent the song from not showing up on Base Game
 		{
-			var diffs:Array<String> = Difficulty.list.copy();
+			diffs = Difficulty.list.copy();
 			for (num => diff in diffs)
 			{
 				diffs[num] = diff = Paths.formatToSongPath(diff);
 				scrollSpeed.set(diff, songData.speed);
-				notesMap.set(diff, notes);
+				notesMap.set(diff, notes.copy());
 			}
 		}
 		else
 		{
-			var diff:String = Difficulty.getString(false);
+			var diff:String = difficultyName;
 			if(diff == null) diff = Difficulty.getDefault();
 			diff = Paths.formatToSongPath(diff);
 			
+			diffs = [diff];
 			scrollSpeed.set(diff, songData.speed);
-			notesMap.set(diff, notes);
+			notesMap.set(diff, notes.copy());
 		}
 
 		// Build package

@@ -658,10 +658,13 @@ class FunkinLua {
 
 			if (!game.bucetaTira.contains(suffix))
 				game.bucetaTira.push(suffix);
+
+			game.refreshSongNameText();
 		});
 
 		registerFunction('clearRemixes', function() {
 			game.bucetaTira = [];
+			game.refreshSongNameText();
 		});
 
 			
@@ -1148,10 +1151,10 @@ class FunkinLua {
 		
 		registerFunction('getSongPosition', () -> Conductor.songPosition);
 
-		registerFunction('setCameraScroll', function(x:Float, y:Float) FlxG.camera.scroll.set(x - FlxG.width/2, y - FlxG.height/2));
+		registerFunction('setCameraScroll', function(x:Float, y:Float) backend.CameraResizeFix.centralizarScroll(FlxG.camera, x, y));
 		registerFunction('addCameraScroll', function(?x:Float = 0, ?y:Float = 0) FlxG.camera.scroll.add(x, y));
-		registerFunction('getCameraScrollX', () -> FlxG.camera.scroll.x + FlxG.width/2);
-		registerFunction('getCameraScrollY', () -> FlxG.camera.scroll.y + FlxG.height/2);
+		registerFunction('desgracaX', () -> backend.CameraResizeFix.desgracaX(FlxG.camera));
+		registerFunction('desgracaY', () -> backend.CameraResizeFix.desgracaY(FlxG.camera));
 
 		registerFunction('cameraShake', function(camera:String, intensity:Float, duration:Float) LuaUtils.cameraFromString(camera).shake(intensity, duration));
 		registerFunction('cameraFlash', function(camera:String, color:String, duration:Float,forced:Bool) LuaUtils.cameraFromString(camera).flash(CoolUtil.colorFromString(color), duration, null, forced));

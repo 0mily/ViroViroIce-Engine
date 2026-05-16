@@ -8,6 +8,7 @@ import haxe.Json;
 import sys.FileSystem;
 import sys.io.File;
 #end
+// uhm ok, como eu começo
 
 using StringTools;
 
@@ -29,6 +30,7 @@ class Mods
 	static public var currentModDirectory:String = '';
 	static public var currentPackageDirectory:String = '';
 	public static inline var PACKAGE_MOD_FOLDER:String = 'packageMod';
+	public static final PACKAGE_MOD_FOLDERS:Array<String> = ['packageMod', 'packageMods'];
 	public static final ignoreModFolders:Array<String> = [
 		'characters',
 		'data',
@@ -41,20 +43,43 @@ class Mods
 		'stages',
 		'weeks',
 		'fonts',
-		'achievements'
+		'achievements',
+		'packagemod',
+		'packagemods'
+	];
+	static final packageContentFolders:Array<String> = [
+		'images',
+		'songs',
+		'sounds'
 	];
 
 	public static var globalMods:Array<String> = [];
+	public static var globalPackageMods:Array<String> = [];
 
 	inline public static function getGlobalMods()
 		return globalMods;
 
+	inline public static function getGlobalPackageMods()
+		return globalPackageMods;
+
 	inline public static function pushGlobalMods() // prob a better way to do this but idc
 	{
 		globalMods = [];
+		globalPackageMods = [];
+		for(packageFolder in getRootPackageDirectories())
+			if(!globalPackageMods.contains(packageFolder))
+				globalPackageMods.push(packageFolder);
+
 		for (mod in parseList().enabled) {
 			var pack:Dynamic = getPack(mod);
 			if (pack != null && pack.runsGlobally) globalMods.push(mod);
+
+			for(packageFolder in getPackageDirectories(mod))
+			{
+				var packagePack:PackageModData = getPackagePack(packageFolder);
+				if(packagePack != null && packagePack.global == true && !globalPackageMods.contains(packageFolder))
+					globalPackageMods.push(packageFolder);
+			}
 		}
 		return globalMods;
 	}
@@ -72,14 +97,15 @@ class Mods
 		return pack.length > 0 ? '$mod::$pack' : mod;
 	}
 
-	inline public static function packageDirectory(mod:String, packageName:String = ''):String
+	inline public static function packageDirectory(mod:String, packageName:String = '', ?rootFolder:String):String
 	{
 		mod = mod == null ? '' : mod.trim();
 		packageName = packageName == null ? '' : packageName.trim();
+		rootFolder = rootFolder == null || rootFolder.trim().length < 1 ? PACKAGE_MOD_FOLDER : rootFolder.trim();
 
 		if (mod.length < 1)
-			return PACKAGE_MOD_FOLDER + (packageName.length > 0 ? '/$packageName' : '');
-		return '$mod/$PACKAGE_MOD_FOLDER' + (packageName.length > 0 ? '/$packageName' : '');
+			return rootFolder + (packageName.length > 0 ? '/$packageName' : '');
+		return '$mod/$rootFolder' + (packageName.length > 0 ? '/$packageName' : '');
 	}
 
 	inline public static function getModDirectories():Array<String>
@@ -153,24 +179,30 @@ class Mods
 		#if MODS_ALLOWED
 		if(mods)
 		{
-			for(mod in Mods.getGlobalMods())
+			if(isCurrentPackageActive() && packageSupportsKey(fileToFind))
 			{
-				var folder:String = Paths.mods(mod + '/' + fileToFind);
+				var folder:String = Paths.mods(Mods.currentPackageDirectory + '/' + fileToFind);
+				if(FileSystem.exists(folder)) addFolder(folder);
+			}
+
+			if(Mods.currentModDirectory != null && Mods.currentModDirectory.length > 0)
+			{
+				var folder:String = Paths.mods(Mods.currentModDirectory + '/' + fileToFind);
+				if(FileSystem.exists(folder)) addFolder(folder);
+			}
+
+			for(packageFolder in getPackageSearchDirectories(fileToFind, false, true))
+			{
+				var folder:String = Paths.mods(packageFolder + '/' + fileToFind);
 				if(FileSystem.exists(folder)) addFolder(folder);
 			}
 
 			var folder:String = Paths.mods(fileToFind);
 			if(FileSystem.exists(folder)) addFolder(folder);
 
-			if(Mods.currentModDirectory != null && Mods.currentModDirectory.length > 0)
+			for(mod in Mods.getGlobalMods())
 			{
-				folder = Paths.mods(Mods.currentModDirectory + '/' + fileToFind);
-				if(FileSystem.exists(folder)) addFolder(folder);
-			}
-
-			if(isCurrentPackageActive() && packageSupportsKey(fileToFind))
-			{
-				folder = Paths.mods(Mods.currentPackageDirectory + '/' + fileToFind);
+				folder = Paths.mods(mod + '/' + fileToFind);
 				if(FileSystem.exists(folder)) addFolder(folder);
 			}
 		}
@@ -283,40 +315,91 @@ class Mods
 			return false;
 
 		key = key.replace('\\', '/').toLowerCase().trim();
-		return !(key.startsWith('characters/')
-			|| key.startsWith('data/states/')
-			|| key.startsWith('data/substates/')
-			|| key.startsWith('custom_events/')
-			|| key.startsWith('custom_notetypes/')
-			|| key.startsWith('data/events/'));
+		if (key.length < 1)
+			return false;
+		if (key == 'pack.json' || key == 'package.json' || key == 'package.xml')
+			return false;
+		if (key.startsWith('states/') || key.startsWith('substates/') || key.startsWith('characters/'))
+			return false;
+		if (key.startsWith('music/') || key.startsWith('stages/') || key.startsWith('weeks/'))
+			return false;
+		if (key.startsWith('fonts/') || key.startsWith('videos/') || key.startsWith('shaders/'))
+			return false;
+		if (key.startsWith('data/events/'))
+			return false;
+		if (key.startsWith('data/states/') || key.startsWith('data/substates/'))
+			return false;
+		if (key.startsWith('data/scripts/states/') || key.startsWith('data/scripts/substates/'))
+			return false;
+
+		return key.startsWith('images/')
+			|| key.startsWith('sounds/')
+			|| key.startsWith('songs/')
+			|| key.startsWith('data/notetypes/')
+			|| key.startsWith('data/scripts/');
 	}
 
 	public static function getPackageDirectories(?mod:String):Array<String>
 	{
+		if (mod == null) mod = currentModDirectory;
+		if (mod == null || mod.trim().length < 1)
+			return [];
+
+		return getPackageDirectoriesFromMod(mod);
+	}
+
+	public static function getRootPackageDirectories():Array<String>
+		return getPackageDirectoriesFromMod('');
+
+	static function getPackageDirectoriesFromMod(mod:String):Array<String>
+	{
 		var list:Array<String> = [];
 
 		#if MODS_ALLOWED
-		if (mod == null) mod = currentModDirectory;
-		if (mod == null || mod.trim().length < 1)
-			return list;
-
-		var packageRoot:String = Paths.mods(packageDirectory(mod));
-		if (!FileSystem.exists(packageRoot) || !FileSystem.isDirectory(packageRoot))
-			return list;
-
-		for (folder in FileSystem.readDirectory(packageRoot))
+		mod = mod == null ? '' : mod.trim();
+		for(rootFolder in PACKAGE_MOD_FOLDERS)
 		{
-			var relative:String = packageDirectory(mod, folder);
-			var absolute:String = Paths.mods(relative);
-			if (!FileSystem.exists(absolute) || !FileSystem.isDirectory(absolute))
+			var rootRelative:String = packageDirectory(mod, '', rootFolder);
+			var packageRoot:String = Paths.mods(rootRelative);
+			if (!FileSystem.exists(packageRoot) || !FileSystem.isDirectory(packageRoot))
 				continue;
 
-			if (FileSystem.exists(absolute + '/package.json') || FileSystem.exists(absolute + '/package.xml'))
-				list.push(relative);
+			if (isPackageFolder(packageRoot) && !list.contains(rootRelative))
+				list.push(rootRelative);
+
+			for (folder in FileSystem.readDirectory(packageRoot))
+			{
+				var relative:String = packageDirectory(mod, folder, rootFolder);
+				var absolute:String = Paths.mods(relative);
+				if (!FileSystem.exists(absolute) || !FileSystem.isDirectory(absolute))
+					continue;
+
+				if (isPackageFolder(absolute) && !list.contains(relative))
+					list.push(relative);
+			}
 		}
 		#end
 
 		return list;
+	}
+
+	static function isPackageFolder(absolute:String):Bool  // é mais facil fazer com carinho eu acho
+	{
+		#if MODS_ALLOWED
+		if (absolute == null || !FileSystem.exists(absolute) || !FileSystem.isDirectory(absolute))
+			return false;
+
+		if (FileSystem.exists(absolute + '/package.json') || FileSystem.exists(absolute + '/package.xml'))
+			return true;
+
+		for (folder in packageContentFolders)
+			if (FileSystem.exists(absolute + '/' + folder))
+				return true;
+
+		if (FileSystem.exists(absolute + '/data/notetypes') || FileSystem.exists(absolute + '/data/scripts'))
+			return true;
+		#end
+		return false;
 	}
 
 	public static function getPackagePack(?packageFolder:String):PackageModData
@@ -380,6 +463,31 @@ class Mods
 		#if MODS_ALLOWED
 		if (includeCurrent && isCurrentPackageActive())
 			addPackage(currentPackageDirectory);
+
+		if (currentModDirectory != null && currentModDirectory.trim().length > 0)
+		{
+			for(packageFolder in getPackageDirectories(currentModDirectory))
+				if (packageFolder != currentPackageDirectory)
+					addPackage(packageFolder);
+		}
+
+		if (includeGlobals)
+		{
+			for(packageFolder in getRootPackageDirectories())
+				if (packageFolder != currentPackageDirectory)
+					addPackage(packageFolder);
+
+			for(packageFolder in getGlobalPackageMods())
+				if (packageFolder != currentPackageDirectory)
+					addPackage(packageFolder);
+
+			for(mod in getGlobalMods())
+			{
+				for(packageFolder in getPackageDirectories(mod))
+					if (packageFolder != currentPackageDirectory)
+						addPackage(packageFolder);
+			}
+		}
 		#end
 
 		return list;

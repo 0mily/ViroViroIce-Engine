@@ -29,12 +29,14 @@ class PsychUINumericStepper extends PsychUIInputText
 		buttonPlus.animation.add('normal', [0], false);
 		buttonPlus.animation.add('pressed', [1], false);
 		buttonPlus.animation.play('normal');
+		buttonPlus.color = HaxeUITheme.PURPLE;
 		add(buttonPlus);
 		
 		buttonMinus = new FlxSprite(fieldWidth + buttonPlus.width).loadGraphic(Paths.image('psych-ui/stepper_minus', 'embed'), true, 16, 16);
 		buttonMinus.animation.add('normal', [0], false);
 		buttonMinus.animation.add('pressed', [1], false);
 		buttonMinus.animation.play('normal');
+		buttonMinus.color = HaxeUITheme.PURPLE;
 		add(buttonMinus);
 
 		unfocus = function()
@@ -201,6 +203,11 @@ class PsychUINumericStepper extends PsychUIInputText
 	override function setGraphicSize(width:Float = 0, height:Float = 0)
 	{
 		super.setGraphicSize(width, height);
-		behindText.setGraphicSize(width - 32, height - 2);
+		behindText.makeGraphic(Std.int(Math.max(1, Math.ceil(width - 32))), Std.int(Math.max(1, Math.ceil(height - 2))), HaxeUITheme.INPUT_FILL, true);
+		behindText.scale.set(1, 1);
+		behindText.color = HaxeUITheme.INPUT_FILL;
+		behindText.updateHitbox();
+		behindText.visible = true;
+		behindText.alpha = 1;
 	}
 }

@@ -30,6 +30,7 @@ class PsychUIDropDownMenu extends PsychUIInputText
 		button.animation.add('normal', [0], false);
 		button.animation.add('pressed', [1], false);
 		button.animation.play('normal', true);
+		button.color = HaxeUITheme.PURPLE_DARK;
 		add(button);
 
 		onSelect = callback;
@@ -60,7 +61,7 @@ class PsychUIDropDownMenu extends PsychUIInputText
 		selectedIndex = v;
 		if(selectedIndex < 0 || selectedIndex >= list.length) selectedIndex = -1;
 
-		@:bypassAccessor selectedLabel = list[selectedIndex];
+		@:bypassAccessor selectedLabel = selectedIndex >= 0 ? list[selectedIndex] : null;
 		text = (selectedLabel != null) ? selectedLabel : '';
 		return selectedIndex;
 	}
@@ -167,7 +168,7 @@ class PsychUIDropDownMenu extends PsychUIInputText
 				txtY += item.height;
 				item.forceNextUpdate = true;
 			}
-			bg.scale.y = txtY - behindText.y + 2;
+			bg.scale.y = 1;
 			bg.updateHitbox();
 		}
 		else
@@ -175,7 +176,7 @@ class PsychUIDropDownMenu extends PsychUIInputText
 			for (item in _items)
 				item.active = item.visible = false;
 
-			bg.scale.y = 20;
+			bg.scale.y = 1;
 			bg.updateHitbox();
 		}
 	}
@@ -194,6 +195,7 @@ class PsychUIDropDownMenu extends PsychUIInputText
 		@:bypassAccessor list.push(option);
 		var curID:Int = list.length - 1;
 		var item:PsychUIDropDownItem = cast recycle(PsychUIDropDownItem, () -> new PsychUIDropDownItem(1, 1, this._itemWidth), true);
+		item.resizeItem(this._itemWidth);
 		item.cameras = cameras;
 		item.label = option;
 		item.visible = item.active = false;
@@ -224,30 +226,47 @@ class PsychUIDropDownMenu extends PsychUIInputText
 class PsychUIDropDownItem extends FlxSpriteGroup
 {
 	public var hoverStyle:UIStyleData = {
-		bgColor: 0xFF0066FF,
+		bgColor: HaxeUITheme.PURPLE_DARK,
 		textColor: FlxColor.WHITE,
 		bgAlpha: 1
 	};
 	public var normalStyle:UIStyleData = {
-		bgColor: FlxColor.WHITE,
-		textColor: FlxColor.BLACK,
+		bgColor: HaxeUITheme.INPUT_FILL,
+		textColor: HaxeUITheme.INPUT_TEXT,
 		bgAlpha: 1
 	};
 
 	public var bg:FlxSprite;
 	public var text:FlxText;
+	var _itemWidth:Float = 1;
+	var _itemHeight:Float = 20;
 	public function new(x:Float = 0, y:Float = 0, width:Float = 100)
 	{
 		super(x, y);
 
+		_itemWidth = width;
 		bg = new FlxSprite().makeGraphic(1, 1, FlxColor.WHITE);
 		bg.setGraphicSize(width, 20);
+		bg.color = HaxeUITheme.INPUT_FILL;
 		bg.updateHitbox();
 		add(bg);
 
 		text = new FlxText(0, 0, width, 8);
-		text.color = FlxColor.BLACK;
+		HaxeUITheme.applyText(text, 8);
+		text.color = HaxeUITheme.INPUT_TEXT;
 		add(text);
+	}
+
+	public function resizeItem(width:Float)
+	{
+		_itemWidth = width;
+		bg.makeGraphic(Std.int(Math.max(1, Math.ceil(_itemWidth))), Std.int(Math.max(1, Math.ceil(_itemHeight))), HaxeUITheme.INPUT_FILL, true);
+		bg.scale.set(1, 1);
+		bg.color = HaxeUITheme.INPUT_FILL;
+		bg.updateHitbox();
+		bg.visible = true;
+		bg.alpha = 1;
+		text.fieldWidth = _itemWidth;
 	}
 
 	public var onClick:Void->Void;
@@ -260,17 +279,15 @@ class PsychUIDropDownItem extends FlxSpriteGroup
 			var overlapped:Bool = (FlxG.mouse.overlaps(bg, camera));
 
 			var style = overlapped ? hoverStyle : normalStyle;
-			bg.color = style.bgColor;
-			text.color = style.textColor;
-			bg.alpha = style.bgAlpha;
+			applyStyle(style);
 			forceNextUpdate = false;
 
-			if(overlapped && FlxG.mouse.justPressed)
+			if(overlapped && FlxG.mouse.justPressed && onClick != null)
 				onClick();
 		}
 		
 		text.x = bg.x;
-		text.y = bg.y + bg.height/2 - text.height/2;
+		text.y = HaxeUITheme.snap(bg.y + bg.height/2 - text.height/2);
 	}
 
 	public var label(default, set):String;
@@ -278,8 +295,15 @@ class PsychUIDropDownItem extends FlxSpriteGroup
 	{
 		label = v;
 		text.text = v;
-		bg.scale.y = text.height + 6;
-		bg.updateHitbox();
+		_itemHeight = text.height + 6;
+		resizeItem(_itemWidth);
 		return v;
+	}
+
+	function applyStyle(style:UIStyleData)
+	{
+		bg.color = style.bgColor;
+		bg.alpha = style.bgAlpha;
+		if(text != null) text.color = style.textColor;
 	}
 }
