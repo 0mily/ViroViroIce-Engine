@@ -20,8 +20,7 @@ class MasterEditorMenu extends ScriptedSubState
 		'Dialogue Editor',
 		'Dialogue Portrait Editor',
 		'Note Splash Editor',
-		'Test Stickers',
-		'PE To VVIE Conversor'
+		'Test Stickers'
 	];
 	var optionFunctions:Map<String, Void -> Void> = [];
 	private var grpTexts:FlxTypedGroup<Alphabet>;
