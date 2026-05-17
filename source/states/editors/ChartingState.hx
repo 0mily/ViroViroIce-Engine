@@ -245,6 +245,7 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 	var gradientBitmap:BitmapData;
 	var gradientemaneiro:Array<FlxColor> = [];
 	var coresLegaisManeiras:Array<String> = ['6E1896', '57C785', 'EDDD53'];
+	var gridNadaLegalENadaManeira:Array<String> = ['DFDFDF', 'BFBFBF'];
 
 	var copiedNotes:Array<Dynamic> = [];
 	var copiedEvents:Array<Dynamic> = [];
@@ -317,10 +318,9 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 		if(chartEditorSave.data.vortex != null) vortexEnabled = chartEditorSave.data.vortex;
 		/*if(chartEditorSave.data.toys != null) toysEnabled = chartEditorSave.data.toys;
 
-		if(chartEditorSave.data.customBgColor == null) chartEditorSave.data.customBgColor = '303030';
-		if(chartEditorSave.data.customGridColors == null || chartEditorSave.data.customGridColors.length < 2)
-			chartEditorSave.data.customGridColors = ['DFDFDF', 'BFBFBF'];
-		if(chartEditorSave.data.customNextGridColors == null || chartEditorSave.data.customNextGridColors.length < 2)
+		if(chartEditorSave.data.customBgColor == null) chartEditorSave.data.customBgColor = '303030';*/
+		if(chartEditorSave.data.customGridColors == null || chartEditorSave.data.customGridColors.length < 2) chartEditorSave.data.customGridColors = ['DFDFDF', 'BFBFBF']; else gridNadaLegalENadaManeira = [chartEditorSave.data.customGridColors[0], chartEditorSave.data.customGridColors[1]];
+		/*if(chartEditorSave.data.customNextGridColors == null || chartEditorSave.data.customNextGridColors.length < 2)
 			chartEditorSave.data.customNextGridColors = ['5F5F5F', '4A4A4A'];*/
 		loadcoresLegaisManeiras();
 		
@@ -723,17 +723,17 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 				gridColorsOther = [0xFF1F1F1F, 0xFF111111];
 			case CUSTOM:
 				applyGradientEditoridkimtired(coresLegaisManeiras);
-				gridColors = [0xFFDFDFDF, 0xFFBFBFBF];
-				gridColorsOther = [0xFF5F5F5F, 0xFF4A4A4A];
+				gridColors = [CoolUtil.colorFromString(chartEditorSave.data.customGridColors[0]), CoolUtil.colorFromString(chartEditorSave.data.customGridColors[1])];
+				gridColorsOther = [CoolUtil.colorFromString(chartEditorSave.data.customGridColors[0]).getDarkened(0.6), CoolUtil.colorFromString(chartEditorSave.data.customGridColors[1]).getDarkened(0.6)];
 			default:
 				applyGradientEditoridkimtired(['6E1896', '57C785', 'EDDD53']);
-				gridColors = [0xFFDFDFDF, 0xFFBFBFBF];
+				gridColors = [0xFFF3D5FF, 0xFFAC92B7];
 				gridColorsOther = [0xFF5F5F5F, 0xFF4A4A4A];
 		}
 
 		bg.color = FlxColor.WHITE;
 
-		if(theme != oldTheme)
+		if(theme != oldTheme || theme == CUSTOM) // eu acho que isso funciona -Shiho (PS. Funciona sim)
 		{
 			if(gridBg != null)
 			{
@@ -780,6 +780,19 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 		coresLegaisManeiras[index] = normalizar(value, coresLegaisManeiras[index]);
 		chartEditorSave.data.coresLegaisManeiras = coresLegaisManeiras.copy();
 		chartEditorSave.flush();
+		if(theme == CUSTOM)
+			changeTheme(CUSTOM, false);
+	}
+
+	function changeGridColors(index:Int, color:String)
+	{
+		if(index < 0 || index >= gridNadaLegalENadaManeira.length)
+			return;
+
+		gridNadaLegalENadaManeira[index] = color;
+		chartEditorSave.data.customGridColors = gridNadaLegalENadaManeira.copy();
+		chartEditorSave.flush();
+
 		if(theme == CUSTOM)
 			changeTheme(CUSTOM, false);
 	}
@@ -6487,13 +6500,37 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 						state.add(input);
 					}
 
-					var savePreset:PsychUIButton = new PsychUIButton(0, btnY + 105, 'Save Preset', PresetGradSave, 110);
+					var label:FlxText = new FlxText(0, btnY + 96, 260, 'Custom Grid Colors', 12);
+					label.screenCenter(X);
+					label.cameras = state.cameras;
+					state.add(label);
+
+					var gridInputs:Array<PsychUIInputText> = [];
+					for(i in 0...gridNadaLegalENadaManeira.length)
+					{
+						var input:PsychUIInputText = new PsychUIInputText(0, btnY + 115, 74, gridNadaLegalENadaManeira[i], 8);
+						input.maxLength = 6;
+						input.filterMode = ONLY_HEXADECIMAL;
+						input.forceCase = UPPER_CASE;
+						input.screenCenter(X);
+						input.x += (i - 1) * 88;
+						input.cameras = state.cameras;
+						var colorIndex:Int = i; // eu tô só copiando a mily -Shiho
+						input.onChange = function(old:String, cur:String)
+						{
+							changeGridColors(colorIndex, cur);
+						}
+						gridInputs.push(input);
+						state.add(input);
+					}
+
+					var savePreset:PsychUIButton = new PsychUIButton(0, btnY + 155, 'Save Preset', PresetGradSave, 110);
 					savePreset.screenCenter(X);
 					savePreset.x -= 62;
 					savePreset.cameras = state.cameras;
 					state.add(savePreset);
 
-					var openPreset:PsychUIButton = new PsychUIButton(0, btnY + 105, 'Open Preset', function()
+					var openPreset:PsychUIButton = new PsychUIButton(0, btnY + 155, 'Open Preset', function()
 					{
 						PresetGradOpen(function()
 						{
@@ -6506,7 +6543,7 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 					openPreset.cameras = state.cameras;
 					state.add(openPreset);
 
-					var checkbox:PsychUICheckBox = new PsychUICheckBox(0, btnY + 150, 'Textured Hold Notes', 200);
+					var checkbox:PsychUICheckBox = new PsychUICheckBox(0, btnY + 200, 'Textured Hold Notes', 200);
 					checkbox.screenCenter(X);
 					checkbox.onClick = function() {
 						chartEditorSave.data.texturedSustains = checkbox.checked;

@@ -10,12 +10,14 @@ import states.TitleState;
 @:structInit class SaveVariables {
 
 // nosso
+
 	public var mechanics:Bool = true;
 	public var modchart:Bool = true;
 	public var weekpixel:Bool = true;
 	public var mikudside:Bool = false;
-	public var extra:Bool = false;
+	public var extra:Bool = false; // pra que serve isso caba -Shiho
 	public var neatWindow:Float = 22.0;
+	public var sustainTailAlpha:Float = 0.6;
 	//public var customScore:Bool = false;
 
 // deles
@@ -30,7 +32,7 @@ import states.TitleState;
 	public var noteSkin:String = 'Default';
 	public var splashSkin:String = 'Psych';
 	public var holdSkin:String = 'Vanilla';
-	public var splashAlpha:Float = 0.6;
+	public var splashAlpha:Float = 0.8;
 	public var holdSplashAlpha:Float = 1;
 	public var lowQuality:Bool = false;
 	public var shaders:Bool = true;
