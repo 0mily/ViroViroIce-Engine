@@ -30,7 +30,7 @@ import states.TitleState;
 	public var autoPause:Bool = true;
 	public var antialiasing:Bool = true;
 	public var noteSkin:String = 'Default';
-	public var splashSkin:String = 'Psych';
+	public var splashSkin:String = 'ViroViroIce';
 	public var holdSkin:String = 'Vanilla';
 	public var splashAlpha:Float = 0.8;
 	public var holdSplashAlpha:Float = 1;
