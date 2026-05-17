@@ -94,11 +94,9 @@ class CodenameRuntimeShader extends ErrorHandledRuntimeShader // foda a codename
 		];
 
 		#if MODS_ALLOWED
-		paths.insert(0, Paths.mods('shaders/$path'));
-		if(Mods.currentModDirectory != null && Mods.currentModDirectory.length > 0)
-			paths.insert(0, Paths.mods(Mods.currentModDirectory + '/shaders/$path'));
-
-		for(mod in Mods.getGlobalMods())
+		if(Mods.rootAddonsAllowed())
+			paths.insert(0, Paths.mods('shaders/$path'));
+		for(mod in Mods.getActiveModDirectories())
 			paths.insert(0, Paths.mods(mod + '/shaders/$path'));
 		#end
 

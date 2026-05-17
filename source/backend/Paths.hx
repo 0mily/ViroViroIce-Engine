@@ -19,6 +19,10 @@ import flash.media.Sound;
 import haxe.Json;
 import haxe.io.Path as HaxePath;
 
+#if sys
+import sys.FileSystem;
+import sys.io.File;
+#end
 
 #if MODS_ALLOWED
 import backend.Mods;
@@ -285,7 +289,12 @@ class Paths
 
 	inline static public function getTextFromFile(key:String, ?ignoreMods:Bool = false):String
 	{
-		var path:String = getPath(key, TEXT, !ignoreMods);
+		#if sys
+		if (FileSystem.exists(key))
+			return File.getContent(key);
+		#end
+
+		var path:String = getPath(key, TEXT, null, !ignoreMods);
 		#if sys
 		return (FileSystem.exists(path)) ? File.getContent(path) : null;
 		#else
@@ -312,7 +321,7 @@ class Paths
 		var modKey:String = key;
 		if(parentFolder != null) modKey = '$parentFolder/$key';
 
-		if (FileSystem.exists(modFolders(modKey)) || FileSystem.exists(mods(modKey)))
+		if (FileSystem.exists(modFolders(modKey)) || (Mods.rootAddonsAllowed() && FileSystem.exists(mods(modKey))))
 			return true;
 	}
 	#end
@@ -448,7 +457,10 @@ class Paths
 
 	#if MODS_ALLOWED
 	inline static public function mods(key:String = '')
-		return 'mods/' + key;
+		return Mods.resolveModPath(key);
+
+	inline static public function contents(key:String = '')
+		return Mods.resolveContentPath(key);
 
 	inline static public function modsJson(key:String)
 		return modFolders('data/' + key + '.json');
@@ -473,6 +485,10 @@ class Paths
 
 	static public function modFolders(key:String)
 	{
+		key = key.replace('\\', '/');
+		if ((key.startsWith('contents/') || key.startsWith('addons/') || key.startsWith('assets/')) && FileSystem.exists(key))
+			return key;
+
 		if(Mods.packageSupportsKey(key) && Mods.isCurrentPackageActive())
 		{
 			var fileToCheck:String = mods(Mods.currentPackageDirectory + '/' + key);
@@ -480,9 +496,9 @@ class Paths
 				return fileToCheck;
 		}
 
-		if(Mods.currentModDirectory != null && Mods.currentModDirectory.length > 0)
+		for(mod in Mods.getActiveModDirectories())
 		{
-			var fileToCheck:String = mods(Mods.currentModDirectory + '/' + key);
+			var fileToCheck:String = mods(mod + '/' + key);
 			if(FileSystem.exists(fileToCheck))
 				return fileToCheck;
 		}
@@ -494,13 +510,13 @@ class Paths
 				return fileToCheck;
 		}
 
-		for(mod in Mods.getGlobalMods())
+		if(Mods.rootAddonsAllowed())
 		{
-			var fileToCheck:String = mods(mod + '/' + key);
-			if(FileSystem.exists(fileToCheck))
-				return fileToCheck;
+			var rootFile:String = mods(key);
+			if(FileSystem.exists(rootFile))
+				return rootFile;
 		}
-		return 'mods/' + key;
+		return Mods.rootAddonsAllowed() ? mods(key) : '__disabled_addons__/' + key;
 	}
 	#end
 

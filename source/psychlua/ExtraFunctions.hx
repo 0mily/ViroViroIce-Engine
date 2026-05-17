@@ -165,7 +165,7 @@ class ExtraFunctions {
 		{
 			try {
 				var lePath:String = path;
-				if(!absolute) lePath = Paths.getPath(path, TEXT, !ignoreModFolders);
+				if(!absolute) lePath = Paths.getPath(path, TEXT, null, !ignoreModFolders);
 				if(FileSystem.exists(lePath))
 				{
 					FileSystem.deleteFile(lePath);
@@ -188,7 +188,7 @@ class ExtraFunctions {
 		FunkinLua.registerFunction("directoryFileList", function(folder:String, ignoreModFolders:Bool = false, absolute:Bool = true) {
 			var list:Array<String> = [];
 			#if sys
-			if (!absolute) folder = Paths.getPath(folder, TEXT, !ignoreModFolders);
+			if (!absolute) folder = Paths.getPath(folder, TEXT, null, !ignoreModFolders);
 			if (FileSystem.exists(folder)) {
 				for (folder in FileSystem.readDirectory(folder)) {
 					if (!list.contains(folder)) {
@@ -200,7 +200,7 @@ class ExtraFunctions {
 			return list;
 		});
 		FunkinLua.registerFunction('getPath', function(path:String, ignoreModFolders:Bool = false, neverNull:Bool = false) {
-			var path:String = Paths.getPath(path, TEXT, !ignoreModFolders);
+			var path:String = Paths.getPath(path, TEXT, null, !ignoreModFolders);
 			
 			if (FileSystem.exists(path) || neverNull)
 				return path;

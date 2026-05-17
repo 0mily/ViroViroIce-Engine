@@ -65,6 +65,18 @@ class ScriptedState extends ScriptedSubState {
 		
 		MusicBeatSubstate.callGlobal('onCreateStatePost', [this, Type.getClass(this)]);
 	}
+
+	public override function update(elapsed:Float):Void {
+		#if MODS_ALLOWED
+		if (FlxG.keys.justPressed.TAB && subState == null && MusicBeatState.isMainMenuContext(this))
+		{
+			FlxG.sound.play(Paths.sound('scrollMenu'), 0.6);
+			MusicBeatState.switchState(new states.ContentMenuState());
+			return;
+		}
+		#end
+		super.update(elapsed);
+	}
 	#if SCRIPTS_ALLOWED
 	public override function startStateScripts():Bool {
 		var loaded:Bool = false;

@@ -126,8 +126,11 @@ class TitleState extends ScriptedState
 	function startIntro()
 	{
 		persistentUpdate = true;
-		if (FlxG.sound.music == null)
+		if (!initialized || FlxG.sound.music == null || !FlxG.sound.music.playing)
+		{
 			FlxG.sound.playMusic(Paths.music('freakyMenu'), 0);
+			Conductor.songPosition = 0;
+		}
 
 		loadJsonData();
 		#if TITLE_SCREEN_EASTER_EGG easterEggData(); #end

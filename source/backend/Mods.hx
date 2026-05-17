@@ -25,11 +25,34 @@ typedef PackageModData = {
 	@:optional var description:String;
 };
 
+typedef ContentAddonsData = {
+	@:optional var allowAddons:Bool;
+	@:optional var addonPrefix:String;
+};
+
+typedef ContentData = {
+	@:optional var name:String;
+	@:optional var description:String;
+	@:optional var version:String;
+	@:optional var author:String;
+	@:optional var discordRPC:String;
+	@:optional var icon:String;
+	@:optional var addons:ContentAddonsData;
+};
+
 class Mods
 {
+	public static inline var ADDONS_FOLDER:String = 'addons';
+	public static inline var CONTENTS_FOLDER:String = 'contents';
+	static inline var ADDONS_LIST_FILE:String = 'addonsList.txt';
+	static inline var LEGACY_MODS_LIST_FILE:String = 'modsList.txt';
+
+	static public var selectedContentDirectory:String = '';
 	static public var currentModDirectory:String = '';
 	static public var currentPackageDirectory:String = '';
 	public static inline var PACKAGE_MOD_FOLDER:String = 'packageMod';
+	static var contentDirectoriesCache:Array<String> = null;
+	static var contentDataCache:Map<String, ContentData> = new Map();
 	public static final PACKAGE_MOD_FOLDERS:Array<String> = ['packageMod', 'packageMods'];
 	public static final ignoreModFolders:Array<String> = [
 		'characters',
@@ -62,17 +85,187 @@ class Mods
 	inline public static function getGlobalPackageMods()
 		return globalPackageMods;
 
+	public static function normalizeFolderKey(path:String):String
+	{
+		if (path == null)
+			return '';
+		path = path.replace('\\', '/').trim();
+		while (path.startsWith('/'))
+			path = path.substr(1);
+		return path;
+	}
+
+	public static function clearContentCaches():Void
+	{
+		contentDirectoriesCache = null;
+		contentDataCache = new Map();
+	}
+
+	public static function resolveModPath(key:String = ''):String
+	{
+		key = normalizeFolderKey(key);
+		if (key.length < 1)
+			return '$ADDONS_FOLDER/';
+		if (key == ADDONS_FOLDER || key.startsWith('$ADDONS_FOLDER/'))
+			return key;
+		if (key == CONTENTS_FOLDER || key.startsWith('$CONTENTS_FOLDER/'))
+			return key;
+		return '$ADDONS_FOLDER/$key';
+	}
+
+	public static function resolveContentPath(key:String = ''):String
+	{
+		key = normalizeFolderKey(key);
+		return key.length < 1 ? '$CONTENTS_FOLDER/' : '$CONTENTS_FOLDER/$key';
+	}
+
+	inline public static function contentRootDirectory(content:String):String
+		return '$CONTENTS_FOLDER/${normalizeFolderKey(content)}';
+
+	inline public static function contentModDirectory(content:String, modFolder:String):String
+		return contentRootDirectory(content) + '/' + normalizeFolderKey(modFolder);
+
+	public static function getSelectedContentDirectory():String
+	{
+		syncSelectedContentFromPrefs();
+		return selectedContentDirectory;
+	}
+
+	static function syncSelectedContentFromPrefs():Void
+	{
+		var selected:String = ClientPrefs.selectedContent ?? selectedContentDirectory ?? '';
+		selected = normalizeFolderKey(selected);
+		if (selected.length > 0 && !getContentDirectories().contains(selected))
+			selected = '';
+
+		selectedContentDirectory = selected;
+		ClientPrefs.selectedContent = selected;
+	}
+
+	public static function selectContent(?folder:String):Bool
+	{
+		folder = normalizeFolderKey(folder ?? '');
+		if (folder.length > 0 && !getContentDirectories().contains(folder))
+		{
+			clearContentCaches();
+			if (!getContentDirectories().contains(folder))
+				return false;
+		}
+
+		selectedContentDirectory = folder;
+		ClientPrefs.selectedContent = folder;
+		ClientPrefs.pendingSelectedContent = '';
+		ClientPrefs.contentBootStatus = '';
+		ClientPrefs.saveContentSelectionState();
+
+		loadTopMod();
+		pushGlobalMods();
+		return true;
+	}
+
+	public static function queueContentSelection(?folder:String):Bool
+		return selectContent(folder);
+
+	public static function confirmContentBoot():Void
+	{
+		ClientPrefs.pendingSelectedContent = '';
+		ClientPrefs.contentBootStatus = '';
+		ClientPrefs.saveContentSelectionState();
+	}
+
+	public static function clearSelectedContent():Void
+	{
+		selectedContentDirectory = '';
+		ClientPrefs.selectedContent = '';
+		ClientPrefs.pendingSelectedContent = '';
+		ClientPrefs.contentBootStatus = '';
+		ClientPrefs.saveContentSelectionState();
+	}
+
+	inline public static function hasSelectedContent():Bool
+		return getSelectedContentDirectory().length > 0;
+
+	public static function getSelectedContentData():ContentData
+		return getContentData(getSelectedContentDirectory());
+
+	public static function addonsAllowedForCurrentContent():Bool
+	{
+		var content:String = getSelectedContentDirectory();
+		if (content.length < 1)
+			return true;
+
+		var data:ContentData = getContentData(content);
+		if (data == null || data.addons == null)
+			return false;
+		return data.addons.allowAddons == true;
+	}
+
+	public static function getCurrentAddonPrefix():String
+	{
+		if (!addonsAllowedForCurrentContent())
+			return null;
+
+		var data:ContentData = getSelectedContentData();
+		if (data == null || data.addons == null || data.addons.addonPrefix == null)
+			return '';
+		return data.addons.addonPrefix.trim();
+	}
+
+	public static function rootAddonsAllowed():Bool
+	{
+		var content:String = getSelectedContentDirectory();
+		if (content.length < 1)
+			return true;
+
+		var prefix:String = getCurrentAddonPrefix();
+		return prefix != null && prefix.length < 1;
+	}
+
+	public static function addonAllowedForCurrentContent(folder:String):Bool
+	{
+		folder = normalizeFolderKey(folder);
+		var content:String = getSelectedContentDirectory();
+		if (content.length < 1)
+			return true;
+		if (!addonsAllowedForCurrentContent())
+			return false;
+
+		var prefix:String = getCurrentAddonPrefix();
+		if (prefix == null || prefix.length < 1)
+			return true;
+		return folder.startsWith(prefix);
+	}
+
 	inline public static function pushGlobalMods() // prob a better way to do this but idc
 	{
 		globalMods = [];
 		globalPackageMods = [];
-		for(packageFolder in getRootPackageDirectories())
-			if(!globalPackageMods.contains(packageFolder))
-				globalPackageMods.push(packageFolder);
+		var contentMods:Array<String> = getContentModDirectories();
+		var primaryContentMod:String = contentMods.length > 0 ? contentMods[0] : '';
 
-		for (mod in parseList().enabled) {
+		for (mod in contentMods)
+		{
+			if (mod != primaryContentMod && !globalMods.contains(mod))
+				globalMods.push(mod);
+
+			for(packageFolder in getPackageDirectories(mod))
+			{
+				var packagePack:PackageModData = getPackagePack(packageFolder);
+				if(packagePack != null && packagePack.global == true && !globalPackageMods.contains(packageFolder))
+					globalPackageMods.push(packageFolder);
+			}
+		}
+
+		if (rootAddonsAllowed())
+		{
+			for(packageFolder in getRootPackageDirectories())
+				if(!globalPackageMods.contains(packageFolder))
+					globalPackageMods.push(packageFolder);
+		}
+
+		for (mod in getEnabledAddonMods(parseList())) {
 			var pack:Dynamic = getPack(mod);
-			if (pack != null && pack.runsGlobally) globalMods.push(mod);
+			if (pack != null && pack.runsGlobally && !globalMods.contains(mod)) globalMods.push(mod);
 
 			for(packageFolder in getPackageDirectories(mod))
 			{
@@ -124,6 +317,221 @@ class Mods
 		#end
 		
 		return list;
+	}
+
+	public static function getContentDirectories():Array<String>
+	{
+		if (contentDirectoriesCache != null)
+			return contentDirectoriesCache.copy();
+
+		var list:Array<String> = [];
+
+		#if MODS_ALLOWED
+		var contentsFolder:String = Paths.contents();
+		if (FileSystem.exists(contentsFolder))
+		{
+			for (folder in FileSystem.readDirectory(contentsFolder))
+			{
+				var absolute:String = Paths.contents(folder);
+				if (FileSystem.exists(absolute) && FileSystem.isDirectory(absolute) && directoryIsContent(folder))
+					list.push(folder);
+			}
+		}
+		list.sort(Reflect.compare);
+		#end
+
+		contentDirectoriesCache = list;
+		return list.copy();
+	}
+
+	static function directoryIsContent(folder:String):Bool
+	{
+		#if MODS_ALLOWED
+		folder = normalizeFolderKey(folder);
+		if (folder.length < 1)
+			return false;
+
+		var dir:String = Paths.contents(folder);
+		if (!FileSystem.exists(dir) || !FileSystem.isDirectory(dir))
+			return false;
+
+		return FileSystem.exists('$dir/data.json') || FileSystem.exists('$dir/data.xml');
+		#else
+		return false;
+		#end
+	}
+
+	public static function getContentModDirectories(?content:String):Array<String>
+	{
+		var list:Array<String> = [];
+
+		#if MODS_ALLOWED
+		content = normalizeFolderKey(content ?? getSelectedContentDirectory());
+		if (content.length < 1 || !directoryIsContent(content))
+			return list;
+
+		var rootRelative:String = contentRootDirectory(content);
+		var rootAbsolute:String = Paths.mods(rootRelative);
+		for (folder in FileSystem.readDirectory(rootAbsolute))
+		{
+			var relative:String = contentModDirectory(content, folder);
+			var absolute:String = Paths.mods(relative);
+			if (!FileSystem.exists(absolute) || !FileSystem.isDirectory(absolute))
+				continue;
+
+			if (directoryIsMod(relative) && !list.contains(relative))
+				list.push(relative);
+		}
+		list.sort(Reflect.compare);
+
+		if (list.length < 1 && directoryIsMod(rootRelative))
+			list.push(rootRelative);
+		#end
+
+		return list;
+	}
+
+	public static function getEnabledAddonMods(?list:ModsList):Array<String>
+	{
+		list ??= parseList();
+		var enabled:Array<String> = [];
+
+		for (mod in list.enabled)
+			if (list.available.contains(mod) && addonAllowedForCurrentContent(mod) && !enabled.contains(mod))
+				enabled.push(mod);
+		return enabled;
+	}
+
+	public static function getGameplayModDirectories(?list:ModsList):Array<String>
+	{
+		var directories:Array<String> = getContentModDirectories();
+		for (mod in getEnabledAddonMods(list))
+			if (!directories.contains(mod))
+				directories.push(mod);
+		return directories;
+	}
+
+	public static function getActiveModDirectories():Array<String>
+	{
+		var directories:Array<String> = [];
+		if (currentModDirectory != null && currentModDirectory.trim().length > 0)
+			directories.push(currentModDirectory);
+
+		for (mod in getGlobalMods())
+			if (mod != null && mod.trim().length > 0 && !directories.contains(mod))
+				directories.push(mod);
+		return directories;
+	}
+
+	public static function getModFolderFromPath(path:String):String
+	{
+		path = normalizeFolderKey(path);
+		for (mod in getGameplayModDirectories())
+		{
+			var modPath:String = normalizeFolderKey(Paths.mods(mod + '/'));
+			if (path.startsWith(modPath))
+				return mod;
+		}
+		return null;
+	}
+
+	public static function folderFromDirectoryPath(path:String):String
+	{
+		path = normalizeFolderKey(path);
+		while (path.endsWith('/'))
+			path = path.substr(0, path.length - 1);
+
+		var addonRoot:String = normalizeFolderKey(Paths.mods());
+		if (path.startsWith(addonRoot))
+			return path.substr(addonRoot.length);
+		return path;
+	}
+
+	static function parseContentBool(value:String, fallback:Bool):Bool
+	{
+		if (value == null)
+			return fallback;
+		switch (value.trim().toLowerCase())
+		{
+			case 'true', '1', 'yes', 'y', 'on': return true;
+			case 'false', '0', 'no', 'n', 'off': return false;
+		}
+		return fallback;
+	}
+
+	public static function getContentData(?folder:String):ContentData
+	{
+		#if MODS_ALLOWED
+		folder = normalizeFolderKey(folder);
+		if (folder.length < 1)
+			return null;
+		if (contentDataCache.exists(folder))
+			return contentDataCache.get(folder);
+
+		var jsonPath:String = Paths.contents('$folder/data.json');
+		if (FileSystem.exists(jsonPath))
+		{
+			try {
+				var rawJson:String = File.getContent(jsonPath);
+				if(rawJson != null && rawJson.length > 0)
+				{
+					var data:ContentData = cast tjson.TJSON.parse(rawJson);
+					contentDataCache.set(folder, data);
+					return data;
+				}
+			} catch(e:Dynamic) {
+				trace(e);
+			}
+		}
+
+		var xmlPath:String = Paths.contents('$folder/data.xml');
+		if (FileSystem.exists(xmlPath))
+		{
+			try {
+				var rawXml:String = File.getContent(xmlPath);
+				if (rawXml != null && rawXml.length > 0)
+				{
+					var root:Xml = Xml.parse(rawXml).firstElement();
+					if (root != null)
+					{
+						var data:ContentData = {};
+						data.name = root.get('name');
+						data.description = root.get('description');
+						data.version = root.get('version');
+						data.author = root.get('author');
+						data.discordRPC = root.get('discordRPC');
+						data.icon = root.get('icon');
+						var addonsNode:Xml = null;
+						for (node in root.elementsNamed('addons'))
+						{
+							addonsNode = node;
+							break;
+						}
+						if (addonsNode != null)
+						{
+							data.addons = {
+								allowAddons: parseContentBool(addonsNode.get('allowAddons'), false),
+								addonPrefix: addonsNode.get('addonPrefix') ?? ''
+							};
+						}
+						else if (root.exists('allowAddons') || root.exists('addonPrefix'))
+						{
+							data.addons = {
+								allowAddons: parseContentBool(root.get('allowAddons'), false),
+								addonPrefix: root.get('addonPrefix') ?? ''
+							};
+						}
+						contentDataCache.set(folder, data);
+						return data;
+					}
+				}
+			} catch(e:Dynamic) {
+				trace(e);
+			}
+		}
+		#end
+		contentDataCache.set(folder, null);
+		return null;
 	}
 	
 	inline public static function mergeAllTextsNamed(path:String, ?defaultDirectory:String = null, allowDuplicates:Bool = false)
@@ -185,9 +593,9 @@ class Mods
 				if(FileSystem.exists(folder)) addFolder(folder);
 			}
 
-			if(Mods.currentModDirectory != null && Mods.currentModDirectory.length > 0)
+			for(mod in getActiveModDirectories())
 			{
-				var folder:String = Paths.mods(Mods.currentModDirectory + '/' + fileToFind);
+				var folder:String = Paths.mods(mod + '/' + fileToFind);
 				if(FileSystem.exists(folder)) addFolder(folder);
 			}
 
@@ -197,12 +605,9 @@ class Mods
 				if(FileSystem.exists(folder)) addFolder(folder);
 			}
 
-			var folder:String = Paths.mods(fileToFind);
-			if(FileSystem.exists(folder)) addFolder(folder);
-
-			for(mod in Mods.getGlobalMods())
+			if(rootAddonsAllowed())
 			{
-				folder = Paths.mods(mod + '/' + fileToFind);
+				var folder:String = Paths.mods(fileToFind);
 				if(FileSystem.exists(folder)) addFolder(folder);
 			}
 		}
@@ -221,7 +626,7 @@ class Mods
 		if(FileSystem.exists(path)) {
 			try {
 				#if sys
-				var rawJson:String = Paths.getTextFromFile(path);
+				var rawJson:String = File.getContent(path);
 				#else
 				var rawJson:String = Assets.getText(path);
 				#end
@@ -285,12 +690,7 @@ class Mods
 		if (stateName == null)
 			return null;
 
-		var folders:Array<String> = [];
-		if (currentModDirectory != null && currentModDirectory.length > 0)
-			folders.push(currentModDirectory);
-		for (mod in getGlobalMods())
-			if (!folders.contains(mod))
-				folders.push(mod);
+		var folders:Array<String> = getActiveModDirectories();
 
 		for (folder in folders)
 		{
@@ -413,7 +813,7 @@ class Mods
 		if (FileSystem.exists(jsonPath))
 		{
 			try {
-				var rawJson:String = Paths.getTextFromFile(jsonPath);
+				var rawJson:String = File.getContent(jsonPath);
 				if (rawJson != null && rawJson.length > 0)
 					return cast tjson.TJSON.parse(rawJson);
 			} catch (e:Dynamic) {
@@ -425,7 +825,7 @@ class Mods
 		if (FileSystem.exists(xmlPath))
 		{
 			try {
-				var rawXml:String = Paths.getTextFromFile(xmlPath);
+				var rawXml:String = File.getContent(xmlPath);
 				if (rawXml != null && rawXml.length > 0)
 				{
 					var root:Xml = Xml.parse(rawXml).firstElement();
@@ -464,29 +864,25 @@ class Mods
 		if (includeCurrent && isCurrentPackageActive())
 			addPackage(currentPackageDirectory);
 
-		if (currentModDirectory != null && currentModDirectory.trim().length > 0)
+		for(mod in getActiveModDirectories())
 		{
-			for(packageFolder in getPackageDirectories(currentModDirectory))
+			for(packageFolder in getPackageDirectories(mod))
 				if (packageFolder != currentPackageDirectory)
 					addPackage(packageFolder);
 		}
 
 		if (includeGlobals)
 		{
-			for(packageFolder in getRootPackageDirectories())
-				if (packageFolder != currentPackageDirectory)
-					addPackage(packageFolder);
+			if (rootAddonsAllowed())
+			{
+				for(packageFolder in getRootPackageDirectories())
+					if (packageFolder != currentPackageDirectory)
+						addPackage(packageFolder);
+			}
 
 			for(packageFolder in getGlobalPackageMods())
 				if (packageFolder != currentPackageDirectory)
 					addPackage(packageFolder);
-
-			for(mod in getGlobalMods())
-			{
-				for(packageFolder in getPackageDirectories(mod))
-					if (packageFolder != currentPackageDirectory)
-						addPackage(packageFolder);
-			}
 		}
 		#end
 
@@ -498,9 +894,11 @@ class Mods
 		var list:ModsList = {enabled: [], disabled: [], all: [], available: []};
 
 		#if MODS_ALLOWED
-		#if sys if (FileSystem.exists('modsList.txt')) {
+		#if sys
+		var listFile:String = FileSystem.exists(ADDONS_LIST_FILE) ? ADDONS_LIST_FILE : LEGACY_MODS_LIST_FILE;
+		if (FileSystem.exists(listFile)) {
 			try {
-				for (mod in CoolUtil.coolTextFile('modsList.txt')) {
+				for (mod in CoolUtil.coolTextFile(listFile)) {
 					if (mod.trim().length < 1) continue;
 
 					var dat = mod.split('|');
@@ -516,7 +914,7 @@ class Mods
 			} catch(e) {
 				trace(e);
 
-				FileSystem.deleteFile('modsList.txt');
+				FileSystem.deleteFile(listFile);
 			}
 		} else #end {
 			for (mod => enabled in ClientPrefs.modsEnabled) {
@@ -551,7 +949,7 @@ class Mods
 		for (mod in list.available)
 			content += '$mod|${list.enabled.contains(mod) ? 1 : 0}\n';
 
-		File.saveContent('modsList.txt', content);
+		File.saveContent(ADDONS_LIST_FILE, content);
 		#end
 
 		updatedOnState = true;
@@ -559,13 +957,25 @@ class Mods
 	}
 
 	private static function directoryIsMod(dir:String):Bool {
-		if (dir.trim().length == 0 || ignoreModFolders.contains(dir.toLowerCase())) return false;
+		dir = normalizeFolderKey(dir);
+		if (dir.length == 0)
+			return false;
+
+		var folderName:String = dir;
+		var lastSlash:Int = folderName.lastIndexOf('/');
+		if (lastSlash >= 0)
+			folderName = folderName.substr(lastSlash + 1);
+		if (ignoreModFolders.contains(folderName.toLowerCase()))
+			return false;
 
 		dir = Paths.mods(dir);
 
 		if (FileSystem.exists(dir) && FileSystem.isDirectory(dir)) {
 			if (FileSystem.exists('$dir/.notamod'))
 				return false;
+
+			if (FileSystem.exists('$dir/pack.json'))
+				return true;
 
 			for (sub in ignoreModFolders) {
 				if (FileSystem.exists('$dir/$sub'))
@@ -582,14 +992,25 @@ class Mods
 		Mods.currentPackageDirectory = '';
 
 		#if MODS_ALLOWED
+		syncSelectedContentFromPrefs();
+		var contentMods:Array<String> = getContentModDirectories();
+		if (contentMods.length > 0)
+		{
+			Mods.currentModDirectory = contentMods[0];
+			pushGlobalMods();
+			return;
+		}
+
 		var list:ModsList = Mods.parseList();
 
 		for (mod in list.available) {
-			if (list.enabled.contains(mod)) {
+			if (list.enabled.contains(mod) && addonAllowedForCurrentContent(mod)) {
 				Mods.currentModDirectory = mod;
+				pushGlobalMods();
 				return;
 			}
 		}
+		pushGlobalMods();
 		#end
 	}
 

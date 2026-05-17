@@ -81,7 +81,7 @@ class CustomCursor
 			image = 'cursor';
 
 		image = image.replace('\\', '/').trim();
-		if(image.endsWith('.png') || image.startsWith('images/') || image.startsWith('assets/') || image.startsWith('mods/'))
+		if(image.endsWith('.png') || image.startsWith('images/') || image.startsWith('assets/') || image.startsWith('addons/') || image.startsWith('contents/') || image.startsWith('mods/'))
 			return Paths.getPath(image, AssetType.IMAGE, null, true);
 		return Paths.getPath('images/$image.png', AssetType.IMAGE, null, true);
 	}

@@ -6,6 +6,8 @@ import flixel.input.gamepad.FlxGamepadInputID;
 
 import states.TitleState;
 
+using StringTools;
+
 // Add a variable here and it will get automatically saved
 @:structInit class SaveVariables {
 
@@ -142,6 +144,9 @@ class ClientPrefs {
 	public static var defaultButtons:Map<String, Array<FlxGamepadInputID>> = null;
 	
 	public static var modsEnabled:Map<String, Bool> = [];
+	public static var selectedContent:String = '';
+	public static var pendingSelectedContent:String = '';
+	public static var contentBootStatus:String = '';
 	
 	public static var controlsSave(default, null):FlxSave;
 	public static var modsSave(default, null):FlxSave;
@@ -179,11 +184,48 @@ class ClientPrefs {
 		controlsSave.data.gamepad = gamepadBinds;
 		controlsSave.flush();
 		
+		ensureModsSave();
 		modsSave.data.modsEnabled = modsEnabled;
-		modsSave.flush();
+		saveContentSelectionState();
 		
 		FlxG.save.flush();
 		FlxG.log.add("Settings saved!");
+	}
+
+	public static function ensureModsSave():Void
+	{
+		if (modsSave == null) {
+			modsSave = new FlxSave();
+			modsSave.bind('mods', CoolUtil.getSavePath());
+		}
+	}
+
+	static function saveString(value:Dynamic):String
+		return value == null ? '' : Std.string(value).trim();
+
+	static function loadContentSelectionStateFromSave():Void
+	{
+		ensureModsSave();
+
+		selectedContent = Mods.normalizeFolderKey(saveString(modsSave.data.selectedContent));
+		pendingSelectedContent = Mods.normalizeFolderKey(saveString(modsSave.data.pendingSelectedContent));
+		contentBootStatus = saveString(modsSave.data.contentBootStatus).toLowerCase();
+	}
+
+	public static function saveContentSelectionState(?flush:Bool = true):Void
+	{
+		ensureModsSave();
+		modsSave.data.selectedContent = selectedContent;
+		modsSave.data.pendingSelectedContent = pendingSelectedContent;
+		modsSave.data.contentBootStatus = contentBootStatus;
+		if (flush)
+			modsSave.flush();
+	}
+
+	public static function preloadContentSelection():Void
+	{
+		ensureModsSave();
+		loadContentSelectionStateFromSave();
 	}
 
 	public static function loadPrefs() {
@@ -239,10 +281,7 @@ class ClientPrefs {
 			controlsSave = new FlxSave();
 			controlsSave.bind('controls_v3', CoolUtil.getSavePath());
 		}
-		if (modsSave == null) {
-			modsSave = new FlxSave();
-			modsSave.bind('mods', CoolUtil.getSavePath());
-		}
+		ensureModsSave();
 		
 		var loadedKeyboard:Map<String, Array<FlxKey>> = controlsSave.data.keyboard;
 		var loadedGamepad:Map<String, Array<FlxGamepadInputID>> = controlsSave.data.gamepad;
@@ -260,6 +299,11 @@ class ClientPrefs {
 			for (mod => enabled in loadedMods)
 				modsEnabled.set(mod, enabled);
 		}
+		loadContentSelectionStateFromSave();
+		#if MODS_ALLOWED
+		Mods.loadTopMod();
+		Mods.pushGlobalMods();
+		#end
 		
 		reloadVolumeKeys();
 	}

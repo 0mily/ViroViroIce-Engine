@@ -89,7 +89,7 @@ function onCheckBoxChecked(tag, check)
     if tag == 'ignMods' then
         ignoreMods = check
         if not check then
-            absolutePath = 'mods/'..curMod..'/'
+            absolutePath = 'addons/'..curMod..'/'
             setProperty('mod.alpha', 1)
         else
             absolutePath = 'assets/shared/'
@@ -118,7 +118,7 @@ function convertStuff()
     }
 
     if not ignoreMods then
-        absolutePath = 'mods/'..curMod..'/'
+        absolutePath = 'addons/'..curMod..'/'
         
         for i = 1, #folderNames do
             if runHaxeFunction('folderExists', {absolutePath..folderNames[i]}) then

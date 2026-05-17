@@ -38,7 +38,7 @@ class EditorBuddy extends FlxSprite // sei lá porra, metade eu roubei da nightm
 		}
 		updateHitbox();
 		playBuddyAnim(idleName);
-		updateHitbox();
+		//updateHitbox(); bruh nmrl
 	}
 
 	override function update(elapsed:Float):Void

@@ -232,22 +232,18 @@ class ScriptedSubState extends MusicBeatSubstate {
 	function getModOnlyScriptPath(file:String):String
 	{
 		#if MODS_ALLOWED
-		if (Mods.currentModDirectory != null && Mods.currentModDirectory.length > 0)
+		for (mod in Mods.getActiveModDirectories())
 		{
-			var modPath:String = Paths.mods(Mods.currentModDirectory + '/' + file);
+			var modPath:String = Paths.mods(mod + '/' + file);
 			if (FileSystem.exists(modPath))
 				return modPath;
 		}
 
-		var rootPath:String = Paths.mods(file);
-		if (FileSystem.exists(rootPath))
-			return rootPath;
-
-		for (mod in Mods.getGlobalMods())
+		if (Mods.rootAddonsAllowed())
 		{
-			var globalPath:String = Paths.mods(mod + '/' + file);
-			if (FileSystem.exists(globalPath))
-				return globalPath;
+			var rootPath:String = Paths.mods(file);
+			if (FileSystem.exists(rootPath))
+				return rootPath;
 		}
 		#end
 

@@ -60,9 +60,9 @@ class MainMenuState extends ScriptedState
 	}
 	override function create() {
 		#if MODS_ALLOWED
+		Mods.loadTopMod();
 		Mods.pushGlobalMods();
 		#end
-		Mods.loadTopMod();
 		
 		rpcDetails = 'In the Menus';
 

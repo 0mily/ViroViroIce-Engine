@@ -46,9 +46,11 @@ musicplayer_playing: "MÚSICA: {1}"
 musicplayer_paused: "MÚSICA: {1} (PAUSADO)"
 musicplayer_tip: "Aperte SPACE para Pausar / Aperte ESC para Sair / Aperte R para Reiniciar a Música"
 
-// Mods Menu
+// Addons Menu
 no_mods_installed: "Nenhum Mod instalado!\nAperte BACK para sair ou adicione um mod!"
 mod_restart: "* Mover ou Alternar o Mod reiniciará o jogo."
+no_addons_installed: "Nenhum Addon instalado!\nAperte BACK para sair ou adicione um addon!"
+addon_restart: "* Mover ou Alternar o Addon reiniciará o jogo."
 reload_button: "RECARREGAR"
 enable_all_button: "LIGAR TUDO"
 disable_all_button: "DESLIGAR TUDO"

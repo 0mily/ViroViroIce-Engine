@@ -88,9 +88,9 @@
 	</section>
 	
 	<section if="MODS_ALLOWED">
-		<assets path='example_mods' rename='mods' embed='false' type='template' unless="mac"/>
-		<assets path='example_mods' rename='mods' embed='false' if="mac"/>
-		<assets path='list.txt' rename='modsList.txt' />
+		<assets path='example_mods' rename='addons' embed='false' type='template' unless="mac"/>
+		<assets path='example_mods' rename='addons' embed='false' if="mac"/>
+		<assets path='list.txt' rename='addonsList.txt' />
 	</section>
 
 	<define name="CHECK_FOR_UPDATES" if="officialBuild"/>

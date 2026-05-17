@@ -1,0 +1,9 @@
+VVIE Setup/
+├── Contents/
+│   └── <CONTENT FOLDER>/
+│       ├── <modfolder example1>
+│       ├── <modfolder example2>
+│       └── data.json
+├── Addons/
+│   └── <addonfolder>
+└── Assets

@@ -153,6 +153,13 @@ class DiscordClient
 	#if MODS_ALLOWED
 	public static function loadModRPC()
 	{
+		var content:ContentData = Mods.getSelectedContentData();
+		if(content != null && content.discordRPC != null && content.discordRPC != clientID)
+		{
+			clientID = content.discordRPC;
+			return;
+		}
+
 		var pack:Dynamic = Mods.getPack();
 		if(pack != null && pack.discordRPC != null && pack.discordRPC != clientID)
 		{

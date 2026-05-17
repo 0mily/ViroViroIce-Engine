@@ -91,11 +91,6 @@ class Main extends Sprite
 		hxvlc.util.Handle.init(#if (hxvlc >= "1.8.0")  ['--no-lua'] #end);
 		#end
 		
-		#if LUA_ALLOWED
-		Mods.pushGlobalMods();
-		#end
-		Mods.loadTopMod();
-		
 		FlxG.signals.postGameReset.add(function() {
 			#if (!html5 && !switch) FlxG.autoPause = ClientPrefs.data.autoPause; #end
 			FlxG.fixedTimestep = false;
@@ -116,6 +111,8 @@ class Main extends Sprite
 		addChild(new #if UNHOLYWANDERER04 UnholyGame #else FlxGame #end(game.width, game.height, game.initialState, game.framerate, game.framerate, game.skipSplash, game.startFullscreen));
 		
 		ClientPrefs.loadPrefs();
+		Language.reloadPhrases();
+		Difficulty.resetList();
 		Highscore.load();
 		
 		substates.OutdatedSubState.updateVersion = CoolUtil.checkForUpdates();

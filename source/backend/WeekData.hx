@@ -79,10 +79,13 @@ class WeekData {
 		weeksList = [];
 		weeksLoaded.clear();
 		#if MODS_ALLOWED
-		var directories:Array<String> = [Paths.mods(), Paths.getSharedPath()];
+		var directories:Array<String> = [];
+		if (Mods.rootAddonsAllowed())
+			directories.push(Paths.mods());
+		directories.push(Paths.getSharedPath());
 		var originalLength:Int = directories.length;
 
-		for (mod in Mods.parseList().enabled)
+		for (mod in Mods.getGameplayModDirectories())
 			directories.push(Paths.mods(mod + '/'));
 		#else
 		var directories:Array<String> = [Paths.getSharedPath()];
@@ -100,7 +103,7 @@ class WeekData {
 
 						#if MODS_ALLOWED
 						if(j >= originalLength) {
-							weekFile.folder = directories[j].substring(Paths.mods().length, directories[j].length-1);
+							weekFile.folder = Mods.folderFromDirectoryPath(directories[j]);
 						}
 						#end
 
@@ -156,7 +159,7 @@ class WeekData {
 				else if(i >= originalLength)
 				{
 					#if MODS_ALLOWED
-					weekFile.folder = directory.substring(Paths.mods().length, directory.length-1);
+					weekFile.folder = Mods.folderFromDirectoryPath(directory);
 					#end
 				}
 				if((PlayState.isStoryMode && !weekFile.hideStoryMode) || (!PlayState.isStoryMode && !weekFile.hideFreeplay))

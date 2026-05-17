@@ -41,7 +41,7 @@ class MusicBeatState extends MusicBeatSubstate {
 		var stateName:String = ScriptedSubState.getStateName(nextState);
 		var alias:String = Mods.getStateScriptName(stateName);
 		if (alias != null && alias.length > 0)
-			return new CustomState(alias);
+			return new CustomState(alias, {aliasedState: stateName});
 		return nextState;
 	}
 
@@ -112,6 +112,36 @@ class MusicBeatState extends MusicBeatSubstate {
 			initPsychCamera();
 		
 		super.preCreate();
+	}
+
+	public override function update(elapsed:Float):Void {
+		#if MODS_ALLOWED
+		if (FlxG.keys.justPressed.TAB && subState == null && isMainMenuContext(this))
+		{
+			FlxG.sound.play(Paths.sound('scrollMenu'), 0.6);
+			switchState(new states.ContentMenuState());
+			return;
+		}
+		#end
+		super.update(elapsed);
+	}
+
+	public static function isMainMenuContext(state:Dynamic):Bool
+	{
+		if (state is states.MainMenuState)
+			return true;
+
+		if (state is CustomState)
+		{
+			var customState:CustomState = cast state;
+			if (Mods.getStateName(customState.stateName) == 'MainMenuState')
+				return true;
+
+			var aliasedState:Dynamic = customState.data != null ? Reflect.field(customState.data, 'aliasedState') : null;
+			if (aliasedState != null && Mods.getStateName(Std.string(aliasedState)) == 'MainMenuState')
+				return true;
+		}
+		return false;
 	}
 	@:dox(hide) override function _preCreate():Void {
 		MusicBeatSubstate.callGlobal('onCreateState', [this, Type.getClass(this)]);

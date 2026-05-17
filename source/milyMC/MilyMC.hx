@@ -125,10 +125,18 @@ class MilyMC
 	static function findSongModcharts(songName:String):Array<String>
 	{
 		var files:Array<String> = [];
+		addModchartFilesFromFolders(files, Mods.directoriesWithFile(Paths.getSharedPath(), 'data/scripts/'));
+
 		if (songName == null || songName.trim().length < 1)
 			return files;
 
-		for (folder in Mods.directoriesWithFile(Paths.getSharedPath(), 'songs/$songName/'))
+		addModchartFilesFromFolders(files, Mods.directoriesWithFile(Paths.getSharedPath(), 'songs/$songName/'));
+		return files;
+	}
+
+	static function addModchartFilesFromFolders(files:Array<String>, folders:Array<String>):Void
+	{
+		for (folder in folders)
 		{
 			var path:String = normalizePath(folder);
 			if (!path.endsWith('/'))
@@ -138,8 +146,6 @@ class MilyMC
 			if (FileSystem.exists(file) && !files.contains(file))
 				files.push(file);
 		}
-
-		return files;
 	}
 
 	static function hasScript(state:PlayState, scriptName:String):Bool

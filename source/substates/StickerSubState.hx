@@ -40,6 +40,7 @@ class StickerSubState extends MusicBeatSubstate
   // what "folder" was randomly selected
   var soundSelection:String = "";
   var sounds:Array<String> = [];
+  static inline var STICKER_SOUND_STRIDE:Int = 2;
 
   public function new(?oldStickers:Array<StickerSprite>, ?targetState:StickerSubState->FlxState):Void
   {
@@ -93,9 +94,9 @@ class StickerSubState extends MusicBeatSubstate
     grpStickers = new FlxTypedGroup<StickerSprite>();
     add(grpStickers);
 
-    // makes the stickers on the most recent camera, which is more often than not... a UI camera!!
-    // grpStickers.cameras = [FlxG.cameras.list[FlxG.cameras.list.length - 1]];
-    grpStickers.cameras = FlxG.cameras.list;
+    // Draw stickers only on the topmost camera. Drawing the full sticker pile on
+    // every active camera tanks FPS during gameplay/menu transitions.
+    grpStickers.cameras = [FlxG.cameras.list[FlxG.cameras.list.length - 1]];
 
     if (oldStickers != null)
     {
@@ -112,7 +113,7 @@ class StickerSubState extends MusicBeatSubstate
 
   public function degenStickers():Void
   {
-    grpStickers.cameras = FlxG.cameras.list;
+    grpStickers.cameras = [FlxG.cameras.list[FlxG.cameras.list.length - 1]];
 
     /*
       if (dipshit != null)
@@ -132,15 +133,11 @@ class StickerSubState extends MusicBeatSubstate
     for (ind => sticker in grpStickers.members)
     {
       new FlxTimer().start(sticker.timing, _ -> {
+        if (grpStickers == null) return;
         sticker.visible = false;
-        var daSound:String = FlxG.random.getObject(sounds);
-        #if !LEGACY_PSYCH
-        new FlxSound().loadEmbedded(Paths.sound(daSound)).play();
-        #else
-        new FlxSound().loadEmbedded(Paths.sound(daSound,"shared")).play();
-        #end
+        playStickerSound(ind, grpStickers.members.length);
 
-        if (grpStickers == null || ind == grpStickers.members.length - 1)
+        if (ind == grpStickers.members.length - 1)
         {
           switchingState = false;
           FlxTransitionableState.skipNextTransIn = false;
@@ -193,34 +190,36 @@ class StickerSubState extends MusicBeatSubstate
       #end
     // sticker group -> array of sticker names
 
+    var stickerSetCollection:Array<String> = [];
+    if(stickers != null)
+    {
+      var stickerPack:Array<String> = stickers.getPack(STICKER_PACK);
+      if(stickerPack == null)
+        stickerPack = stickers.stickers.keys().array();
+
+      for(x in stickerPack)
+      {
+        var stickerGroup:Array<String> = stickers.getStickers(x);
+        if(stickerGroup != null)
+          stickerSetCollection = stickerSetCollection.concat(stickerGroup);
+      }
+    }
+
     var xPos:Float = -100;
     var yPos:Float = -100;
     while (xPos <= FlxG.width)
     {
-      // A little complicateb block, so let me explain:
       var sticky:StickerSprite = null;
-      // Determinate if we actually have a valid set.
-      if(stickers != null){
-
-        // Select subsets defined by STICKER_PACK collection in the above "StickerSet"
-        var stickerPack:Array<String> = stickers.getPack(STICKER_PACK);
-        if(stickerPack == null){
-          stickerPack = stickers.stickers.keys().array();
-        }
-        // get all stickers from all subsets defined by "all" collection
-        var stickerSetCollection:Array<String> = [];
-        for(x in stickerPack){
-          stickerSetCollection = stickerSetCollection.concat(stickers.getStickers(x));
-        }
-
-        // get a random sticker 
+      if(stickerSetCollection.length > 0)
+      {
         var sticker:String = FlxG.random.getObject(stickerSetCollection);
         sticky = new StickerSprite(0, 0, STICKER_SET, sticker);
       }
-      else {
+      else
         sticky = new StickerSprite(0, 0, null, "faceSticker");
-      }
+
       sticky.visible = false;
+      sticky.active = false;
 
       sticky.x = xPos;
       sticky.y = yPos;
@@ -277,12 +276,7 @@ class StickerSubState extends MusicBeatSubstate
         if (grpStickers == null) return;
 
         sticker.visible = true;
-        var daSound:String = FlxG.random.getObject(sounds);
-        #if !LEGACY_PSYCH
-        new FlxSound().loadEmbedded(Paths.sound(daSound)).play();
-        #else
-        new FlxSound().loadEmbedded(Paths.sound(daSound,"shared")).play();
-        #end
+        playStickerSound(ind, grpStickers.members.length);
 
         var frameTimer:Int = FlxG.random.int(0, 2);
 
@@ -341,6 +335,21 @@ class StickerSubState extends MusicBeatSubstate
     Mods.loadTopMod(); // We won't be messing with mods from here on
     #else
     WeekData.loadTheFirstEnabledMod();
+    #end
+  }
+
+  function playStickerSound(index:Int, total:Int):Void
+  {
+    if (sounds == null || sounds.length < 1)
+      return;
+    if (index != total - 1 && index % STICKER_SOUND_STRIDE != 0)
+      return;
+
+    var daSound:String = FlxG.random.getObject(sounds);
+    #if !LEGACY_PSYCH
+    FlxG.sound.play(Paths.sound(daSound));
+    #else
+    new FlxSound().loadEmbedded(Paths.sound(daSound, "shared")).play();
     #end
   }
 

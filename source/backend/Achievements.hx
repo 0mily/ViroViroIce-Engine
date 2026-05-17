@@ -219,8 +219,9 @@ class Achievements {
 
 		var modLoaded:String = Mods.currentModDirectory;
 		Mods.currentModDirectory = null;
-		loadAchievementJson(Paths.mods('data/achievements.json'));
-		for (i => mod in Mods.parseList().enabled)
+		if (Mods.rootAddonsAllowed())
+			loadAchievementJson(Paths.mods('data/achievements.json'));
+		for (i => mod in Mods.getGameplayModDirectories())
 		{
 			Mods.currentModDirectory = mod;
 			loadAchievementJson(Paths.mods('$mod/data/achievements.json'));

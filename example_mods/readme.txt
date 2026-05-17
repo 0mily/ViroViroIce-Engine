@@ -1,4 +1,4 @@
-Psych's mods/ folder.
+ViroViroIce's addons/ folder.
 
 If you're a beginner, we recommend you extract modTemplate.zip to get started on developing your mod.
 Read the Psych GitHub wiki here:
@@ -10,4 +10,4 @@ You can also add or edit specific files without the mod template, you just have 
 
 ABOUT EDITING:
 If you want to change something, for example, within assets/shared/images or assets/base_game/images,
-said edited files *must* be put in mods/images, the engine will handle the rest.
+said edited files *must* be put in addons/images, the engine will handle the rest.

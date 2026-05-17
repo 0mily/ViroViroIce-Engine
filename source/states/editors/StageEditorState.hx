@@ -1708,7 +1708,7 @@ class StageEditorState extends MusicBeatState implements PsychUIEventHandler.Psy
 			if(fullPath.startsWith(exePath))
 			{
 				fullPath = fullPath.substr(exePath.length);
-				if((fullPath.startsWith('assets/') #if MODS_ALLOWED || fullPath.startsWith('mods/') #end) && fullPath.contains('/images/'))
+				if((fullPath.startsWith('assets/') #if MODS_ALLOWED || fullPath.startsWith('addons/') || fullPath.startsWith('contents/') #end) && fullPath.contains('/images/'))
 				{
 					loadSprite(fullPath.substring(fullPath.indexOf('/images/') + '/images/'.length, fullPath.lastIndexOf('.')));
 					//trace('Inside Psych Engine Folder');

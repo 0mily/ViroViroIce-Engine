@@ -23,6 +23,7 @@ class ModsMenuState extends MusicBeatState
 	var modDesc:FlxText;
 	var modRestartText:FlxText;
 	var modsList:ModsList = null;
+	var fullModsList:ModsList = null;
 
 	var bgList:FlxSprite;
 	var buttonReload:MenuButton;
@@ -59,10 +60,10 @@ class ModsMenuState extends MusicBeatState
 		Paths.clearUnusedMemory();
 		persistentUpdate = false;
 
-		modsList = Mods.parseList();
+		refreshVisibleModsList();
 		Mods.loadTopMod();
 		
-		rpcDetails = 'Mods Menu';
+		rpcDetails = 'Addons Menu';
 
 		bg = new FlxSprite().loadGraphic(Paths.image('menuDesat'));
 		bg.color = 0xFF665AFF;
@@ -173,7 +174,7 @@ class ModsMenuState extends MusicBeatState
 		add(modDesc);
 
 		var myHeight = 100;
-		modRestartText = new FlxText(bgDescription.x + 15, bgDescription.y + bgDescription.height - myHeight - 25, bgDescription.width - 30, Language.getPhrase('mod_restart', '* Moving or Toggling On/Off this Mod will restart the game.'), 16);
+		modRestartText = new FlxText(bgDescription.x + 15, bgDescription.y + bgDescription.height - myHeight - 25, bgDescription.width - 30, Language.getPhrase('addon_restart', '* Moving or Toggling On/Off this Addon will restart the game.'), 16);
 		modRestartText.setFormat(Paths.font("vcr.ttf"), 16, FlxColor.WHITE, RIGHT);
 		add(modRestartText);
 
@@ -269,7 +270,7 @@ class ModsMenuState extends MusicBeatState
 			buttonEnableAll.visible = true;
 
 			var myX = bgList.x + bgList.width + 20;
-			noModsTxt = new FlxText(myX, 0, FlxG.width - myX - 20, Language.getPhrase('no_mods_installed', 'No Mods installed!\nPress BACK to exit or install a mod!'), 48);
+			noModsTxt = new FlxText(myX, 0, FlxG.width - myX - 20, Language.getPhrase('no_addons_installed', 'No Addons installed!\nPress BACK to exit or install an addon!'), 48);
 			noModsTxt.setFormat(Paths.font("vcr.ttf"), 32, FlxColor.WHITE, CENTER);
 			noModsTxt.y = (bgTitle.y + (bgTitle.height - noModsTxt.height) * .5);
 			add(noModsTxt);
@@ -283,6 +284,69 @@ class ModsMenuState extends MusicBeatState
 
 		changeSelectedMod();
 		super.create();
+	}
+
+	function refreshVisibleModsList()
+	{
+		fullModsList = Mods.parseList();
+		modsList = filterModsForCurrentContent(fullModsList);
+	}
+
+	function filterModsForCurrentContent(list:ModsList):ModsList
+	{
+		var addonAllowed = getContentAddonFilter();
+		var visible:Array<String> = [];
+		for (mod in list.available)
+			if (addonAllowed(mod) && !visible.contains(mod))
+				visible.push(mod);
+
+		var enabled:Array<String> = [];
+		for (mod in list.enabled)
+			if (visible.contains(mod) && !enabled.contains(mod))
+				enabled.push(mod);
+
+		var disabled:Array<String> = [];
+		for (mod in list.disabled)
+			if (visible.contains(mod) && !disabled.contains(mod))
+				disabled.push(mod);
+
+		for (mod in visible)
+			if (!enabled.contains(mod) && !disabled.contains(mod))
+				disabled.push(mod);
+
+		var all:Array<String> = [];
+		for (mod in list.all)
+			if (addonAllowed(mod) && !all.contains(mod))
+				all.push(mod);
+
+		for (mod in visible)
+			if (!all.contains(mod))
+				all.push(mod);
+
+		return {enabled: enabled, disabled: disabled, all: all, available: visible};
+	}
+
+	function getContentAddonFilter():String->Bool
+	{
+		var selectedContent:String = Mods.getSelectedContentDirectory();
+		var allowAddons:Bool = selectedContent.length < 1 || Mods.addonsAllowedForCurrentContent();
+		var prefix:String = '';
+
+		if(allowAddons && selectedContent.length > 0)
+		{
+			prefix = Mods.getCurrentAddonPrefix();
+			if(prefix == null)
+				allowAddons = false;
+		}
+
+		return function(mod:String):Bool
+		{
+			if(!allowAddons)
+				return false;
+
+			mod = Mods.normalizeFolderKey(mod);
+			return prefix.length < 1 || StringTools.startsWith(mod, prefix);
+		}
 	}
 	
 	var nextAttempt:Float = 1;
@@ -535,7 +599,7 @@ class ModsMenuState extends MusicBeatState
 				nextAttempt = 1;
 				@:privateAccess
 				Mods.updateModList();
-				modsList = Mods.parseList();
+				refreshVisibleModsList();
 				if(modsList.available.length > 0)
 				{
 					trace('mod(s) found! reloading');
@@ -698,6 +762,7 @@ class ModsMenuState extends MusicBeatState
 			}
 
 			mod.visible = (i >= minVisible && i <= maxVisible);
+			mod.active = mod.visible;
 			mod.x = bgList.x + 5;
 			mod.y = bgList.y + (86 * (i - centerMod + 2)) + 5;
 			
@@ -759,11 +824,55 @@ class ModsMenuState extends MusicBeatState
 	
 	function saveMods()
 	{
-		Mods.updateModList(modsList);
+		var saveList:ModsList = fullModsList != null ? fullModsList : modsList;
+		mergeVisibleModsIntoFullList(saveList);
+		Mods.updateModList(saveList);
 		Mods.loadTopMod();
 		
 		ClientPrefs.modsSave.data.modsEnabled = ClientPrefs.modsEnabled;
+		ClientPrefs.modsSave.data.selectedContent = ClientPrefs.selectedContent;
 		ClientPrefs.modsSave.flush();
+	}
+
+	function mergeVisibleModsIntoFullList(saveList:ModsList)
+	{
+		if(saveList == null || modsList == null) return;
+
+		var visible:Array<String> = modsList.available.copy();
+		var queuedVisible:Array<String> = visible.copy();
+		var rebuiltAvailable:Array<String> = [];
+		var addonAllowed = getContentAddonFilter();
+
+		for (mod in saveList.available)
+		{
+			if(addonAllowed(mod))
+			{
+				if(queuedVisible.length > 0)
+				{
+					var nextVisible:String = queuedVisible.shift();
+					if(!rebuiltAvailable.contains(nextVisible))
+						rebuiltAvailable.push(nextVisible);
+				}
+			}
+			else if(!rebuiltAvailable.contains(mod))
+				rebuiltAvailable.push(mod);
+		}
+
+		for (mod in queuedVisible)
+			if(!rebuiltAvailable.contains(mod))
+				rebuiltAvailable.push(mod);
+
+		saveList.available = rebuiltAvailable;
+		for (mod in visible)
+		{
+			saveList.enabled.remove(mod);
+			saveList.disabled.remove(mod);
+
+			if(modsList.enabled.contains(mod))
+				saveList.enabled.push(mod);
+			else
+				saveList.disabled.push(mod);
+		}
 	}
 }
 
@@ -775,7 +884,7 @@ class ModItem extends FlxSpriteGroup
 	public var totalFrames:Int = 0;
 
 	// options
-	public var name:String = 'Unknown Mod';
+	public var name:String = 'Unknown Addon';
 	public var desc:String = 'No description provided.';
 	public var iconFps:Int = 10;
 	public var bgColor:FlxColor = 0xFF665AFF;
