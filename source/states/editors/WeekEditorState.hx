@@ -421,12 +421,15 @@ class WeekEditorState extends MusicBeatState implements PsychUIEventHandler.Psyc
 
 	private static var _file:FileReference;
 	public static function loadWeek() {
-		var jsonFilter:FileFilter = new FileFilter('JSON', 'json');
+		var filters:Array<FileFilter> = [
+			new FileFilter('XML Level', 'xml'),
+			new FileFilter('JSON Level (import only)', 'json')
+		];
 		_file = new FileReference();
 		_file.addEventListener(#if desktop Event.SELECT #else Event.COMPLETE #end, onLoadComplete);
 		_file.addEventListener(Event.CANCEL, onLoadCancel);
 		_file.addEventListener(IOErrorEvent.IO_ERROR, onLoadError);
-		_file.browse([#if !mac jsonFilter #end]);
+		_file.browse(#if !mac filters #else [] #end);
 	}
 	
 	public static var loadedWeek:WeekFile = null;
@@ -443,12 +446,14 @@ class WeekEditorState extends MusicBeatState implements PsychUIEventHandler.Psyc
 		if(_file.__path != null) fullPath = _file.__path;
 
 		if(fullPath != null) {
-			var rawJson:String = Paths.getTextFromFile(fullPath);
-			if(rawJson != null) {
-				loadedWeek = cast Json.parse(rawJson);
+			var rawData:String = Paths.getTextFromFile(fullPath);
+			if(rawData != null) {
+				loadedWeek = WeekData.parseWeekFile(rawData, fullPath, true);
 				if(loadedWeek.weekCharacters != null && loadedWeek.weekName != null) //Make sure it's really a week
 				{
-					var cutName:String = _file.name.substr(0, _file.name.length - 5);
+					var cutName:String = _file.name;
+					var dot:Int = cutName.lastIndexOf('.');
+					if(dot > -1) cutName = cutName.substr(0, dot);
 					trace("Successfully loaded file: " + cutName);
 					loadError = false;
 
@@ -492,14 +497,14 @@ class WeekEditorState extends MusicBeatState implements PsychUIEventHandler.Psyc
 	}
 
 	public static function saveWeek(weekFile:WeekFile) {
-		var data:String = haxe.Json.stringify(weekFile, "\t");
+		var data:String = WeekData.buildLevelXml(weekFile);
 		if (data.length > 0)
 		{
 			_file = new FileReference();
 			_file.addEventListener(#if desktop Event.SELECT #else Event.COMPLETE #end, onSaveComplete);
 			_file.addEventListener(Event.CANCEL, onSaveCancel);
 			_file.addEventListener(IOErrorEvent.IO_ERROR, onSaveError);
-			_file.save(data, weekFileName + ".json");
+			_file.save(data, weekFileName + ".xml");
 		}
 	}
 	
@@ -670,7 +675,7 @@ class WeekEditorFreeplayState extends MusicBeatState implements PsychUIEventHand
 		colorHexText = new FlxText(164, 98, 72, '#FFFFFF', 12);
 		colorHexText.alignment = CENTER;
 
-		var copyColor:PsychUIButton = new PsychUIButton(160, 124, "Copy", function() Clipboard.text = getSelectedFreeplayColor().toHexString(false, false), 74);
+		var copyColor:PsychUIButton = new PsychUIButton(160, 124, "Copy", function() Clipboard.text = '#' + getSelectedFreeplayColor().toHexString(false, false), 74); // eu esqueci e tava bugad
 
 		var pasteColor:PsychUIButton = new PsychUIButton(160, 148, "Paste", function()
 		{
@@ -678,8 +683,10 @@ class WeekEditorFreeplayState extends MusicBeatState implements PsychUIEventHand
 			{
 				var leColor:Array<Int> = [];
 				var raw:String = Clipboard.text.trim();
-				if(raw.startsWith('#') || raw.startsWith('0x') || raw.startsWith('0X'))
+				if(raw.startsWith('#') || raw.startsWith('0x') || raw.startsWith('0X') || ~/^[0-9a-fA-F]{6}$/.match(raw))
 				{
+					if(!raw.startsWith('#') && !raw.startsWith('0x') && !raw.startsWith('0X'))
+						raw = '#' + raw;
 					var parsed:FlxColor = CoolUtil.colorFromString(raw);
 					setSelectedFreeplayColor(parsed);
 					return;

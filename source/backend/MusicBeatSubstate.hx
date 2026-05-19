@@ -166,6 +166,14 @@ class MusicBeatSubstate extends flixel.FlxSubState {
 	}
 	
 	public override function update(elapsed:Float) {
+		ScreenshotUtil.updateInput();
+
+		if(FlxG.keys.justPressed.F12 && FlxG.keys.pressed.CONTROL)
+		{
+			FlxG.resetGame();
+			return;
+		}
+
 		if (subState == null) {
 			MusicBeatState.timePassedOnState += elapsed;
 			

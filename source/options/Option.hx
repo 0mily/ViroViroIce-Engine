@@ -39,6 +39,7 @@ class Option
 	public var description:String = '';
 	public var name:String = 'Unknown';
 	public var key:String = 'Unknown';
+	public var visible:Void->Bool = null;
 
 	public var defaultKeys:Keybind = null; //Only used in keybind type
 	public var keys:Keybind = null; //Only used in keybind type
@@ -111,6 +112,11 @@ class Option
 		if(onChange != null)
 			onChange(mod, hold);
 	}
+
+	public function isVisible():Bool
+	{
+		return visible == null || visible();
+	}
 	
 	public function getDefaultValue():Dynamic {
 		if (!psychlua.LuaUtils.hasField(ClientPrefs.defaultData, variable)) return this.defaultValue;
@@ -140,12 +146,15 @@ class Option
 			case KEYBIND:
 				if (hasSave) {
 					var keys:Dynamic = Reflect.getProperty(ClientPrefs.data, variable);
-					if (!Controls.instance.controllerMode) this.value.keyboard = keys.keyboard = value;
-					else this.value.gamepad = keys.gamepad = value;
+					if(keys == null) keys = getDefaultKeys();
+					if(this.keys == null) this.keys = getDefaultKeys();
+					if (!Controls.instance.controllerMode) this.keys.keyboard = keys.keyboard = value;
+					else this.keys.gamepad = keys.gamepad = value;
+					Reflect.setProperty(ClientPrefs.data, variable, keys);
 				} else {
-					this.value ??= getDefaultKeys();
-					if (!Controls.instance.controllerMode) this.value.keyboard = value;
-					else this.value.gamepad = value;
+					this.keys ??= getDefaultKeys();
+					if (!Controls.instance.controllerMode) this.keys.keyboard = value;
+					else this.keys.gamepad = value;
 				}
 				
 			default:

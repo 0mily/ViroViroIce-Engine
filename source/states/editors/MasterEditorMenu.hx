@@ -90,7 +90,7 @@ class MasterEditorMenu extends ScriptedSubState
 		directoryTxt.scrollFactor.set();
 		add(directoryTxt);
 		
-		for (folder in Mods.getModDirectories()) {
+		for (folder in Mods.getEditorModDirectories()) {
 			directories.push(folder);
 		}
 
@@ -188,9 +188,12 @@ class MasterEditorMenu extends ScriptedSubState
 		
 		WeekData.setDirectoryFromWeek();
 		if (directories[curDirectory] == null || directories[curDirectory].length < 1) {
+			Mods.currentModDirectory = '';
+			Mods.pushGlobalMods();
 			directoryTxt.text = '< No Mod Directory Loaded >';
 		} else {
 			Mods.currentModDirectory = directories[curDirectory];
+			Mods.pushGlobalMods();
 			directoryTxt.text = '< Loaded Mod Directory: ' + Mods.currentModDirectory + ' >';
 		}
 		directoryTxt.text = directoryTxt.text.toUpperCase();

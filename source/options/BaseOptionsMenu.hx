@@ -82,6 +82,7 @@ class BaseOptionsMenu extends ScriptedSubState
 		for (i => option in optionsArray) {
 			var optionText:Alphabet = new Alphabet(220, 260, option.name, false);
 			optionText.isMenuItem = true;
+			optionText.ID = i;
 			/*optionText.forceX = 300;
 			optionText.yMult = 90;*/
 			optionText.targetY = i;
@@ -127,6 +128,23 @@ class BaseOptionsMenu extends ScriptedSubState
 	
 	public function findOption(key:String):Option {
 		return Lambda.find(optionsArray, (option:Option) -> (option.key == key));
+	}
+
+	public function refreshVisibleOptions():Void {
+		if (optionsArray == null || optionsArray.length == 0) return;
+
+		if (!isOptionVisible(curSelected))
+			changeSelection(0);
+		else
+			updateTexts();
+
+		reloadCheckboxes();
+	}
+
+	function isOptionVisible(index:Int):Bool {
+		if (optionsArray == null || index < 0 || index >= optionsArray.length) return false;
+		var option:Option = optionsArray[index];
+		return option != null && option.isVisible();
 	}
 
 	var nextAccept:Int = 5;
@@ -500,6 +518,18 @@ class BaseOptionsMenu extends ScriptedSubState
 		if (optionsArray.length == 0) return;
 		
 		var next:Int = FlxMath.wrap(curSelected + change, 0, optionsArray.length - 1);
+		var step:Int = change < 0 ? -1 : 1;
+		var foundVisible:Bool = false;
+		for (_ in 0...optionsArray.length)
+		{
+			if(isOptionVisible(next))
+			{
+				foundVisible = true;
+				break;
+			}
+			next = FlxMath.wrap(next + step, 0, optionsArray.length - 1);
+		}
+		if(!foundVisible) return;
 		
 		if (callOnScripts('onSelectItem', [optionsArray[next], next], true) != LuaUtils.Function_Stop) {
 			curSelected = next;
@@ -521,16 +551,36 @@ class BaseOptionsMenu extends ScriptedSubState
 		descText.screenCenter(Y);
 		descText.y += 270;
 
+		var selectedVisibleIndex:Int = 0; // desgraça feia, até isso funcionar eu demorei até demais
+		for (i in 0...curSelected)
+			if(isOptionVisible(i))
+				selectedVisibleIndex++;
+
+		var visibleIndex:Int = 0;
 		for (num => item in grpOptions.members)
 		{
-			item.targetY = num - curSelected;
+			var show:Bool = isOptionVisible(item.ID);
+			item.visible = item.active = show;
+			if(!show) continue;
+
+			item.targetY = visibleIndex - selectedVisibleIndex;
 			item.alpha = 0.6;
 			if (item.targetY == 0) item.alpha = 1;
+			visibleIndex++;
 		}
 		for (text in grpTexts)
 		{
+			var show:Bool = isOptionVisible(text.ID);
+			text.visible = text.active = show;
+			if(!show) continue;
+
 			text.alpha = 0.6;
 			if(text.ID == curSelected) text.alpha = 1;
+		}
+		for (checkbox in checkboxGroup)
+		{
+			var show:Bool = isOptionVisible(checkbox.ID);
+			checkbox.visible = checkbox.active = show;
 		}
 
 		descBox.setPosition(descText.x - 10, descText.y - 10);
@@ -540,6 +590,7 @@ class BaseOptionsMenu extends ScriptedSubState
 
 	function reloadCheckboxes() {
 		for (checkbox in checkboxGroup)
-			checkbox.daValue = Std.string(optionsArray[checkbox.ID].getValue()) == 'true'; //Do not take off the Std.string() from this, it will break a thing in Mod Settings Menu
+			if(isOptionVisible(checkbox.ID))
+				checkbox.daValue = Std.string(optionsArray[checkbox.ID].getValue()) == 'true'; //Do not take off the Std.string() from this, it will break a thing in Mod Settings Menu
 	}
 }

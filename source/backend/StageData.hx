@@ -83,7 +83,7 @@ class StageData {
 	public static function getStageFile(stage:String):StageFile {
 		try
 		{
-			var path:String = Paths.getPath('stages/' + stage + '.json', TEXT, null, true);
+			var path:String = Paths.getPath('data/stages/' + stage + '.json', TEXT, null, true);
 			#if MODS_ALLOWED
 			if(FileSystem.exists(path))
 				return cast tjson.TJSON.parse(Paths.getTextFromFile(path));

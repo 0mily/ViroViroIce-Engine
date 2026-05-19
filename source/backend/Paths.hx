@@ -19,6 +19,10 @@ import flash.media.Sound;
 import haxe.Json;
 import haxe.io.Path as HaxePath;
 
+#if flxanimate
+import animate.FlxAnimateFrames;
+#end
+
 #if sys
 import sys.FileSystem;
 import sys.io.File;
@@ -360,21 +364,42 @@ class Paths
 	
 	static public function getMultiAtlas(keys:Array<String>, ?parentFolder:String = null, ?allowGPU:Bool = true):FlxAtlasFrames
 	{
-		
-		var parentFrames:FlxAtlasFrames = Paths.getAtlas(keys[0].trim());
-		if(keys.length > 1)
+		var cleanedKeys:Array<String> = [];
+		for (key in keys)
 		{
-			var original:FlxAtlasFrames = parentFrames;
-			parentFrames = new FlxAtlasFrames(parentFrames.parent);
-			parentFrames.addAtlas(original, true);
-			for (i in 1...keys.length)
-			{
-				var extraFrames:FlxAtlasFrames = Paths.getAtlas(keys[i].trim(), parentFolder, allowGPU);
-				if(extraFrames != null)
-					parentFrames.addAtlas(extraFrames, true);
-			}
+			if (key == null) continue;
+			key = key.trim();
+			if (key.length > 0 && !cleanedKeys.contains(key))
+				cleanedKeys.push(key);
 		}
-		return parentFrames;
+
+		if(cleanedKeys.length < 1)
+			cleanedKeys.push('characters/bf');
+
+		var parentFrames:FlxAtlasFrames = null;
+		for (key in cleanedKeys)
+		{
+			var frames:FlxAtlasFrames = null;
+			try
+			{
+				frames = Paths.getAtlas(key, parentFolder, allowGPU);
+			}
+			catch(e:Dynamic)
+			{
+				FlxG.log.warn('Could not load atlas $key: $e');
+			}
+			if(frames == null)
+				continue;
+
+			if(parentFrames == null)
+			{
+				parentFrames = new FlxAtlasFrames(frames.parent);
+				parentFrames.addAtlas(frames, true);
+			}
+			else
+				parentFrames.addAtlas(frames, true);
+		}
+		return parentFrames != null ? parentFrames : Paths.getAtlas('characters/bf', parentFolder, allowGPU);
 	}
 
 	inline static public function getSparrowAtlas(key:String, ?parentFolder:String = null, ?allowGPU:Bool = true):FlxAtlasFrames
@@ -521,25 +546,68 @@ class Paths
 	#end
 
 	#if flxanimate
-	public static function isAnimateAtlas(imageKey:String):Bool
+	static function normalizeAtlasKey(imageKey:String):String
 	{
-		if(imageKey == null) return false;
+		if(imageKey == null) return '';
 
-		imageKey = imageKey.trim();
+		imageKey = imageKey.replace('\\', '/').trim();
+		var slashIndex:Int = imageKey.indexOf('/');
+		var colonIndex:Int = imageKey.indexOf(':');
+		if(colonIndex >= 0 && (slashIndex < 0 || colonIndex < slashIndex))
+			imageKey = imageKey.substr(colonIndex + 1);
+		if(imageKey.startsWith('images/'))
+			imageKey = imageKey.substr('images/'.length);
+		while(imageKey.length > 0 && imageKey.startsWith('/'))
+			imageKey = imageKey.substr(1);
 		while(imageKey.length > 0 && (imageKey.endsWith('/') || imageKey.endsWith('\\')))
 			imageKey = imageKey.substr(0, imageKey.length - 1);
-		if(imageKey.length < 1 || imageKey.contains(',')) return false;
 
+		return imageKey;
+	}
+
+	static function splitAtlasKeys(imageKey:String):Array<String>
+	{
+		var keys:Array<String> = [];
+		if(imageKey == null) return keys;
+
+		for(rawKey in imageKey.split(','))
+		{
+			var key:String = normalizeAtlasKey(rawKey);
+			if(key.length > 0 && !keys.contains(key))
+				keys.push(key);
+		}
+		return keys;
+	}
+
+	static function isSingleAnimateAtlas(imageKey:String):Bool
+	{
+		imageKey = normalizeAtlasKey(imageKey);
+		if(imageKey.length < 1) return false;
 		return getTextFromFile('images/$imageKey/Animation.json') != null;
+	}
+
+	public static function isAnimateAtlas(imageKey:String):Bool
+	{
+		var keys:Array<String> = splitAtlasKeys(imageKey);
+		if(keys.length < 1) return false;
+
+		for(key in keys)
+			if(isSingleAnimateAtlas(key))
+				return true;
+		return false;
 	}
 
 	public static function loadAnimateAtlas(spr:FlxAnimate, folderOrImg:Dynamic, spriteJson:Dynamic = null, animationJson:Dynamic = null)
 	{
 		if(Std.isOfType(folderOrImg, String))
 		{
-			var originalPath:String = Std.string(folderOrImg).trim();
-			while(originalPath.length > 0 && (originalPath.endsWith('/') || originalPath.endsWith('\\')))
-				originalPath = originalPath.substr(0, originalPath.length - 1);
+			var originalPath:String = normalizeAtlasKey(Std.string(folderOrImg));
+			var atlasKeys:Array<String> = splitAtlasKeys(originalPath);
+			if(atlasKeys.length > 1 && spriteJson == null && animationJson == null)
+			{
+				loadMultiAnimateAtlas(spr, atlasKeys);
+				return;
+			}
 
 			if(spriteJson == null)
 			{
@@ -580,8 +648,50 @@ class Paths
 		spr.loadAtlasEx(folderOrImg, spriteJson, animationJson);
 	}
 
+	static function loadMultiAnimateAtlas(spr:FlxAnimate, keys:Array<String>):Void
+	{
+		var atlasList:Array<FlxAtlasFrames> = [];
+		for(key in keys)
+		{
+			var frames:FlxAtlasFrames = getFramesForMultiAnimateAtlas(key);
+			if(frames != null)
+				atlasList.push(frames);
+		}
+
+		if(atlasList.length > 0)
+		{
+			var combined:FlxAtlasFrames = FlxAnimateFrames.combineAtlas(atlasList);
+			if(combined != null)
+				spr.frames = combined;
+		}
+	}
+
+	static function getFramesForMultiAnimateAtlas(key:String):FlxAtlasFrames
+	{
+		key = normalizeAtlasKey(key);
+		if(key.length < 1) return null;
+
+		if(isSingleAnimateAtlas(key))
+		{
+			var temp:FlxAnimate = new FlxAnimate();
+			loadAnimateAtlas(temp, key);
+			return cast temp.frames;
+		}
+
+		try
+		{
+			return getAtlas(key);
+		}
+		catch(e:Dynamic)
+		{
+			FlxG.log.warn('Could not load atlas $key: $e');
+			return null;
+		}
+	}
+
 	static function getAnimateAtlasFolderPath(imageKey:String):String
 	{
+		imageKey = normalizeAtlasKey(imageKey);
 		var animationFile:String = getPath('images/$imageKey/Animation.json', TEXT, null, true);
 		#if sys
 		if(FileSystem.exists(animationFile)) return HaxePath.directory(animationFile);
@@ -605,6 +715,7 @@ class Paths
 
 	static function getAnimateAtlasSpriteMaps(folder:String):Array<Dynamic>
 	{
+		folder = normalizeAtlasKey(folder);
 		var spriteMaps:Array<Dynamic> = [];
 		addAnimateAtlasSpriteMap(spriteMaps, folder, 'spritemap');
 

@@ -17,10 +17,30 @@ class OptionsState extends ScriptedState
 	];
 	private static var curSelected:Int = 0;
 	public static var onPlayState:Bool = false;
+	static var playStateModDirectory:String = '';
+	static var playStatePackageDirectory:String = '';
+	static var returningToPlayState:Bool = false;
 	
 	var optionFunctions:Map<String, Void -> Void> = [];
 	var grpOptions:FlxTypedGroup<Alphabet>;
 	var bg:FlxSprite;
+
+	public static function rememberPlayStateContext():Void
+	{
+		onPlayState = true;
+		returningToPlayState = false;
+		playStateModDirectory = Mods.currentModDirectory ?? '';
+		playStatePackageDirectory = Mods.currentPackageDirectory ?? '';
+	}
+
+	static function restorePlayStateContext():Void
+	{
+		if(!onPlayState) return;
+
+		Mods.currentModDirectory = playStateModDirectory ?? '';
+		Mods.currentPackageDirectory = playStatePackageDirectory ?? '';
+		Mods.pushGlobalMods();
+	}
 
 	function refreshShitScript():Void {
 		setOnScripts('curSelected', curSelected);
@@ -111,9 +131,11 @@ class OptionsState extends ScriptedState
 				if (callOnScripts('onBack', true) != psychlua.LuaUtils.Function_Stop) {
 					FlxG.sound.play(Paths.sound('cancelMenu'));
 					if(onPlayState) {
+						restorePlayStateContext();
 						StageData.loadDirectory(PlayState.SONG);
 						LoadingState.loadAndSwitchState(new PlayState());
 						FlxG.sound.music.volume = 0;
+						returningToPlayState = true;
 					}
 					else MusicBeatState.switchState(new MainMenuState());
 				}
@@ -158,7 +180,21 @@ class OptionsState extends ScriptedState
 
 	override function destroy()
 	{
+		var restoreContext:Bool = onPlayState;
+		var clearPlayStateContext:Bool = returningToPlayState;
+
 		ClientPrefs.loadPrefs();
+		if(restoreContext)
+			restorePlayStateContext();
+
+		if(clearPlayStateContext)
+		{
+			onPlayState = false;
+			returningToPlayState = false;
+			playStateModDirectory = '';
+			playStatePackageDirectory = '';
+		}
+
 		super.destroy();
 	}
 

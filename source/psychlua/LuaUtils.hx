@@ -29,6 +29,32 @@ class LuaUtils
 	public static final Function_StopAll:String = "##PSYCHLUA_FUNCTIONSTOPALL";
 	
 	#if HSCRIPT_ALLOWED public static var lastCalledHScript:HScript = null; #end
+
+	public static function currentCallbackIsSustainNote():Bool
+	{
+		var luaScript:FunkinLua = FunkinLua.lastCalledScript;
+		if(luaScript == null || luaScript.lastCalledArgs == null || luaScript.lastCalledArgs.length < 4)
+			return false;
+
+		switch(luaScript.lastCalledFunction)
+		{
+			case 'goodNoteHit' | 'goodNoteHitPre' | 'opponentNoteHit' | 'opponentNoteHitPre' | 'noteMiss' | 'noteMissPre': // é preciso os misses mesmo? Só por precaução memo sla
+				return luaScript.lastCalledArgs[3] == true;
+		}
+		return false;
+	}
+
+	public static function playCharacterAnim(character:Character, anim:String, forced:Bool = false, reverse:Bool = false, startFrame:Int = 0):Bool
+	{
+		if(character == null || anim == null || !character.hasAnimation(anim))
+			return false;
+
+		if(anim.startsWith('sing') && currentCallbackIsSustainNote())
+			return character.playSingAnimation(anim, true);
+
+		character.playAnim(anim, forced, reverse, startFrame);
+		return true;
+	}
 	
 	public static function getLuaTween(options:Dynamic) {
 		return (options != null) ? {

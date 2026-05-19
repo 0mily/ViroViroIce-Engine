@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character assetPath="characters/dad" icon="dad" scale="1" singDuration="6.1" x="0" y="0" cameraX="190" cameraY="300" flipX="false" noAntialiasing="false" healthColor="#AF66CE" vocalsFile="" vsliceHolds="true">
+	<assets>
+		<asset path="characters/dad"/>
+	</assets>
+	<animations>
+		<anim id="singDOWN" symbol="Dad Sing Note DOWN" fps="24" loop="false" x="3" y="3" playerX="3" playerY="3"/>
+		<anim id="idle" symbol="Dad idle dance" fps="24" loop="false" x="4" y="10" playerX="4" playerY="10"/>
+		<anim id="idle-loop" symbol="Dad idle dance" fps="24" loop="true" x="4" y="10" playerX="4" playerY="10" indices="10,11,12,12"/>
+		<anim id="singRIGHT-loop" symbol="Dad Sing Note LEFT" fps="24" loop="true" x="-4" y="34" playerX="-4" playerY="34" indices="2,3,4,5"/>
+		<anim id="singLEFT" symbol="dad sing note right" fps="24" loop="false" x="45" y="16" playerX="45" playerY="16"/>
+		<anim id="singUP-loop" symbol="Dad Sing note UP" fps="24" loop="true" x="3" y="71" playerX="3" playerY="71" indices="2,3,4,5"/>
+		<anim id="singUP" symbol="Dad Sing note UP" fps="24" loop="false" x="3" y="71" playerX="3" playerY="71"/>
+		<anim id="singRIGHT" symbol="Dad Sing Note LEFT" fps="24" loop="false" x="-2" y="35" playerX="-2" playerY="35"/>
+		<anim id="singLEFT-loop" symbol="dad sing note right" fps="12" loop="true" x="45" y="16" playerX="45" playerY="16" indices="2,5"/>
+	</animations>
+</character>

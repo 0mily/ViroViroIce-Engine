@@ -30,6 +30,18 @@ class ViroViroOptionsSubState extends BaseOptionsMenu
 			BOOL);
 		addOption(option);
 
+		var option:Option = new Option('Screenshots',
+			'If checked, the screenshot hotkey will save a PNG in the screenshots folder.',
+			'screenshots',
+			BOOL);
+		addOption(option);
+
+		var option:Option = new Option('Screenshot Key',
+			'Press this key to save a screenshot. PrtScr also works tho.',
+			'screenshotKey',
+			KEYBIND);
+		addOption(option);
+
 		/*var option:Option = new Option('Custom Score',
 			'Disables the default score text and enables the custom one, which can be edited with a Script.lua.',
 			'customScore',

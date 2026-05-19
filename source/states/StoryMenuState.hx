@@ -448,7 +448,7 @@ class StoryMenuState extends ScriptedState
 	}
 	
 	public static function getWeek(fileName:String):WeekData {
-		var weekPath:String = Paths.getPath('weeks/$fileName.json');
+		var weekPath:String = Paths.getPath(WeekData.LEVELS_PATH + '$fileName.xml');
 		var weekFile:WeekFile = WeekData.getWeekFile(weekPath);
 		if (weekFile != null) {
 			var weekData:WeekData = new WeekData(weekFile, fileName);

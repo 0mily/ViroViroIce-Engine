@@ -171,21 +171,24 @@ class FunkinLua {
 
 	//main
 	public var lastCalledFunction:String = '';
+	public var lastCalledArgs:Array<Dynamic> = [];
 	public static var lastCalledScript:FunkinLua = null;
 	
 	public function call(func:String, ?args:Array<Dynamic>):Dynamic {
 		if(closed) return LuaUtils.Function_Continue;
 		
 		var prevFunction:String = lastCalledFunction;
+		var prevArgs:Array<Dynamic> = lastCalledArgs;
 		var prevScript:FunkinLua = lastCalledScript;
 		
 		try {
 			if (lua == null) return LuaUtils.Function_Continue;
 			
 			lastCalledFunction = func;
+			lastCalledArgs = args ?? [];
 			lastCalledScript = this;
 			
-			args ??= [];
+			args = lastCalledArgs;
 			Lua.getglobal(lua, func);
 			var type:Int = Lua.type(lua, -1);
 			
@@ -196,6 +199,7 @@ class FunkinLua {
 				Lua.pop(lua, 1);
 				
 				lastCalledFunction = prevFunction;
+				lastCalledArgs = prevArgs;
 				lastCalledScript = prevScript;
 				
 				return LuaUtils.Function_Continue;
@@ -210,6 +214,7 @@ class FunkinLua {
 				luaTrace('$func:$error', false, false, ERROR);
 				
 				lastCalledFunction = prevFunction;
+				lastCalledArgs = prevArgs;
 				lastCalledScript = prevScript;
 				
 				return LuaUtils.Function_Continue;
@@ -222,6 +227,7 @@ class FunkinLua {
 			if (closed) stop();
 			
 			lastCalledFunction = prevFunction;
+			lastCalledArgs = prevArgs;
 			lastCalledScript = prevScript;
 			
 			return result;
@@ -230,6 +236,7 @@ class FunkinLua {
 		}
 		
 		lastCalledFunction = prevFunction;
+		lastCalledArgs = prevArgs;
 		lastCalledScript = prevScript;
 		
 		return LuaUtils.Function_Continue;
@@ -1256,6 +1263,13 @@ class FunkinLua {
 
 		registerFunction('playAnim', function(obj:String, name:String, ?forced:Bool = false, ?reverse:Bool = false, ?startFrame:Int = 0) {
 			var obj:Dynamic = LuaUtils.getObjectDirectly(obj);
+			if(obj == null) return false;
+			if(Std.isOfType(obj, Character) && name != null && name.startsWith('sing') && LuaUtils.currentCallbackIsSustainNote())
+			{
+				var characterObj:Character = cast obj;
+				return characterObj.playSingAnimation(name, true);
+			}
+
 			if (obj.playAnim != null) {
 				obj.playAnim(name, forced, reverse, startFrame);
 				return true;

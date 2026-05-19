@@ -991,16 +991,7 @@ class StageEditorState extends MusicBeatState implements PsychUIEventHandler.Psy
 	{
 		var tab_group = UI_box.getTab('Meta').menu;
 
-		var characterList = Mods.mergeAllTextsNamed('data/characterList.txt');
-		var foldersToCheck:Array<String> = Mods.directoriesWithFile(Paths.getSharedPath(), 'characters/');
-		for (folder in foldersToCheck)
-			for (file in FileSystem.readDirectory(folder))
-				if(file.toLowerCase().endsWith('.json'))
-				{
-					var charToCheck:String = file.substr(0, file.length - 5);
-					if(!characterList.contains(charToCheck))
-						characterList.push(charToCheck);
-				}
+		var characterList = Character.appendCharacterFileList(Mods.mergeAllTextsNamed('data/characterList.txt'));
 
 		if(characterList.length < 1) characterList.push(''); //Prevents crash
 		
@@ -1124,7 +1115,7 @@ class StageEditorState extends MusicBeatState implements PsychUIEventHandler.Psy
 
 		stageDropDown = new PsychUIDropDownMenu(10, 30, [''], function(sel:Int, selected:String)
 		{
-			var characterPath:String = 'stages/$selected.json';
+			var characterPath:String = 'data/stages/$selected.json';
 			var path:String = Paths.getPath(characterPath, TEXT, null, true);
 			#if MODS_ALLOWED
 			if (FileSystem.exists(path))
@@ -1280,7 +1271,7 @@ class StageEditorState extends MusicBeatState implements PsychUIEventHandler.Psy
 	function reloadStageDropDown()
 	{
 		var stageList:Array<String> = [];
-		var foldersToCheck:Array<String> = Mods.directoriesWithFile(Paths.getSharedPath(), 'stages/');
+		var foldersToCheck:Array<String> = Mods.directoriesWithFile(Paths.getSharedPath(), 'data/stages/');
 		for (folder in foldersToCheck)
 			for (file in FileSystem.readDirectory(folder))
 				if(file.toLowerCase().endsWith('.json'))

@@ -41,8 +41,8 @@ class MenuCharacter extends FlxSprite
 		alpha = 1;
 
 		hasConfirmAnimation = false;
-		switch(character) {
-			case '':
+		switch(character.toLowerCase()) {
+			case '' | 'none': // lol crashes
 				visible = false;
 				dontPlayAnim = true;
 			default:
@@ -55,7 +55,7 @@ class MenuCharacter extends FlxSprite
 				if (!Assets.exists(path))
 				#end
 				{
-					path = Paths.getSharedPath('characters/' + DEFAULT_CHARACTER + '.json'); //If a character couldn't be found, change him to BF just to prevent a crash
+					path = Paths.getPath('images/menucharacters/' + DEFAULT_CHARACTER + '.json', TEXT); //If a menu character couldn't be found, show BF just to prevent a crash
 					color = FlxColor.BLACK;
 					alpha = 0.6;
 				}
@@ -72,6 +72,13 @@ class MenuCharacter extends FlxSprite
 				catch(e:Dynamic)
 				{
 					trace('Error loading menu character file of "$character": $e');
+				}
+
+				if(charFile == null || charFile.image == null)
+				{
+					visible = false;
+					dontPlayAnim = true;
+					return;
 				}
 
 				frames = Paths.getSparrowAtlas('menucharacters/' + charFile.image);

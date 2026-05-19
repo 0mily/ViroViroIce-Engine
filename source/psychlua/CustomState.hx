@@ -112,7 +112,7 @@ class CustomState extends ScriptedState {
 	}
 	
 	public override function create():Void {
-		rpcDetails = 'Custom State ($stateName)';
+		rpcDetails = '$stateName';
 		
 		preCreate();
 		super.create();

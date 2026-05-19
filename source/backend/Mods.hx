@@ -411,15 +411,37 @@ class Mods
 		return directories;
 	}
 
+	public static function getEditorModDirectories(?list:ModsList):Array<String>
+	{
+		#if MODS_ALLOWED
+		if (hasSelectedContent())
+			return getGameplayModDirectories(list);
+
+		return getModDirectories();
+		#else
+		return [];
+		#end
+	}
+
 	public static function getActiveModDirectories():Array<String>
 	{
 		var directories:Array<String> = [];
-		if (currentModDirectory != null && currentModDirectory.trim().length > 0)
-			directories.push(currentModDirectory);
+		function addDirectory(directory:String):Void
+		{
+			if (directory != null && directory.trim().length > 0 && !directories.contains(directory))
+				directories.push(directory);
+		}
+
+		addDirectory(currentModDirectory);
+
+		if (hasSelectedContent())
+		{
+			for (mod in getContentModDirectories())
+				addDirectory(mod);
+		}
 
 		for (mod in getGlobalMods())
-			if (mod != null && mod.trim().length > 0 && !directories.contains(mod))
-				directories.push(mod);
+			addDirectory(mod);
 		return directories;
 	}
 
@@ -735,6 +757,8 @@ class Mods
 		return key.startsWith('images/')
 			|| key.startsWith('sounds/')
 			|| key.startsWith('songs/')
+			|| key.startsWith('data/levels/')
+			|| key.startsWith('data/stages/')
 			|| key.startsWith('data/notetypes/')
 			|| key.startsWith('data/scripts/');
 	}

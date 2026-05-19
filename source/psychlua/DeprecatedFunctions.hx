@@ -32,14 +32,11 @@ class DeprecatedFunctions
 			FunkinLua.luaTrace("characterPlayAnim is deprecated! Use playAnim instead", false, true, WARN);
 			switch(character.toLowerCase()) {
 				case 'dad':
-					if(PlayState.instance.dad.hasAnimation(anim))
-						PlayState.instance.dad.playAnim(anim, forced);
+					LuaUtils.playCharacterAnim(PlayState.instance.dad, anim, forced);
 				case 'gf' | 'girlfriend':
-					if(PlayState.instance.gf != null && PlayState.instance.gf.hasAnimation(anim))
-						PlayState.instance.gf.playAnim(anim, forced);
+					LuaUtils.playCharacterAnim(PlayState.instance.gf, anim, forced);
 				default:
-					if(PlayState.instance.boyfriend.hasAnimation(anim))
-						PlayState.instance.boyfriend.playAnim(anim, forced);
+					LuaUtils.playCharacterAnim(PlayState.instance.boyfriend, anim, forced);
 			}
 		});
 		FunkinLua.registerFunction("luaSpriteMakeGraphic", function(tag:String, width:Int, height:Int, color:String) {

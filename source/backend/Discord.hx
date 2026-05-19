@@ -25,12 +25,14 @@ class DiscordClient
 
 	public static function check()
 	{
+		#if MODS_ALLOWED syncClientID(); #end
 		if(ClientPrefs.data.discordRPC) initialize();
 		else if(isInitialized) shutdown();
 	}
 	
 	public static function prepare()
 	{
+		#if MODS_ALLOWED syncClientID(); #end
 		if (!isInitialized && ClientPrefs.data.discordRPC)
 			initialize();
 
@@ -108,6 +110,8 @@ class DiscordClient
 
 	public static function changePresence(details:String = 'In the Menus', ?state:String, ?smallImageKey:String, ?hasStartTimestamp:Bool, ?endTimestamp:Float, largeImageKey:String = 'icon')
 	{
+		#if MODS_ALLOWED syncClientID(); #end
+
 		var startTimestamp:Float = 0;
 		if (hasStartTimestamp) startTimestamp = Date.now().getTime();
 		if (endTimestamp > 0) endTimestamp = startTimestamp + endTimestamp;
@@ -133,7 +137,11 @@ class DiscordClient
 	
 	inline public static function resetClientID()
 	{
+		#if MODS_ALLOWED
+		syncClientID();
+		#else
 		clientID = _defaultID;
+		#end
 	}
 
 	private static function set_clientID(newID:String)
@@ -151,21 +159,35 @@ class DiscordClient
 	}
 
 	#if MODS_ALLOWED
-	public static function loadModRPC()
+	static function cleanClientID(id:String):String
+	{
+		if(id == null) return null;
+		id = id.trim();
+		return id.length > 0 ? id : null;
+	}
+
+	static function getContentClientID():String
 	{
 		var content:ContentData = Mods.getSelectedContentData();
-		if(content != null && content.discordRPC != null && content.discordRPC != clientID)
-		{
-			clientID = content.discordRPC;
-			return;
-		}
+		return content != null ? cleanClientID(content.discordRPC) : null;
+	}
 
+	static function getPackClientID():String
+	{
 		var pack:Dynamic = Mods.getPack();
-		if(pack != null && pack.discordRPC != null && pack.discordRPC != clientID)
-		{
-			clientID = pack.discordRPC;
-			//trace('Changing clientID! $clientID, $_defaultID');
-		}
+		return pack != null ? cleanClientID(pack.discordRPC) : null;
+	}
+
+	static function syncClientID():Void
+	{
+		var targetID:String = getContentClientID() ?? getPackClientID() ?? _defaultID;
+		if(targetID != clientID)
+			clientID = targetID;
+	}
+
+	public static function loadModRPC()
+	{
+		syncClientID();
 	}
 	#end
 

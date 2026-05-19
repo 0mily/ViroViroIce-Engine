@@ -740,9 +740,16 @@ class PlayState extends ScriptedState
 		}
 		
 		#if (SCRIPTS_ALLOWED)
-		// STAGE SCRIPTS
-		#if LUA_ALLOWED startLuasNamed('stages/' + curStage + '.lua'); #end
-		#if HSCRIPT_ALLOWED startHScriptsNamed('stages/' + curStage + '.hx'); #end
+		// LEVEL / STAGE SCRIPTS
+		var levelScript:String = WeekData.getWeekFileName();
+		if(levelScript != null && levelScript.length > 0)
+		{
+			#if LUA_ALLOWED startLuasNamed(WeekData.LEVELS_PATH + levelScript + '.lua'); #end
+			#if HSCRIPT_ALLOWED startHScriptsNamed(WeekData.LEVELS_PATH + levelScript + '.hx'); #end
+		}
+
+		#if LUA_ALLOWED startLuasNamed('data/stages/' + curStage + '.lua'); #end
+		#if HSCRIPT_ALLOWED startHScriptsNamed('data/stages/' + curStage + '.hx'); #end
 
 		// CHARACTER SCRIPTS
 		if(gf != null) startCharacterScripts(gf.curCharacter);
@@ -962,7 +969,7 @@ class PlayState extends ScriptedState
 		lua.set('difficultyPath', Difficulty.getFilePath());
 		lua.set('difficultyNameTranslation', Difficulty.getString(true));
 		lua.set('weekRaw', storyWeek);
-		lua.set('week', WeekData.weeksList[storyWeek]);
+		lua.set('week', WeekData.getWeekFileName());
 		lua.set('seenCutscene', seenCutscene);
 		lua.set('hasVocals', SONG.needsVoices);
 		
@@ -1152,24 +1159,8 @@ class PlayState extends ScriptedState
 		// Lua
 		#if LUA_ALLOWED
 		var doPush:Bool = false;
-		var luaFile:String = 'characters/$name.lua';
-		#if MODS_ALLOWED
-		var replacePath:String = Paths.modFolders(luaFile);
-		if(FileSystem.exists(replacePath))
-		{
-			luaFile = replacePath;
-			doPush = true;
-		}
-		else
-		{
-			luaFile = Paths.getSharedPath(luaFile);
-			if(FileSystem.exists(luaFile))
-				doPush = true;
-		}
-		#else
-		luaFile = Paths.getSharedPath(luaFile);
-		if(Assets.exists(luaFile)) doPush = true;
-		#end
+		var luaFile:String = getCharacterScriptPath(name, 'lua');
+		if(luaFile != null) doPush = true;
 
 		if(doPush)
 		{
@@ -1188,21 +1179,8 @@ class PlayState extends ScriptedState
 		// HScript
 		#if HSCRIPT_ALLOWED
 		var doPush:Bool = false;
-		var scriptFile:String = 'characters/' + name + '.hx';
-		#if MODS_ALLOWED
-		var replacePath:String = Paths.modFolders(scriptFile);
-		if(FileSystem.exists(replacePath))
-		{
-			scriptFile = replacePath;
-			doPush = true;
-		}
-		else
-		#end
-		{
-			scriptFile = Paths.getSharedPath(scriptFile);
-			if(FileSystem.exists(scriptFile))
-				doPush = true;
-		}
+		var scriptFile:String = getCharacterScriptPath(name, 'hx');
+		if(scriptFile != null) doPush = true;
 
 		if(doPush)
 		{
@@ -1212,6 +1190,29 @@ class PlayState extends ScriptedState
 			if(doPush) initHScript(scriptFile);
 		}
 		#end
+	}
+
+	function getCharacterScriptPath(name:String, extension:String):String
+	{
+		for(folder in Character.CHARACTER_FILE_FOLDERS)
+		{
+			var scriptFile:String = folder + name + '.' + extension;
+			#if MODS_ALLOWED
+			var replacePath:String = Paths.modFolders(scriptFile);
+			if(FileSystem.exists(replacePath))
+				return replacePath;
+			#end
+
+			var sharedPath:String = Paths.getSharedPath(scriptFile);
+			#if sys
+			if(FileSystem.exists(sharedPath))
+				return sharedPath;
+			#else
+			if(OpenFlAssets.exists(sharedPath))
+				return sharedPath;
+			#end
+		}
+		return null;
 	}
 	
 	/**
@@ -1711,11 +1712,11 @@ class PlayState extends ScriptedState
 	*/
 	public dynamic function fullComboFunction()
 	{
-		var neats:Int = ratingsData[0].hits;
-		var sicks:Int = (ratingsData[1].hits ?? 0);
-		var goods:Int = (ratingsData[2]?.hits ?? 0);
-		var bads:Int = (ratingsData[3]?.hits ?? 0);
-		var shits:Int = (ratingsData[4]?.hits ?? 0);
+		var neats:Int = getRatingHits('neat'); // preguiça da porra
+		var sicks:Int = getRatingHits('sick');
+		var goods:Int = getRatingHits('good');
+		var bads:Int = getRatingHits('bad');
+		var shits:Int = getRatingHits('shit');
 
 		ratingFC = "";
 		if(songMisses == 0)
@@ -1729,6 +1730,14 @@ class PlayState extends ScriptedState
 			if (songMisses < 10) ratingFC = 'SDCB';
 			else ratingFC = 'Clear';
 		}
+	}
+
+	function getRatingHits(name:String):Int
+	{
+		for(rating in ratingsData)
+			if(rating != null && rating.name == name)
+				return rating.hits;
+		return 0;
 	}
 
 	/**
@@ -2549,8 +2558,8 @@ class PlayState extends ScriptedState
 		var newPercent:Null<Float> = FlxMath.remapToRange(FlxMath.bound(healthBar.valueFunction(), healthBar.bounds.min, healthBar.bounds.max), healthBar.bounds.min, healthBar.bounds.max, 0, 100);
 		healthBar.percent = (newPercent != null ? newPercent : 0);
 
-		iconP1.animation.curAnim.curFrame = (healthBar.percent < 20) ? 1 : 0; //If health is under 20%, change player icon to frame 1 (losing icon), otherwise, frame 0 (normal)
-		iconP2.animation.curAnim.curFrame = (healthBar.percent > 80) ? 1 : 0; //If health is over 80%, change opponent icon to frame 1 (losing icon), otherwise, frame 0 (normal)
+		iconP1.setIconFrame((healthBar.percent < 20) ? 1 : 0); //If health is under 20%, change player icon to frame 1 (losing icon), otherwise, frame 0 (normal)
+		iconP2.setIconFrame((healthBar.percent > 80) ? 1 : 0); //If health is over 80%, change opponent icon to frame 1 (losing icon), otherwise, frame 0 (normal)
 		return health;
 	}
 
@@ -3792,6 +3801,8 @@ class PlayState extends ScriptedState
 
 		comboSpr.updateHitbox();
 		rating.updateHitbox();
+		if(daRating.name == 'neat')
+			bumpRatingSprite(rating, playbackRate);
 
 		var daLoop:Int = 0;
 		var xThing:Float = 0;
@@ -3844,6 +3855,16 @@ class PlayState extends ScriptedState
 			},
 			startDelay: Conductor.crochet * 0.002 / playbackRate
 		});
+	}
+
+	public static function bumpRatingSprite(rating:FlxSprite, playbackRate:Float = 1):Void
+	{
+		if(rating == null) return;
+
+		var baseScaleX:Float = rating.scale.x;
+		var baseScaleY:Float = rating.scale.y;
+		rating.scale.set(baseScaleX * 1.28, baseScaleY * 1.28);
+		FlxTween.tween(rating.scale, {x: baseScaleX, y: baseScaleY}, 0.16 / playbackRate, {ease: FlxEase.backOut}); // REMINDER do that shit less strong
 	}
 
 	public var strumsblockedFNF:Array<Bool> = [];
@@ -4154,21 +4175,9 @@ class PlayState extends ScriptedState
 				char.heyTimer = 0.6;
 			} else if(!note.noAnimation) {
 				var animToPlay:String = singAnimations[Std.int(Math.abs(Math.min(singAnimations.length-1, note.noteData)))] + note.animSuffix;
-				
-				var canPlay:Bool = true;
-				if (note.isSustainNote) {
-					var holdAnim:String = animToPlay + '-hold';
-					if (char.hasAnimation(holdAnim))
-						animToPlay = holdAnim;
-					if (char.getAnimationName() == holdAnim || char.getAnimationName() == holdAnim + '-loop')
-						canPlay = false;
-				}
 
-				if (canPlay)
-				{
-					char.playAnim(animToPlay, true);
+				if (char.playSingAnimation(animToPlay, note.isSustainNote))
 					applyCameraMove(note, char);
-				}
 				
 				char.holdTimer = 0;
 			}
@@ -4218,20 +4227,8 @@ class PlayState extends ScriptedState
 				
 				char = getNoteCharacter(note, boyfriend);
 				if (char != null) {
-					var canPlay:Bool = true;
-					if (note.isSustainNote) {
-						var holdAnim:String = animToPlay + '-hold';
-						if (char.hasAnimation(holdAnim))
-							animToPlay = holdAnim;
-						if (char.getAnimationName() == holdAnim || char.getAnimationName() == holdAnim + '-loop')
-							canPlay = false;
-					}
-	
-					if (canPlay)
-					{
-						char.playAnim(animToPlay, true);
+					if (char.playSingAnimation(animToPlay, note.isSustainNote))
 						applyCameraMove(note, char);
-					}
 					char.holdTimer = 0;
 					
 					if (note.noteType == 'Hey!') {

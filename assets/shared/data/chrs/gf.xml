@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character assetPath="characters/gf" icon="gf" scale="1" singDuration="4" x="-240" y="-300" cameraX="330" cameraY="550" flipX="false" noAntialiasing="false" healthColor="#A5004D" vocalsFile="" vsliceHolds="false">
+	<assets>
+		<asset path="characters/gf"/>
+	</assets>
+	<animations>
+		<anim id="cheer" symbol="GF Cheer" fps="24" loop="false" x="-149" y="-317" playerX="521" playerY="-317"/>
+		<anim id="singLEFT" symbol="GF left note" fps="24" loop="false" x="-149" y="-304" playerX="522" playerY="-304"/>
+		<anim id="singDOWN" symbol="GF Down Note" fps="24" loop="false" x="-149" y="-333" playerX="521" playerY="-334"/>
+		<anim id="singUP" symbol="GF Up Note" fps="24" loop="false" x="-149" y="-313" playerX="522" playerY="-315"/>
+		<anim id="singRIGHT" symbol="GF Right Note" fps="24" loop="false" x="-149" y="-308" playerX="522" playerY="-309"/>
+		<anim id="sad" symbol="gf sad" fps="24" loop="false" x="-151" y="-319" playerX="519" playerY="-319" indices="0,1,2,3,4,5,6,7,8,9,10,11,12"/>
+		<anim id="danceLeft" symbol="GF Dancing Beat" fps="24" loop="false" x="-149" y="-302" playerX="521" playerY="-302" indices="30,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14"/>
+		<anim id="danceRight" symbol="GF Dancing Beat" fps="24" loop="false" x="-149" y="-302" playerX="521" playerY="-302" indices="15,16,17,18,19,20,21,22,23,24,25,26,27,28,29"/>
+		<anim id="hairBlow" symbol="GF Dancing Beat Hair blowing" fps="24" loop="true" x="-104" y="-325" playerX="521" playerY="-326" indices="0,1,2,3"/>
+		<anim id="hairFall" symbol="GF Dancing Beat Hair Landing" fps="24" loop="false" x="-149" y="-302" playerX="521" playerY="-302" indices="0,1,2,3,4,5,6,7,8,9,10,11"/>
+		<anim id="scared" symbol="GF FEAR" fps="24" loop="true" x="-151" y="-319" playerX="519" playerY="-319"/>
+	</animations>
+</character>

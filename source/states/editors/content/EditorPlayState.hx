@@ -589,6 +589,8 @@ class EditorPlayState extends ScriptedSubState
 
 		comboSpr.updateHitbox();
 		rating.updateHitbox();
+		if(daRating.name == 'neat')
+			PlayState.bumpRatingSprite(rating, playbackRate);
 
 		var daLoop:Int = 0;
 		var xThing:Float = 0;

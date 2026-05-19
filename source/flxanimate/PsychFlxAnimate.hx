@@ -200,8 +200,18 @@ class PsychFlxAnimate extends OriginalFlxAnimate
 		}
 
 		var symbolName:String = findAtlasSymbolName(symbol);
+		var hasSymbol:Bool = symbolName != null;
 		if(symbolName == null) symbolName = symbol;
-		var useLabel:Bool = hasAtlasFrameLabel(symbol) && !hasAtlasSymbol(symbol);
+		var useLabel:Bool = hasAtlasFrameLabel(symbol) && !hasSymbol;
+		if(!hasSymbol && !useLabel && hasAtlasFramePrefix(symbol))
+		{
+			if(indices != null && indices.length > 0)
+				anim.addByIndices(name, symbol, indices, '', framerate, loop);
+			else
+				anim.addByPrefix(name, symbol, framerate, loop);
+			return;
+		}
+
 		if(indices != null && indices.length > 0)
 		{
 			if(useLabel)
@@ -271,37 +281,70 @@ class PsychFlxAnimate extends OriginalFlxAnimate
 		return false;
 	}
 
+	function hasAtlasFramePrefix(prefix:String):Bool
+	{
+		if(prefix == null || frames == null) return false; // *burp*
+
+		var found:Bool = false;
+		frames.forEachByPrefix(prefix, (_) -> found = true, false);
+		return found;
+	}
+
 	public function hasActiveAtlasAnimation():Bool
 	{
-		return anim != null && anim.curAnim != null;
+		try {
+			return anim != null && anim.curAnim != null && anim.curAnim.numFrames > 0;
+		} catch(e:Dynamic) {
+			return false;
+		}
 	}
 
 	public function getAtlasCurFrame():Int
 	{
-		return hasActiveAtlasAnimation() ? anim.curAnim.curFrame : 0;
+		try {
+			return hasActiveAtlasAnimation() ? anim.curAnim.curFrame : 0;
+		} catch(e:Dynamic) {
+			return 0;
+		}
 	}
 
 	public function setAtlasCurFrame(frame:Int):Int
 	{
-		if(hasActiveAtlasAnimation())
-			anim.curAnim.curFrame = frame;
+		try
+		{
+			if(hasActiveAtlasAnimation())
+				anim.curAnim.curFrame = frame;
+		}
+		catch(e:Dynamic) {}
 		return getAtlasCurFrame();
 	}
 
 	public function getAtlasLength():Int
 	{
-		return hasActiveAtlasAnimation() ? anim.curAnim.numFrames : 0;
+		try {
+			return hasActiveAtlasAnimation() ? anim.curAnim.numFrames : 0;
+		} catch(e:Dynamic) {
+			return 0;
+		}
 	}
 
 	public function finishAtlasAnimation():Void
 	{
-		if(hasActiveAtlasAnimation())
-			anim.curAnim.finish();
+		try
+		{
+			if(hasActiveAtlasAnimation())
+				anim.curAnim.finish();
+		}
+		catch(e:Dynamic) {}
 	}
 
 	public function getCurrentAtlasAnimationName():String
 	{
-		return hasActiveAtlasAnimation() ? anim.curAnim.name : null;
+		try {
+			return hasActiveAtlasAnimation() ? anim.curAnim.name : null;
+		} catch(e:Dynamic) {
+			return null;
+		}
 	}
 
 	override function draw()

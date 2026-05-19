@@ -3,8 +3,10 @@ Mily_0 :: mily :: Owner, Main coder and stuff of viroviro :: https://x.com/0_mil
 Shiho :: missing_icon :: Co-Owner, shihotastica (inserir algo de verdade depois) :: https://linktr.ee/xdshiho :: ffffff
 
 Engine Contributors
-Emily & Bidu :: missing_icon :: Dropshadow Editor :: https://linktr.ee/xdshiho :: ffffff
-Will :: missing_icon :: neat!!! Sprite :: https://linktr.ee/xdshiho :: ffffff
+Emilly (aka Krystal) :: missing_icon :: Dropshadow Editor :: https://x.com/emillybidu :: ffffff
+Will :: missing_icon :: TBA :: https://linktr.ee/xdshiho :: ffffff
+Ryan_sdjr :: missing_icon :: TBA :: https://x.com/Ryan_sdjr :: ffffff
+Kevin :: missing_icon :: TBA :: https://x.com/KSaint22 :: ffffff
 
 Special Thanks!
 emi3 :: vi :: Created Psych Engine Mint, the psych fork we've forked before becoming an standalone engine. Thank you. :: https://x.com/fnfin3d :: 82CDE3
@@ -13,6 +15,7 @@ Shadow Mario :: shadowmario :: Created Psych Engine and the whole Lua API thing,
 Funkin' Crew :: fnf :: Created uhm, the game. Ya' know? :: https://funkin.me/ :: 378FC7
 Kenas_ :: kenas :: Composer of ALL the original tracks of the engine :3 :: https://linktr.ee/KenasFX :: 4C409A
 maybeMaru :: missing_icon :: Creator of Moonchart and Flixel-Animate (I LOVE YOU.) :: https://x.com/maybemaru_ :: 6ede0b
+Stoopid :: potato :: Made the original "Neat!!!" Rating render after Mily's re-adjustment :: https://x.com/SillyPotato :: CDCDCD
 Infry :: infry :: Lil' Buddies thingie :: https://x.com/Infry20 :: 8d00df
 
 Support the og!

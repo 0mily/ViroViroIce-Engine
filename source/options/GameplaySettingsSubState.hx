@@ -71,10 +71,18 @@ class GameplaySettingsSubState extends BaseOptionsMenu
 		option.maxValue = 30;
 		addOption(option);
 
+		var option:Option = new Option('Neat Rating',
+			'If checked, enables the tighter "Neat!!!" rating.',
+			'neatRating',
+			BOOL);
+		option.onChange = onChangeNeatRating;
+		addOption(option);
+
 		var option:Option = new Option('Neat!!! Hit Window',
 			'Changes the amount of time you have\nfor hitting a "Neat!!!" in milliseconds.',
 			'neatWindow',
 			FLOAT);
+		option.visible = function() return ClientPrefs.data.neatRating;
 		option.displayFormat = '%vms';
 		option.scrollSpeed = 10;
 		option.minValue = 5.0;
@@ -131,4 +139,7 @@ class GameplaySettingsSubState extends BaseOptionsMenu
 
 	function onChangeAutoPause(?_, ?_)
 		FlxG.autoPause = ClientPrefs.data.autoPause;
+
+	function onChangeNeatRating(?_, ?_)
+		refreshVisibleOptions();
 }

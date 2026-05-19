@@ -422,7 +422,7 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 			icon.scrollFactor.set();
 			icon.scale.set(EDITOR_ICON_SCALE, EDITOR_ICON_SCALE);
 			icon.updateHitbox();
-			icon.origin.set(icon.frameWidth * 0.5, icon.frameHeight * 0.5);
+			icon.centerIconOrigin();
 			icon.ID = i+1;
 			add(icon);
 			icons.push(icon);
@@ -519,7 +519,7 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 		updateGridVisibility();
 
 		// CHARACTERS FOR THE DROP DOWNS
-		var gameOverCharacters:Array<String> = loadFileList('characters/', 'data/characterList.txt');
+		var gameOverCharacters:Array<String> = Character.appendCharacterFileList(Mods.mergeAllTextsNamed('data/characterList.txt'));
 		var characterList:Array<String> = gameOverCharacters.filter((name:String) -> (!name.endsWith('-dead') && !name.endsWith('-death')));
 		playerDropDown.list = characterList;
 		opponentDropDown.list = characterList;
@@ -533,7 +533,7 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 		});
 		gameOverCharDropDown.list = gameOverCharacters;
 		
-		stageDropDown.list = loadFileList('stages/', 'data/stageList.txt');
+		stageDropDown.list = loadFileList('data/stages/', 'data/stages/stageList.txt');
 		onChartLoaded();
 
 		var tipText:FlxText = new FlxText(FlxG.width - 210, FlxG.height - 30, 200, 'Press F1 for Help', 20);
@@ -1286,6 +1286,7 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 		}
 
 		super.update(elapsed);
+		charterFocus = focusedOnEditor(true);
 		
 		if(songFinished)
 		{
@@ -2894,13 +2895,10 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 			var icon:HealthIcon = icons[i];
 			if(icon == null) continue;
 
-			icon.updateHitbox();
-			icon.origin.set(icon.frameWidth * 0.5, icon.frameHeight * 0.5);
-			icon.y = 16;
-			if(i == 0)
-				icon.x = gridBg.x - icon.width - 20;
-			else
-				icon.x = gridBg.x + gridBg.width + 20;
+			var baseSize:Float = HealthIcon.ICON_SIZE * EDITOR_ICON_SCALE;
+			var centerY:Float = 16 + baseSize * 0.5;
+			var centerX:Float = (i == 0) ? gridBg.x - 20 - baseSize * 0.5 : gridBg.x + gridBg.width + 20 + baseSize * 0.5;
+			icon.centerIconOn(centerX, centerY);
 		}
 	}
 
@@ -6666,7 +6664,7 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 		//trace(id, sender);
 		switch(id)
 		{
-			case PsychUIButton.CLICK_EVENT | PsychUIDropDownMenu.CLICK_EVENT | PsychUIDropDownMenu.REVEAL_EVENT:
+			case PsychUIButton.CLICK_EVENT | PsychUICheckBox.CLICK_EVENT | PsychUIInputText.CHANGE_EVENT | PsychUINumericStepper.CHANGE_EVENT | PsychUIDropDownMenu.CLICK_EVENT | PsychUIDropDownMenu.REVEAL_EVENT:
 				ignoreClickForThisFrame = true;
 				if(id == PsychUIDropDownMenu.REVEAL_EVENT && Std.isOfType(sender, PsychUIDropDownMenu))
 					bringEventLayoutDropDownToFront(cast sender);
@@ -7007,8 +7005,8 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 		}
 	}
 	
-	inline function focusedOnEditor():Bool {
-		return (PsychUIInputText.focusOn == null && lastFocus == null && (persistentUpdate || subState == null));
+	inline function focusedOnEditor(?allowMouseFocusRelease:Bool = false):Bool {
+		return (PsychUIInputText.focusOn == null && (lastFocus == null || (allowMouseFocusRelease && FlxG.mouse.justPressed)) && (persistentUpdate || subState == null));
 	}
 	
 	function updateVortexHolds() {
@@ -7072,13 +7070,9 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 		{
 			try
 			{
-				var path:String = Paths.getPath('characters/' + char + '.json', TEXT);
-				#if MODS_ALLOWED
-				var unparsedJson = Paths.getTextFromFile(path);
-				#else
-				var unparsedJson = Assets.getText(path);
-				#end
-				return cast Json.parse(unparsedJson);
+				var path:String = Character.getCharacterPath(char);
+				if(path != null)
+					return cast Character.getCharacterData(path);
 			}
 			catch (e:Dynamic) {}
 		}

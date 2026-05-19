@@ -301,7 +301,7 @@ class ContentMenuState extends MusicBeatState
 		if (bitmap != null)
 			icon.loadGraphic(Paths.cacheBitmap(entry.iconPath, bitmap), true, 150, 150);
 		else
-			icon.loadGraphic(Paths.image('unknownMod'), true, 150, 150);
+			icon.loadGraphic(Paths.image('unknownContent'), true, 150, 150);
 
 		icon.setGraphicSize(118, 118);
 		icon.updateHitbox();
@@ -651,7 +651,7 @@ class ContentRow extends FlxSpriteGroup
 		if (bitmap != null)
 			rowIcon.loadGraphic(Paths.cacheBitmap(entry.iconPath, bitmap), true, 150, 150);
 		else
-			rowIcon.loadGraphic(Paths.image('unknownMod'), true, 150, 150);
+			rowIcon.loadGraphic(Paths.image('unknownContent'), true, 150, 150);
 		rowIcon.setGraphicSize(64, 64);
 		rowIcon.updateHitbox();
 		rowIcon.antialiasing = ClientPrefs.data.antialiasing;
