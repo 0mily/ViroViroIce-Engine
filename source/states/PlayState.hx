@@ -4248,6 +4248,13 @@ class PlayState extends ScriptedState
 			if (!cpuControlled) {
 				var spr = playerStrums.members[note.noteData];
 				if (spr != null) spr.playAnim('confirm', true);
+				spr.animation.finishCallback = (name:String) ->
+				{
+					if (name == 'confirm')
+					{
+						spr.playAnim('pressed');
+					}
+				};
 			} else {
 				strumPlayAnim(false, Std.int(Math.abs(note.noteData)), Conductor.stepCrochet * 1.25 / 1000 / playbackRate);
 			}

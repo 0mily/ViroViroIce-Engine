@@ -155,28 +155,29 @@ class StrumNote extends FlxSprite
                 resetAnim = 0;
             }
         }
-
-        if(animation.curAnim != null && animation.curAnim.name != 'static')
-        {
-            var arr:Array<FlxColor> = ClientPrefs.data.arrowRGB[noteData];
-            if(PlayState.isPixelStage) arr = ClientPrefs.data.arrowRGBPixel[noteData];
-            
-            if(arr != null && noteData <= arr.length)
-            {
-                @:bypassAccessor
-                {
-                    rgbShader.r = arr[0];
-                    rgbShader.g = arr[1];
-                    rgbShader.b = arr[2];
-                }
-            }
-        }
-        else
-        {
-            rgbShader.r = 0x87A3AD;
-            rgbShader.g = 0xFFFFFFFF;
-            rgbShader.b = 0x00000000;
-        }
+		if(useRGBShader){
+			if(animation.curAnim != null && animation.curAnim.name != 'static')
+			{
+				var arr:Array<FlxColor> = ClientPrefs.data.arrowRGB[noteData];
+				if(PlayState.isPixelStage) arr = ClientPrefs.data.arrowRGBPixel[noteData];
+				
+				if(arr != null && noteData <= arr.length)
+				{
+					@:bypassAccessor
+					{
+						rgbShader.r = arr[0];
+						rgbShader.g = arr[1];
+						rgbShader.b = arr[2];
+					}
+				}
+			}
+			else
+			{
+				rgbShader.r = 0x87A3AD;
+				rgbShader.g = 0xFFFFFFFF;
+				rgbShader.b = 0x00000000;
+			}
+		}
         super.update(elapsed);
     }
 

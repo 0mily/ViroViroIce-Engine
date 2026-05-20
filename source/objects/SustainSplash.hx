@@ -17,7 +17,8 @@ class SustainSplash extends FlxSprite
 
 		frames = Paths.getSparrowAtlas('holdCovers/holdCover-' + ClientPrefs.data.holdSkin);
 
-		animation.addByPrefix('hold', 'holdCover0', 24, true);
+		animation.addByPrefix('start', 'holdCoverStart0', 24, false);
+		animation.addByPrefix('hold', 'holdCover0', 12, true);
 		animation.addByPrefix('end', 'holdCoverEnd0', 24, false);
 		if(!animation.getNameList().contains("hold")) trace("Hold splash is missing 'hold' anim!");
 	}
@@ -42,56 +43,59 @@ class SustainSplash extends FlxSprite
 
 	public function setupSusSplash(strum:StrumNote, daNote:Note, ?playbackRate:Float = 1):Void
 	{
-		final lengthToGet:Int = !daNote.isSustainNote ? daNote.tail.length : daNote.parent.tail.length;
-		final timeToGet:Float = !daNote.isSustainNote ? daNote.strumTime : daNote.parent.strumTime;
-		final timeThingy:Float = (startCrochet * lengthToGet + (timeToGet - Conductor.songPosition + ClientPrefs.data.ratingOffset)) / playbackRate * .001;
+		strumNote = strum;
 
-		var tailEnd:Note = !daNote.isSustainNote ? daNote.tail[daNote.tail.length - 1] : daNote.parent.tail[daNote.parent.tail.length - 1];
-
-		animation.play('hold', true, false, 0);
-		if (animation.curAnim != null)
-		{
-			animation.curAnim.frameRate = frameRate;
-			animation.curAnim.looped = true;
-		}
+		alpha = ClientPrefs.data.holdSplashAlpha * strumNote.alpha;
+		offset.set(PlayState.isPixelStage ? 112.5 : 106.25, 100);
 		clipRect = new flixel.math.FlxRect(0, !PlayState.isPixelStage ? 0 : -210, frameWidth, frameHeight);
 
+		if (timer != null) timer.cancel();
+
 		if (daNote.shader != null)
+			shader = daNote.shader;
+		else
+			shader = null;
+
+		animation.play('start', true);
+		
+		animation.finishCallback = null;
+
+		animation.finishCallback = (name:String) ->
 		{
-			shader = new objects.NoteSplash.PixelSplashShaderRef().shader;
-			shader.data.r.value = daNote.shader.data.r.value;
-			shader.data.g.value = daNote.shader.data.g.value;
-			shader.data.b.value = daNote.shader.data.b.value;
-			shader.data.mult.value = daNote.shader.data.mult.value;
-		}
-
-		strumNote = strum;
-		alpha = ClientPrefs.data.holdSplashAlpha - (1 - strumNote.alpha);
-		offset.set(PlayState.isPixelStage ? 112.5 : 106.25, 100);
-
-		if (timer != null)
-			timer.cancel();
-
-		if (!daNote.hitByOpponent && ClientPrefs.data.holdSplashAlpha != 0)
-			timer = new FlxTimer().start(timeThingy, (idk:FlxTimer) ->
+			if (name == 'start')
 			{
-				if (!(daNote.isSustainNote ? daNote.parent.noteSplashData.disabled : daNote.noteSplashData.disabled) && animation != null)
+				animation.play('hold', true);
+				if (animation.curAnim != null)
 				{
-					alpha = ClientPrefs.data.holdSplashAlpha - (1 - strumNote.alpha);
-					animation.play('end', true, false, 0);
+					animation.curAnim.frameRate = frameRate;
+					animation.curAnim.looped = true;
+				}
+			}
+		};
+
+		final lengthToGet:Int = !daNote.isSustainNote ? daNote.tail.length : daNote.parent.tail.length;
+		final timeToGet:Float = !daNote.isSustainNote ? daNote.strumTime : daNote.parent.strumTime;
+		final timeThingy:Float = (startCrochet * lengthToGet + (timeToGet - Conductor.songPosition + ClientPrefs.data.ratingOffset)) / playbackRate * 0.001;
+
+		if (ClientPrefs.data.holdSplashAlpha > 0.01 && !daNote.hitByOpponent)
+		{
+			timer = new FlxTimer().start(timeThingy, (_) ->
+			{
+				if (animation != null)
+				{
+					animation.play('end', true);
+					strumNote.playAnim('pressed', true);
 					if (animation.curAnim != null)
 					{
 						animation.curAnim.looped = false;
 						animation.curAnim.frameRate = 24;
 					}
 					clipRect = null;
-					animation.finishCallback = (idkEither:Dynamic) ->
-					{
-						kill();
-					}
-					return;
+
+					animation.finishCallback = (_) -> kill();
 				}
-				kill();
+				else kill();
 			});
+		}
 	}
 }
