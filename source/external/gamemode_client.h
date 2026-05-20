@@ -312,7 +312,7 @@ __attribute__((always_inline)) static inline int gamemode_query_status(void)
 	if (REAL_internal_gamemode_query_status == NULL) {
 		snprintf(internal_gamemode_client_error_string,
 		         sizeof(internal_gamemode_client_error_string),
-		         "gamemode_query_statusMissing (older host?)");
+		         "gamemode_query_status missing (older host?)");
 		return -1;
 	}
 
@@ -330,7 +330,7 @@ __attribute__((always_inline)) static inline int gamemode_request_start_for(pid_
 	if (REAL_internal_gamemode_request_start_for == NULL) {
 		snprintf(internal_gamemode_client_error_string,
 		         sizeof(internal_gamemode_client_error_string),
-		         "gamemode_request_start_forMissing (older host?)");
+		         "gamemode_request_start_for missing (older host?)");
 		return -1;
 	}
 
@@ -348,7 +348,7 @@ __attribute__((always_inline)) static inline int gamemode_request_end_for(pid_t 
 	if (REAL_internal_gamemode_request_end_for == NULL) {
 		snprintf(internal_gamemode_client_error_string,
 		         sizeof(internal_gamemode_client_error_string),
-		         "gamemode_request_end_forMissing (older host?)");
+		         "gamemode_request_end_for missing (older host?)");
 		return -1;
 	}
 
@@ -366,7 +366,7 @@ __attribute__((always_inline)) static inline int gamemode_query_status_for(pid_t
 	if (REAL_internal_gamemode_query_status_for == NULL) {
 		snprintf(internal_gamemode_client_error_string,
 		         sizeof(internal_gamemode_client_error_string),
-		         "gamemode_query_status_forMissing (older host?)");
+		         "gamemode_query_status_for missing (older host?)");
 		return -1;
 	}
 
