@@ -5,7 +5,7 @@ import states.stages.objects.*;
 class Template extends BaseStage
 {
 	// If you're moving your stage from PlayState to a stage file,
-	// you might have to rename some variables if they're missing, for example: camZooming -> game.camZooming
+	// you might have to rename some variables if they'reMissing, for example: camZooming -> game.camZooming
 
 	override function create()
 	{

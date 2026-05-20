@@ -89,6 +89,17 @@ class VisualsSettingsSubState extends BaseOptionsMenu
 		option.decimals = 1;
 		addOption(option);
 
+		var option:Option = new Option('Long Note Opacity',
+			'How much transparent should the Long Note be.',
+			'sustainAlpha',
+			PERCENT);
+		option.scrollSpeed = 1.6;
+		option.minValue = 0.5;
+		option.maxValue = 1;
+		option.changeValue = 0.1;
+		option.decimals = 1;
+		addOption(option);
+
 		var option:Option = new Option('Hide HUD',
 			'If checked, most HUD elements will be hidden.',
 			'hideHud',

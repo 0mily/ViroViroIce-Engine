@@ -147,7 +147,7 @@ class ShaderFunctions
 					storeShader(cam, shaderTag, runtime);
 				return true;
 			}
-			FunkinLua.luaTrace('setCameraShader: camera "$cam" not found god damnit its only three cams how could you misstype that?????', false, false, ERROR);
+			FunkinLua.luaTrace('setCameraShader: camera "$cam" not found god damnit its only three cams how could youMisstype that?????', false, false, ERROR);
 			#else
 			FunkinLua.luaTrace("setCameraShader: Platform unsupported for Runtime Shaders!!!!!", false, false, ERROR);
 			#end
@@ -176,7 +176,7 @@ class ShaderFunctions
 				}
 				return true;
 			}
-			FunkinLua.luaTrace('removeCameraShader: camera "$cam" not found god damnit its only three cams how could you misstype that?????', false, false, ERROR);
+			FunkinLua.luaTrace('removeCameraShader: camera "$cam" not found god damnit its only three cams how could youMisstype that?????', false, false, ERROR);
 			#else
 			FunkinLua.luaTrace("removeCameraShader: Platform unsupported for Runtime Shaders!!!!!", false, false, ERROR);
 			#end

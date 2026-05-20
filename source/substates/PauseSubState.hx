@@ -26,8 +26,8 @@ class PauseSubState extends ScriptedSubState
 	var skipTimeTracker:Alphabet;
 	var curTime:Float = Math.max(0, Conductor.songPosition);
 
-	var missingTextBG:FlxSprite;
-	var missingText:FlxText;
+	var MissingTextBG:FlxSprite;
+	var MissingText:FlxText;
 
 	public static var songName:String = null;
 
@@ -134,18 +134,18 @@ class PauseSubState extends ScriptedSubState
 		grpMenuShit = new FlxTypedGroup<Alphabet>();
 		add(grpMenuShit);
 
-		missingTextBG = new FlxSprite(fullScreenX, fullScreenY).makeGraphic(1, 1, FlxColor.BLACK);
-		missingTextBG.scale.set(fullScreenWidth, fullScreenHeight);
-		missingTextBG.updateHitbox();
-		missingTextBG.alpha = 0.6;
-		missingTextBG.visible = false;
-		add(missingTextBG);
+		MissingTextBG = new FlxSprite(fullScreenX, fullScreenY).makeGraphic(1, 1, FlxColor.BLACK);
+		MissingTextBG.scale.set(fullScreenWidth, fullScreenHeight);
+		MissingTextBG.updateHitbox();
+		MissingTextBG.alpha = 0.6;
+		MissingTextBG.visible = false;
+		add(MissingTextBG);
 		
-		missingText = new FlxText(fullScreenX + 50, 0, fullScreenWidth - 100, '', 24);
-		missingText.setFormat(Paths.font("vcr.ttf"), 24, FlxColor.WHITE, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
-		missingText.scrollFactor.set();
-		missingText.visible = false;
-		add(missingText);
+		MissingText = new FlxText(fullScreenX + 50, 0, fullScreenWidth - 100, '', 24);
+		MissingText.setFormat(Paths.font("vcr.ttf"), 24, FlxColor.WHITE, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
+		MissingText.scrollFactor.set();
+		MissingText.visible = false;
+		add(MissingText);
 
 		regenMenu();
 		cameras = [pauseCamera];
@@ -258,10 +258,10 @@ function getPauseSong()
 						if(errorStr.startsWith('[lime.utils.Assets] ERROR:')) errorStr = 'Missing file: ' + errorStr.substring(errorStr.indexOf(songLowercase), errorStr.length-1); //Missing chart
 						else errorStr += '\n\n' + e.stack;
 
-						missingText.text = 'ERROR WHILE LOADING CHART:\n$errorStr';
-						missingText.screenCenter(Y);
-						missingText.visible = true;
-						missingTextBG.visible = true;
+						MissingText.text = 'ERROR WHILE LOADING CHART:\n$errorStr';
+						MissingText.screenCenter(Y);
+						MissingText.visible = true;
+						MissingTextBG.visible = true;
 						FlxG.sound.play(Paths.sound('cancelMenu'));
 
 						super.update(elapsed);
@@ -401,8 +401,8 @@ function getPauseSong()
 					}
 				}
 			}
-			missingText.visible = false;
-			missingTextBG.visible = false;
+			MissingText.visible = false;
+			MissingTextBG.visible = false;
 			
 			if (change != 0)
 				FlxG.sound.play(Paths.sound('scrollMenu'), .4);

@@ -53,7 +53,7 @@ typedef CharacterDataCacheEntry = {
 class Character extends FlxSprite
 {
 	/**
-	 * In case a character is missing, it will use this on its place
+	 * In case a character isMissing, it will use this on its place
 	**/
 	public static final DEFAULT_CHARACTER:String = 'bf';
 	public static final NONE_CHARACTER:String = 'none';
@@ -81,9 +81,9 @@ class Character extends FlxSprite
 	public var cameraPosition:Array<Float> = [0, 0];
 	public var healthColorArray:Array<Int> = [255, 0, 0];
 
-	public var missingCharacter:Bool = false;
+	public var MissingCharacter:Bool = false;
 	public var isNullCharacter:Bool = false;
-	public var missingText:FlxText;
+	public var MissingText:FlxText;
 	public var hasMissAnimations:Bool = false;
 	public var vocalsFile:String = '';
 
@@ -147,17 +147,17 @@ class Character extends FlxSprite
 		if (path == null)
 		{
 			path = getCharacterPath(DEFAULT_CHARACTER); //If a character couldn't be found, change him to BF just to prevent a crash
-			missingCharacter = true;
+			MissingCharacter = true;
 			
-			if (missingText == null) {
-				missingText = new FlxText(0, 0, 300, 'ERROR:\n$character', 16);
-				missingText.alignment = CENTER;
+			if (MissingText == null) {
+				MissingText = new FlxText(0, 0, 300, 'ERROR:\n$character', 16);
+				MissingText.alignment = CENTER;
 			}
-			missingText.revive();
+			MissingText.revive();
 		} else {
-			missingCharacter = false;
+			MissingCharacter = false;
 			
-			missingText?.kill();
+			MissingText?.kill();
 		}
 
 		try
@@ -178,7 +178,7 @@ class Character extends FlxSprite
 
 	public static final CHARACTER_FILE_FOLDERS:Array<String> = ['data/chrs/', 'data/characters/']; // wink
 	public static final CHARACTER_FILE_EXTENSIONS:Array<String> = ['.xml', '.json'];
-	static inline final MISSING_CHARACTER_PATH:String = '\x00';
+	static inline final MissING_CHARACTER_PATH:String = '\x00';
 	static inline final NONE_CHARACTER_PATH:String = '\x01';
 	static var characterPathCache:Map<String, String> = new Map<String, String>();
 	static var characterDataCache:Map<String, CharacterDataCacheEntry> = new Map<String, CharacterDataCacheEntry>();
@@ -237,7 +237,7 @@ class Character extends FlxSprite
 		var key:String = getCharacterCacheKey(character);
 		var path:String = characterPathCache.get(key);
 		characterPathCache.remove(key);
-		if(path != null && path != MISSING_CHARACTER_PATH && path != NONE_CHARACTER_PATH)
+		if(path != null && path !=MissING_CHARACTER_PATH && path != NONE_CHARACTER_PATH)
 			characterDataCache.remove(path);
 	}
 
@@ -278,7 +278,7 @@ class Character extends FlxSprite
 		if(characterPathCache.exists(cacheKey))
 		{
 			var cachedPath:String = characterPathCache.get(cacheKey);
-			return cachedPath != MISSING_CHARACTER_PATH ? cachedPath : null;
+			return cachedPath !=MissING_CHARACTER_PATH ? cachedPath : null;
 		}
 
 		if(isNoneCharacter(character))
@@ -720,8 +720,8 @@ class Character extends FlxSprite
 	function loadNullCharacter():Void
 	{
 		isNullCharacter = true;
-		missingCharacter = false;
-		missingText?.kill();
+		MissingCharacter = false;
+		MissingText?.kill();
 
 		#if flxanimate
 		atlas = null;
@@ -1304,7 +1304,7 @@ class Character extends FlxSprite
 	{
 		var lastAlpha:Float = alpha;
 		var lastColor:FlxColor = color;
-		if(missingCharacter)
+		if(MissingCharacter)
 		{
 			alpha *= 0.6;
 			color = FlxColor.BLACK;
@@ -1316,13 +1316,13 @@ class Character extends FlxSprite
 			{
 				copyAtlasValues();
 				atlas.draw();
-				if(missingCharacter && visible)
+				if(MissingCharacter && visible)
 				{
-					missingText.alpha = lastAlpha;
-					missingText.x = getMidpoint().x - 150;
-					missingText.y = getMidpoint().y - 10;
-					missingText.cameras = cameras;
-					missingText.draw();
+					MissingText.alpha = lastAlpha;
+					MissingText.x = getMidpoint().x - 150;
+					MissingText.y = getMidpoint().y - 10;
+					MissingText.cameras = cameras;
+					MissingText.draw();
 				}
 				alpha = lastAlpha;
 				color = lastColor;
@@ -1330,13 +1330,13 @@ class Character extends FlxSprite
 			return;
 		}
 		super.draw();
-		if(missingCharacter && visible)
+		if(MissingCharacter && visible)
 		{
-			missingText.alpha = lastAlpha;
-			missingText.x = getMidpoint().x - 150;
-			missingText.y = getMidpoint().y - 10;
-			missingText.cameras = cameras;
-			missingText.draw();
+			MissingText.alpha = lastAlpha;
+			MissingText.x = getMidpoint().x - 150;
+			MissingText.y = getMidpoint().y - 10;
+			MissingText.cameras = cameras;
+			MissingText.draw();
 			alpha = lastAlpha;
 			color = lastColor;
 		}

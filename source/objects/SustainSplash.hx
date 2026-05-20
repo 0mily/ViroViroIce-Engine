@@ -19,7 +19,7 @@ class SustainSplash extends FlxSprite
 
 		animation.addByPrefix('hold', 'holdCover0', 24, true);
 		animation.addByPrefix('end', 'holdCoverEnd0', 24, false);
-		if(!animation.getNameList().contains("hold")) trace("Hold splash is missing 'hold' anim!");
+		if(!animation.getNameList().contains("hold")) trace("Hold splash isMissing 'hold' anim!");
 	}
 
 	override function update(elapsed)

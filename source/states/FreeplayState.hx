@@ -44,8 +44,8 @@ class FreeplayState extends ScriptedState
 	var bg:FlxSprite;
 	var intendedColor:Int;
 
-	var missingTextBG:FlxSprite;
-	var missingText:FlxText;
+	var MissingTextBG:FlxSprite;
+	var MissingText:FlxText;
 
 	var bottomString:String;
 	var bottomText:FlxText;
@@ -100,7 +100,7 @@ class FreeplayState extends ScriptedState
 			FlxTransitionableState.skipNextTransIn = true;
 			persistentUpdate = false;
 			MusicBeatState.switchState(new states.ErrorState("NO WEEKS ADDED FOR FREEPLAY\n\nPress ACCEPT to go to the Week Editor Menu.\nPress BACK to return to Main Menu.",
-				function() MusicBeatState.switchState(new states.editors.WeekEditorState()),
+				function() MusicBeatState.switchState(new states.editors.LevelEditorState()),
 				function() MusicBeatState.switchState(new states.MainMenuState())));
 			return;
 		}
@@ -183,16 +183,16 @@ class FreeplayState extends ScriptedState
 		add(scoreText);
 
 
-		missingTextBG = new FlxSprite().makeGraphic(FlxG.width, FlxG.height, FlxColor.BLACK);
-		missingTextBG.alpha = 0.6;
-		missingTextBG.visible = false;
-		add(missingTextBG);
+		MissingTextBG = new FlxSprite().makeGraphic(FlxG.width, FlxG.height, FlxColor.BLACK);
+		MissingTextBG.alpha = 0.6;
+		MissingTextBG.visible = false;
+		add(MissingTextBG);
 		
-		missingText = new FlxText(50, 0, FlxG.width - 100, '', 24);
-		missingText.setFormat(Paths.font("vcr.ttf"), 24, FlxColor.WHITE, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
-		missingText.scrollFactor.set();
-		missingText.visible = false;
-		add(missingText);
+		MissingText = new FlxText(50, 0, FlxG.width - 100, '', 24);
+		MissingText.setFormat(Paths.font("vcr.ttf"), 24, FlxColor.WHITE, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
+		MissingText.scrollFactor.set();
+		MissingText.visible = false;
+		add(MissingText);
 
 		if(curSelected >= songs.length) curSelected = 0;
 		bg.color = songs[curSelected].color;
@@ -477,10 +477,10 @@ class FreeplayState extends ScriptedState
 				if(errorStr.contains('There is no TEXT asset with an ID of')) errorStr = 'Missing file: ' + errorStr.substring(errorStr.indexOf(songLowercase), errorStr.length-1); //Missing chart
 				else errorStr += '\n\n' + e.stack;
 
-				missingText.text = 'ERROR WHILE LOADING CHART:\n$errorStr';
-				missingText.screenCenter(Y);
-				missingText.visible = true;
-				missingTextBG.visible = true;
+				MissingText.text = 'ERROR WHILE LOADING CHART:\n$errorStr';
+				MissingText.screenCenter(Y);
+				MissingText.visible = true;
+				MissingTextBG.visible = true;
 				FlxG.sound.play(Paths.sound('cancelMenu'));
 
 				updateTexts(elapsed);
@@ -563,8 +563,8 @@ class FreeplayState extends ScriptedState
 				diffText.text = displayDiff.toUpperCase();
 
 			positionHighscore();
-			missingText.visible = false;
-			missingTextBG.visible = false;
+			MissingText.visible = false;
+			MissingTextBG.visible = false;
 			
 			refreshShitScript();
 			callOnScripts('onChangeDifficultyPost', [Difficulty.getString(curDifficulty), curDifficulty]);

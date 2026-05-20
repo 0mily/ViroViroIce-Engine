@@ -6,7 +6,7 @@
 			"fps": 24,
 			"anim": "idle",
 			"indices": [],
-			"name": "BF idle dance"
+			"name": "idle"
 		},
 		{
 			"offsets": [35, -16],
@@ -14,7 +14,7 @@
 			"fps": 24,
 			"anim": "singLEFT",
 			"indices": [],
-			"name": "BF NOTE LEFT0"
+			"name": "left0"
 		},
 		{
 			"offsets": [9, -47],
@@ -22,7 +22,7 @@
 			"fps": 24,
 			"anim": "singDOWN",
 			"indices": [],
-			"name": "BF NOTE DOWN0"
+			"name": "down0"
 		},
 		{
 			"offsets": [-21, -20],
@@ -30,7 +30,7 @@
 			"fps": 24,
 			"anim": "singUP",
 			"indices": [],
-			"name": "BF NOTE UP0"
+			"name": "up0"
 		},
 		{
 			"offsets": [-21, -2],
@@ -38,7 +38,7 @@
 			"fps": 24,
 			"anim": "singRIGHT",
 			"indices": [],
-			"name": "BF NOTE RIGHT0"
+			"name": "right0"
 		},
 		{
 			"offsets": [28, -18],
@@ -46,7 +46,7 @@
 			"fps": 24,
 			"anim": "singLEFTmiss",
 			"indices": [],
-			"name": "BF NOTE LEFT MISS"
+			"name": "leftMiss"
 		},
 		{
 			"offsets": [13, -40],
@@ -54,7 +54,7 @@
 			"fps": 24,
 			"anim": "singDOWNmiss",
 			"indices": [],
-			"name": "BF NOTE DOWN MISS"
+			"name": "downMiss"
 		},
 		{
 			"offsets": [-18, -12],
@@ -62,7 +62,7 @@
 			"fps": 24,
 			"anim": "singUPmiss",
 			"indices": [],
-			"name": "BF NOTE UP MISS"
+			"name": "upMiss"
 		},
 		{
 			"offsets": [-15, -2],
@@ -70,7 +70,7 @@
 			"fps": 24,
 			"anim": "singRIGHTmiss",
 			"indices": [],
-			"name": "BF NOTE RIGHT MISS"
+			"name": "rightMiss"
 		},
 		{
 			"offsets": [-12, -5],
@@ -78,7 +78,7 @@
 			"fps": 24,
 			"anim": "singUP-alt",
 			"indices": [],
-			"name": "BF NOTE UP VIBRATO"
+			"name": "upVibrato"
 		},
 		{
 			"offsets": [17, -45],
@@ -86,7 +86,7 @@
 			"fps": 24,
 			"anim": "singDOWN-alt",
 			"indices": [],
-			"name": "BF NOTE DOWN VIBRATO"
+			"name": "downVibrato"
 		}
 	],
 	"vocals_file": "bfmix2",

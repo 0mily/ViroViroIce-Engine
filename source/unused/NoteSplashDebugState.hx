@@ -26,8 +26,8 @@ class NoteSplashDebugState extends MusicBeatState implements PsychUIEventHandler
 	var savedText:FlxText;
 	var selecArr:Array<Float> = null;
 
-	var missingTextBG:FlxSprite;
-	var missingText:FlxText;
+	var MissingTextBG:FlxSprite;
+	var MissingText:FlxText;
 
 	public static final defaultTexture:String = 'noteSplashes';
 
@@ -81,16 +81,16 @@ class NoteSplashDebugState extends MusicBeatState implements PsychUIEventHandler
 				textureName = defaultTexture;
 				loadFrames();
 
-				missingText.text = 'ERROR WHILE LOADING IMAGE:\n${imageInputText.text}';
-				missingText.screenCenter(Y);
-				missingText.visible = true;
-				missingTextBG.visible = true;
+				MissingText.text = 'ERROR WHILE LOADING IMAGE:\n${imageInputText.text}';
+				MissingText.screenCenter(Y);
+				MissingText.visible = true;
+				MissingTextBG.visible = true;
 				FlxG.sound.play(Paths.sound('cancelMenu'));
 
 				new FlxTimer().start(2.5, function(tmr:FlxTimer)
 				{
-					missingText.visible = false;
-					missingTextBG.visible = false;
+					MissingText.visible = false;
+					MissingTextBG.visible = false;
 				});
 			}
 			PsychUIInputText.focusOn = null;
@@ -150,16 +150,16 @@ class NoteSplashDebugState extends MusicBeatState implements PsychUIEventHandler
 		savedText.scrollFactor.set();
 		add(savedText);
 
-		missingTextBG = new FlxSprite().makeGraphic(FlxG.width, FlxG.height, FlxColor.BLACK);
-		missingTextBG.alpha = 0.6;
-		missingTextBG.visible = false;
-		add(missingTextBG);
+		MissingTextBG = new FlxSprite().makeGraphic(FlxG.width, FlxG.height, FlxColor.BLACK);
+		MissingTextBG.alpha = 0.6;
+		MissingTextBG.visible = false;
+		add(MissingTextBG);
 
-		missingText = new FlxText(50, 0, FlxG.width - 100, '', 24);
-		missingText.setFormat(Paths.font("vcr.ttf"), 24, FlxColor.WHITE, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
-		missingText.scrollFactor.set();
-		missingText.visible = false;
-		add(missingText);
+		MissingText = new FlxText(50, 0, FlxG.width - 100, '', 24);
+		MissingText.setFormat(Paths.font("vcr.ttf"), 24, FlxColor.WHITE, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
+		MissingText.scrollFactor.set();
+		MissingText.visible = false;
+		add(MissingText);
 
 		loadFrames();
 		changeSelection();

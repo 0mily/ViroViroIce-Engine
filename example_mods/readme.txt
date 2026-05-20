@@ -1,6 +1,6 @@
 ViroViroIce's addons/ folder.
 
-If you're a beginner, we recommend you extract modTemplate.zip to get started on developing your mod.
+If you're a beginner, we recommend you extract addonTemplate.zip to get started on developing your mod.
 Read the Psych GitHub wiki here:
 https://github.com/ShadowMario/FNF-PsychEngine/wiki
 Read the Lua Script API here:

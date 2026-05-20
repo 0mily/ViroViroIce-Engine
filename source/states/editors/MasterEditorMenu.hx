@@ -15,13 +15,12 @@ class MasterEditorMenu extends ScriptedSubState
 		'Character Editor',
 		'Stage Editor',
 		'Dropshadow Editor',
-		'Week Editor',
+		'Level Editor',
 		'Menu Character Editor',
 		'Dialogue Editor',
 		'Dialogue Portrait Editor',
 		'Note Splash Editor',
-		'Test Stickers',
-		'PE To VVIE Conversor'
+		'Test Stickers'
 	];
 	var optionFunctions:Map<String, Void -> Void> = [];
 	private var grpTexts:FlxTypedGroup<Alphabet>;
@@ -71,13 +70,12 @@ class MasterEditorMenu extends ScriptedSubState
 		optionFunctions['Character Editor'] = () -> LoadingState.loadAndSwitchState(new CharacterEditorState(Character.DEFAULT_CHARACTER, false));
 		optionFunctions['Stage Editor'] = () -> LoadingState.loadAndSwitchState(new StageEditorState());
         if (PlayState.SONG != null) optionFunctions['Drop Shadow Editor'] =  () -> LoadingState.loadAndSwitchState(new DropShadowEditor(), false);
-		optionFunctions['Week Editor'] = () -> MusicBeatState.switchState(new WeekEditorState());
+		optionFunctions['Level Editor'] = () -> MusicBeatState.switchState(new LevelEditorState());
 		optionFunctions['Menu Character Editor'] = () -> MusicBeatState.switchState(new MenuCharacterEditorState());
 		optionFunctions['Dialogue Editor'] = () -> LoadingState.loadAndSwitchState(new DialogueEditorState(), false);
 		optionFunctions['Dialogue Portrait Editor'] = () -> LoadingState.loadAndSwitchState(new DialogueCharacterEditorState(), false);
 		optionFunctions['Note Splash Editor'] =  () -> MusicBeatState.switchState(new NoteSplashEditorState());
 		optionFunctions['Test Stickers'] =  () -> MusicBeatState.switchState(new StickerTest());
-		optionFunctions['PE To VVIE Conversor'] =  () -> MusicBeatState.switchState(new CustomState('ModConversor'));
 		
 		#if MODS_ALLOWED
 		textBG = new FlxSprite(0, FlxG.height - 42).makeGraphic(FlxG.width, 42, 0xFF000000);

@@ -12,6 +12,7 @@ using StringTools;
 @:structInit class SaveVariables {
 
 // nosso
+
 	public var mechanics:Bool = true;
 	public var modchart:Bool = true;
 	public var weekpixel:Bool = true;
@@ -19,6 +20,7 @@ using StringTools;
 	public var extra:Bool = false;
 	public var neatRating:Bool = true;
 	public var neatWindow:Float = 22.0;
+	public var sustainAlpha:Float = 0.6;
 	//public var customScore:Bool = false;
 
 // deles
@@ -31,9 +33,9 @@ using StringTools;
 	public var autoPause:Bool = true;
 	public var antialiasing:Bool = true;
 	public var noteSkin:String = 'Default';
-	public var splashSkin:String = 'Psych';
+	public var splashSkin:String = 'ViroViroIce';
 	public var holdSkin:String = 'Vanilla';
-	public var splashAlpha:Float = 0.6;
+	public var splashAlpha:Float = 0.8;
 	public var holdSplashAlpha:Float = 1;
 	public var lowQuality:Bool = false;
 	public var shaders:Bool = true;

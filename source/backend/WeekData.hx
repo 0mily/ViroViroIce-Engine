@@ -55,8 +55,8 @@ class WeekData {
 			#end
 			weekBackground: 'stage',
 			weekBefore: 'tutorial',
-			storyName: 'Your New Week',
-			weekName: 'Custom Week',
+			storyName: 'Your New Level',
+			weekName: 'Custom Level',
 			startUnlocked: true,
 			hiddenUntilUnlocked: false,
 			hideStoryMode: false,

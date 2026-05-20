@@ -141,7 +141,7 @@ class StoryMenuState extends ScriptedState
 			FlxTransitionableState.skipNextTransIn = true;
 			persistentUpdate = false;
 			MusicBeatState.switchState(new states.ErrorState("NO WEEKS ADDED FOR STORY MODE\n\nPress ACCEPT to go to the Week Editor Menu.\nPress BACK to return to Main Menu.",
-				function() MusicBeatState.switchState(new states.editors.WeekEditorState()),
+				function() MusicBeatState.switchState(new states.editors.LevelEditorState()),
 				function() MusicBeatState.switchState(new states.MainMenuState())));
 			return;
 		}
@@ -210,7 +210,7 @@ class StoryMenuState extends ScriptedState
 			FlxTransitionableState.skipNextTransIn = true;
 			persistentUpdate = false;
 			MusicBeatState.switchState(new states.ErrorState("NO VISIBLE WEEKS AVAILABLE FOR STORY MODE\n\nPress ACCEPT to go to the Week Editor Menu.\nPress BACK to return to Main Menu.",
-				function() MusicBeatState.switchState(new states.editors.WeekEditorState()),
+				function() MusicBeatState.switchState(new states.editors.LevelEditorState()),
 				function() MusicBeatState.switchState(new states.MainMenuState())));
 			return;
 		}

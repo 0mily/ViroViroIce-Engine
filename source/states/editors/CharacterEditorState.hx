@@ -613,7 +613,7 @@ class CharacterEditorState extends ScriptedState implements PsychUIEventHandler.
 		var isPlayer = (reload && wasPlayer != null ? wasPlayer == true : !predictCharacterIsNotPlayer(_char));
 		character = new Character(0, 0, _char, isPlayer);
 		character.debugMode = true;
-		character.missingCharacter = false;
+		character.MissingCharacter = false;
 
 		if(pos > -1) insert(pos, character);
 		else add(character);
@@ -775,7 +775,7 @@ class CharacterEditorState extends ScriptedState implements PsychUIEventHandler.
 				no_antialiasing: false,
 				flip_x: false,
 				healthicon: 'face',
-				image: 'characters/MR_TEMPLATE',
+				image: 'characters/BFMix2',
 				sing_duration: 4,
 				scale: 1,
 				healthbar_colors: [161, 161, 161],
@@ -786,7 +786,7 @@ class CharacterEditorState extends ScriptedState implements PsychUIEventHandler.
 			};
 
 			character.loadCharacterFile(_template);
-			character.missingCharacter = false;
+			character.MissingCharacter = false;
 			character.color = FlxColor.WHITE;
 			character.alpha = 1;
 			reloadAnimList();
@@ -821,7 +821,7 @@ class CharacterEditorState extends ScriptedState implements PsychUIEventHandler.
 				no_antialiasing: false,
 				flip_x: false,
 				healthicon: 'face',
-				image: 'characters/MR_TEMPLATE',
+				image: 'characters/BFMix2',
 				sing_duration: 4,
 				scale: 1,
 				healthbar_colors: [161, 161, 161],
@@ -832,7 +832,7 @@ class CharacterEditorState extends ScriptedState implements PsychUIEventHandler.
 			};
 
 			character.loadCharacterFile(_templateCool);
-			character.missingCharacter = false;
+			character.MissingCharacter = false;
 			character.color = FlxColor.WHITE;
 			character.alpha = 1;
 			reloadAnimList();

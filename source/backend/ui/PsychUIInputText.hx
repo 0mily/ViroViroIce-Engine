@@ -104,7 +104,7 @@ class PsychUIInputText extends FlxSpriteGroup
 		var charCode:Int = e.charCode;
 		var flxKey:FlxKey = cast keyCode;
 
-		// Fix missing cedilla
+		// FixMissing cedilla
 		switch(keyCode)
 		{
 			case 231: //ç and Ç
