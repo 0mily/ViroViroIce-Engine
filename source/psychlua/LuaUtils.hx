@@ -38,7 +38,7 @@ class LuaUtils
 
 		switch(luaScript.lastCalledFunction)
 		{
-			case 'goodNoteHit' | 'goodNoteHitPre' | 'opponentNoteHit' | 'opponentNoteHitPre' | 'noteMiss' | 'noteMissPre': // é preciso osMisses mesmo? Só por precaução memo sla
+			case 'goodNoteHit' | 'goodNoteHitPre' | 'opponentNoteHit' | 'opponentNoteHitPre' | 'noteMiss' | 'noteMissPre': // é preciso os misses mesmo? Só por precaução memo sla
 				return luaScript.lastCalledArgs[3] == true;
 		}
 		return false;

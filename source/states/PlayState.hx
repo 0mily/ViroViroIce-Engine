@@ -230,7 +230,7 @@ class PlayState extends ScriptedState
 	*/
 	public var spawnTime:Float = 2000;
 	/**
-	 * WhetherMissing notes should play a sound or not.
+	 * Whether missing notes should play a sound or not.
 	*/
 	public var playMissSound:Bool = true;
 
@@ -373,7 +373,7 @@ class PlayState extends ScriptedState
 	*/
 	public var healthGain:Float = 1;
 	/**
-	 * Multiplier for the health lost byMissing a note.
+	 * Multiplier for the health lost by missing a note.
 	*/
 	public var healthLoss:Float = 1;
 
@@ -382,7 +382,7 @@ class PlayState extends ScriptedState
 	*/
 	public var guitarHeroSustains:Bool = false;
 	/**
-	 * Whether or not the "Instakill onMiss" Gameplay modifier is enabled.
+	 * Whether or not the "Instakill on miss" Gameplay modifier is enabled.
 	*/
 	public var instakillOnMiss:Bool = false;
 	/**
@@ -398,7 +398,7 @@ class PlayState extends ScriptedState
 	*/
 	public var ghostTapping:Bool = false;
 	/**
-	 * The default damage caused byMissing a note.
+	 * The default damage caused by missing a note.
 	*/
 	public var pressMissDamage:Float = 0.05;
 
@@ -449,7 +449,7 @@ class PlayState extends ScriptedState
 	*/
 	public var songHits:Int = 0;
 	/**
-	 * How many notes have beenMissed since the start of the song.
+	 * How many notes have been missed since the start of the song.
 	*/
 	public var songMisses:Int = 0;
 	/**
@@ -464,7 +464,7 @@ class PlayState extends ScriptedState
 	*/
 	public static var campaignScore:Int = 0;
 	/**
-	 * The player's accumulatedMiss count since the start of the week (in Story Mode).
+	 * The player's accumulated miss count since the start of the week (in Story Mode).
 	*/
 	public static var campaignMisses:Int = 0;
 	/**
@@ -1031,6 +1031,7 @@ class PlayState extends ScriptedState
 		lua.set('modchart', ClientPrefs.data.modchart);
 		lua.set('pixelRender', ClientPrefs.data.weekpixel);
 		lua.set('allowMiku', ClientPrefs.data.mikudside);
+		lua.set('sustainAlpha', ClientPrefs.data.sustainAlpha);
 		//lua.set('customScore', ClientPrefs.data.customScore);
 		lua.set('extra', ClientPrefs.data.extra);
 		lua.set('stageUI', stageUI);
@@ -1636,7 +1637,7 @@ class PlayState extends ScriptedState
 	/**
 	 * Updates the score and calls `preUpdateScore` and `onUpdateScore` on Lua.
 	 * 
-	 * @param 	miss 		Whether or not the score was updated from a noteMiss.
+	 * @param 	miss 		Whether or not the score was updated from a note miss.
 	 * @param 	scoreBop 	Whether or not the score text should have a bopping animation.
 	*/
 	public dynamic function updateScore(miss:Bool = false, scoreBop:Bool = true)
@@ -1663,7 +1664,7 @@ class PlayState extends ScriptedState
 
 		var currentFC:String = (ratingFC == "") ? "?" : ratingFC;
 
-		var tudo:String = Language.getPhrase('score_text', "SCORE: {1} |MissES: {2} | ACC: {3} ({4})", [songScore, songMisses, accText, currentFC]);
+		var tudo:String = Language.getPhrase('score_text', "SCORE: {1} | MISSES: {2} | ACC: {3} ({4})", [songScore, songMisses, accText, currentFC]);
 		scoreTxt.text = tudo;
 		scoreTxt.clearFormats();
 
@@ -2466,7 +2467,7 @@ class PlayState extends ScriptedState
 							if (daNote.isSustainNote && strum.sustainReduce)
 								daNote.clipToStrumNote(strum);
 
-							// Kill extremely late notes and causeMisses
+							// Kill extremely late notes and cause misses
 							if (!daNote.canBeHit && !daNote.tooLate && !daNote.wasGoodHit && daNote.strumTime < Conductor.songPosition - Conductor.safeZoneOffset) {
 								if (daNote.mustPress && !cpuControlled && !daNote.ignoreNote && !endingSong)
 									noteMiss(daNote);
@@ -3674,7 +3675,7 @@ class PlayState extends ScriptedState
 	}
 	
 	/**
-	 * The total amount of notes hit orMissed since the start of the song.
+	 * The total amount of notes hit ormissed since the start of the song.
 	*/
 	public var totalPlayed:Int = 0;
 	/**
@@ -4024,9 +4025,9 @@ class PlayState extends ScriptedState
 	}
 
 	/**
-	 * Called whenever a note isMissed.
+	 * Called whenever a note ismissed.
 	 * 
-	 * @param 	daNote 	TheMissed note.
+	 * @param 	daNote 	Themissed note.
 	*/
 	function noteMiss(daNote:Note):Void { //You didn't hit the key and let it go offscreen, also used by Hurt Notes
 		var result:Dynamic = callOnLuas('noteMissPre', [notes.members.indexOf(daNote), daNote.noteData, daNote.noteType, daNote.isSustainNote]);
@@ -4053,9 +4054,9 @@ class PlayState extends ScriptedState
 	}
 
 	/**
-	 * Called whenever aMiss happens by ghost tapping (a key was pressed when there was no notes to hit).
+	 * Called whenever a miss happens by ghost tapping (a key was pressed when there was no notes to hit).
 	 * 
-	 * @param 	direction 	The direction ID of theMiss.
+	 * @param 	direction 	The direction ID of the miss.
 	*/
 	function noteMissPress(direction:Int = 1):Void
 	{
@@ -4072,7 +4073,7 @@ class PlayState extends ScriptedState
 	{
 		// score and data
 		var subtract:Float = pressMissDamage;
-		if(note != null) subtract = note.MissHealth;
+		if(note != null) subtract = note.missHealth;
 
 		// GUITAR HERO SUSTAIN CHECK LOL!!!!
 		if (note != null && guitarHeroSustains && note.parent == null) {
@@ -4080,12 +4081,12 @@ class PlayState extends ScriptedState
 				note.alpha = 0.35;
 				for (childNote in note.tail) {
 					childNote.alpha = note.alpha;
-					childNote.Missed = true;
+					childNote.missed = true;
 					childNote.canBeHit = false;
 					childNote.ignoreNote = true;
 					childNote.tooLate = true;
 				}
-				note.Missed = true;
+				note.missed = true;
 				note.canBeHit = false;
 
 				//subtract += 0.385; // you take more damage if playing with this gameplay changer enabled.
@@ -4094,17 +4095,17 @@ class PlayState extends ScriptedState
 				// i think it would be fair if damage multiplied based on how long the sustain is -Tahir
 			}
 
-			if (note.Missed)
+			if (note.missed)
 				return;
 		}
 		if (note != null && guitarHeroSustains && note.parent != null && note.isSustainNote) {
-			if (note.Missed)
+			if (note.missed)
 				return;
 
 			var parentNote:Note = note.parent;
 			if (parentNote.wasGoodHit && parentNote.tail.length > 0) {
 				for (child in parentNote.tail) if (child != note) {
-					child.Missed = true;
+					child.missed = true;
 					child.canBeHit = false;
 					child.ignoreNote = true;
 					child.tooLate = true;
@@ -4267,7 +4268,7 @@ class PlayState extends ScriptedState
 			if (guitarHeroSustains && note.isSustainNote) gainHealth = false;
 			if (gainHealth) health += note.hitHealth * healthGain;
 
-		} else { //Notes that count as aMiss if you hit them (Hurt notes for example)
+		} else { //Notes that count as a miss if you hit them (Hurt notes for example)
 			char = getNoteCharacter(note, boyfriend);
 			
 			if (!note.noMissAnimation) {
@@ -4537,7 +4538,7 @@ class PlayState extends ScriptedState
 	/**
 	 * Recalculates the rating and updates the score.
 	 * 
-	 * @param 	badHit 		Whether or not the rating was updated from a noteMiss.
+	 * @param 	badHit 		Whether or not the rating was updated from a note miss.
 	 * @param 	scoreBop 	Whether or not the score text should have a bopping animation.
 	*/
 	public function RecalculateRating(badHit:Bool = false, scoreBop:Bool = true) {

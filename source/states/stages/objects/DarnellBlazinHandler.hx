@@ -100,7 +100,7 @@ class DarnellBlazinHandler
 	
 	public function noteMiss(note:Note)
 	{
-		// SPECIAL CASE: Darnell prepared to uppercut last time and PicoMissed! FINISH HIM!
+		// SPECIAL CASE: Darnell prepared to uppercut last time and Picomissed! FINISH HIM!
 		if (dad.getAnimationName() == 'uppercutPrep')
 		{
 			playUppercutAnim();

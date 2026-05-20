@@ -231,7 +231,7 @@ class EditorPlayState extends ScriptedSubState
 
 				if(daNote.isSustainNote && strum.sustainReduce) daNote.clipToStrumNote(strum);
 
-				// Kill extremely late notes and causeMisses
+				// Kill extremely late notes and cause misses
 				if (Conductor.songPosition - daNote.strumTime - daNote.sustainLength > noteKillOffset)
 				{
 					if (daNote.mustPress && !daNote.ignoreNote && (daNote.tooLate || !daNote.wasGoodHit))
@@ -845,27 +845,27 @@ class EditorPlayState extends ScriptedSubState
 				daNote.alpha = 0.35;
 				for(childNote in daNote.tail) {
 					childNote.alpha = daNote.alpha;
-					childNote.Missed = true;
+					childNote.missed = true;
 					childNote.canBeHit = false;
 					childNote.ignoreNote = true;
 					childNote.tooLate = true;
 				}
-				daNote.Missed = true;
+				daNote.missed = true;
 				daNote.canBeHit = false;
 			}
 
-			if (daNote.Missed)
+			if (daNote.missed)
 				return;
 		}
 
 		if (daNote != null && guitarHeroSustains && daNote.parent != null && daNote.isSustainNote) {
-			if (daNote.Missed)
+			if (daNote.missed)
 				return; 
 			
 			var parentNote:Note = daNote.parent;
 			if (parentNote.wasGoodHit && parentNote.tail.length > 0) {
 				for (child in parentNote.tail) if (child != daNote) {
-					child.Missed = true;
+					child.missed = true;
 					child.canBeHit = false;
 					child.ignoreNote = true;
 					child.tooLate = true;
@@ -908,5 +908,5 @@ class EditorPlayState extends ScriptedSubState
 	}
 
 	function updateScore()
-		scoreTxt.text = 'Hits: $songHits |Misses: $songMisses';
+		scoreTxt.text = 'Hits: $songHits | Misses: $songMisses';
 }

@@ -26,7 +26,7 @@ class LevelEditorState extends MusicBeatState implements PsychUIEventHandler.Psy
 	var txtTracklist:FlxText;
 	var grpWeekCharacters:FlxTypedGroup<MenuCharacter>;
 	var weekThing:MenuItem;
-	var MissingFileText:FlxText;
+	var missingFileText:FlxText;
 
 	public static var unsavedProgress:Bool = false;
 
@@ -66,11 +66,11 @@ class LevelEditorState extends MusicBeatState implements PsychUIEventHandler.Psy
 		lock.antialiasing = ClientPrefs.data.antialiasing;
 		add(lock);
 		
-		MissingFileText = new FlxText(0, 0, FlxG.width, "");
-		MissingFileText.setFormat(Paths.font("vcr.ttf"), 24, FlxColor.WHITE, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
-		MissingFileText.borderSize = 2;
-		MissingFileText.visible = false;
-		add(MissingFileText); 
+		missingFileText = new FlxText(0, 0, FlxG.width, "");
+		missingFileText.setFormat(Paths.font("vcr.ttf"), 24, FlxColor.WHITE, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
+		missingFileText.borderSize = 2;
+		missingFileText.visible = false;
+		add(missingFileText); 
 		
 		var charArray:Array<String> = weekFile.weekCharacters;
 		for (char in 0...3)
@@ -301,7 +301,7 @@ class LevelEditorState extends MusicBeatState implements PsychUIEventHandler.Psy
 
 	function reloadWeekThing() {
 		weekThing.visible = true;
-		MissingFileText.visible = false;
+		missingFileText.visible = false;
 		var assetName:String = weekFileInputText.text.trim();
 		
 		var isMissing:Bool = true;
@@ -315,8 +315,8 @@ class LevelEditorState extends MusicBeatState implements PsychUIEventHandler.Psy
 
 		if(isMissing) {
 			weekThing.visible = false;
-			MissingFileText.visible = true;
-			MissingFileText.text = 'MISSING FILE: images/storymenu/' + assetName + '.png';
+			missingFileText.visible = true;
+			missingFileText.text = 'MISSING FILE: images/storymenu/' + assetName + '.png';
 		}
 		recalculateStuffPosition();
 		
@@ -411,7 +411,7 @@ class LevelEditorState extends MusicBeatState implements PsychUIEventHandler.Psy
 		super.update(elapsed);
 
 		lock.y = weekThing.y;
-		MissingFileText.y = weekThing.y + 36;
+		missingFileText.y = weekThing.y + 36;
 	}
 
 	function recalculateStuffPosition() {

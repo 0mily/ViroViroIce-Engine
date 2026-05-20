@@ -58,7 +58,7 @@ class Note extends FlxSprite
 	public var tooLate:Bool = false;
 
 	public var wasGoodHit:Bool = false;
-	public var Missed:Bool = false;
+	public var missed:Bool = false;
 
 	public var ignoreNote:Bool = false;
 	public var hitByOpponent:Bool = false;
@@ -127,7 +127,7 @@ class Note extends FlxSprite
 	public var copyAlpha:Bool = true;
 
 	public var hitHealth:Float = 0.02;
-	public var MissHealth:Float = 0.1;
+	public var missHealth:Float = 0.1;
 	public var rating:String = 'unknown';
 	public var ratingMod:Float = 0; //9 = unknown, 0.25 = shit, 0.5 = bad, 0.75 = good, 1 = sick
 	public var ratingDisabled:Bool = false;
@@ -217,7 +217,7 @@ class Note extends FlxSprite
 
 					// gameplay data
 					lowPriority = true;
-					MissHealth = isSustainNote ? 0.25 : 0.1;
+					missHealth = isSustainNote ? 0.25 : 0.1;
 					hitCausesMiss = true;
 					hitsound = 'cancelMenu';
 					hitsoundChartEditor = false;

@@ -50,7 +50,7 @@ class GameplayChangersSubState extends BaseOptionsMenu
 		option.displayFormat = '%vX';
 		addOption(option);
 
-		var option:GameplayOption = new GameplayOption('Health Loss Multiplier', 'Multiplier for the health loss caused byMiss penalties.', 'healthloss', FLOAT);
+		var option:GameplayOption = new GameplayOption('Health Loss Multiplier', 'Multiplier for the health loss caused by miss penalties.', 'healthloss', FLOAT);
 		option.scrollSpeed = 2.5;
 		option.minValue = 0.5;
 		option.maxValue = 5;
@@ -58,7 +58,7 @@ class GameplayChangersSubState extends BaseOptionsMenu
 		option.displayFormat = '%vX';
 		addOption(option);
 
-		addOption(new GameplayOption('Instakill onMiss', 'If checked, aMiss penalty will kill the player immediately.', 'instakill', BOOL));
+		addOption(new GameplayOption('Instakill on miss', 'If checked, a miss penalty will kill the player immediately.', 'instakill', BOOL));
 		addOption(new GameplayOption('Practice Mode', 'If checked, you won\'t die when your health drops to zero.\nYour score won\' be saved with this modifier enabled.', 'practice', BOOL));
 		addOption(new GameplayOption('Botplay', 'If checked, the player side is played automatically.\nYour score won\' be saved with this modifier enabled.', 'botplay', BOOL));
 	}

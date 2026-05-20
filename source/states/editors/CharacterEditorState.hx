@@ -613,7 +613,7 @@ class CharacterEditorState extends ScriptedState implements PsychUIEventHandler.
 		var isPlayer = (reload && wasPlayer != null ? wasPlayer == true : !predictCharacterIsNotPlayer(_char));
 		character = new Character(0, 0, _char, isPlayer);
 		character.debugMode = true;
-		character.MissingCharacter = false;
+		character.missingCharacter = false;
 
 		if(pos > -1) insert(pos, character);
 		else add(character);
@@ -786,7 +786,7 @@ class CharacterEditorState extends ScriptedState implements PsychUIEventHandler.
 			};
 
 			character.loadCharacterFile(_template);
-			character.MissingCharacter = false;
+			character.missingCharacter = false;
 			character.color = FlxColor.WHITE;
 			character.alpha = 1;
 			reloadAnimList();
@@ -832,7 +832,7 @@ class CharacterEditorState extends ScriptedState implements PsychUIEventHandler.
 			};
 
 			character.loadCharacterFile(_templateCool);
-			character.MissingCharacter = false;
+			character.missingCharacter = false;
 			character.color = FlxColor.WHITE;
 			character.alpha = 1;
 			reloadAnimList();
