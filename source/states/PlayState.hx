@@ -3675,7 +3675,7 @@ class PlayState extends ScriptedState
 	}
 	
 	/**
-	 * The total amount of notes hit ormissed since the start of the song.
+	 * The total amount of notes hit or missed since the start of the song.
 	*/
 	public var totalPlayed:Int = 0;
 	/**
@@ -4025,9 +4025,9 @@ class PlayState extends ScriptedState
 	}
 
 	/**
-	 * Called whenever a note ismissed.
+	 * Called whenever a note is missed.
 	 * 
-	 * @param 	daNote 	Themissed note.
+	 * @param 	daNote 	The missed note.
 	*/
 	function noteMiss(daNote:Note):Void { //You didn't hit the key and let it go offscreen, also used by Hurt Notes
 		var result:Dynamic = callOnLuas('noteMissPre', [notes.members.indexOf(daNote), daNote.noteData, daNote.noteType, daNote.isSustainNote]);
