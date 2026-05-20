@@ -148,15 +148,37 @@ class StrumNote extends FlxSprite
 	}
 
 	override function update(elapsed:Float) {
-		if(resetAnim > 0) {
-			resetAnim -= elapsed;
-			if(resetAnim <= 0) {
-				playAnim('static');
-				resetAnim = 0;
-			}
-		}
-		super.update(elapsed);
-	}
+        if(resetAnim > 0) {
+            resetAnim -= elapsed;
+            if(resetAnim <= 0) {
+                playAnim('static');
+                resetAnim = 0;
+            }
+        }
+
+        if(animation.curAnim != null && animation.curAnim.name != 'static')
+        {
+            var arr:Array<FlxColor> = ClientPrefs.data.arrowRGB[noteData];
+            if(PlayState.isPixelStage) arr = ClientPrefs.data.arrowRGBPixel[noteData];
+            
+            if(arr != null && noteData <= arr.length)
+            {
+                @:bypassAccessor
+                {
+                    rgbShader.r = arr[0];
+                    rgbShader.g = arr[1];
+                    rgbShader.b = arr[2];
+                }
+            }
+        }
+        else
+        {
+            rgbShader.r = 0x87A3AD;
+            rgbShader.g = 0xFFFFFFFF;
+            rgbShader.b = 0x00000000;
+        }
+        super.update(elapsed);
+    }
 
 	public function playAnim(anim:String, ?force:Bool = false) {
 		animation.play(anim, force);
@@ -165,6 +187,8 @@ class StrumNote extends FlxSprite
 			centerOffsets();
 			centerOrigin();
 		}
-		if (useRGBShader) rgbShader.enabled = (animation.curAnim != null && animation.curAnim.name != 'static');
+		if (useRGBShader) {
+			rgbShader.enabled = (animation.curAnim != null);
+		}
 	}
 }
