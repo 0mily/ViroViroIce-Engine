@@ -137,7 +137,7 @@ class Main extends Sprite
 		
 		#if html5
 		FlxG.autoPause = false;
-		FlxG.mouse.visible = false;
+		FlxG.mouse.visible = true;
 		#end
 		
 		FlxG.game.focusLostFramerate = 60;

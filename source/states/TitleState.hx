@@ -95,7 +95,8 @@ class TitleState extends ScriptedState
 			persistentDraw = true;
 		}
 
-		FlxG.mouse.visible = false;
+		flixel.FlxG.mouse.useSystemCursor = true;
+		FlxG.mouse.visible = true;
 		
 		preCreate();
 		
