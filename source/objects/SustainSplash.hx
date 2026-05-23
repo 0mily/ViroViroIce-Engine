@@ -79,12 +79,15 @@ class SustainSplash extends FlxSprite
 
 		if (ClientPrefs.data.holdSplashAlpha > 0.01 && !daNote.hitByOpponent)
 		{
+			if (animation.curAnim != null && animation.curAnim.name == 'end')
+			{
+				strumNote.playAnim('pressed', true);
+			}
 			timer = new FlxTimer().start(timeThingy, (_) ->
 			{
 				if (animation != null)
 				{
 					animation.play('end', true);
-					strumNote.playAnim('pressed', true);
 					if (animation.curAnim != null)
 					{
 						animation.curAnim.looped = false;
