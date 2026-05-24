@@ -1114,6 +1114,7 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 			lastFocus = PsychUIInputText.focusOn;
 			return;
 		}
+		updateScriptCharacterDropdownData(elapsed);
 		
 		var charterFocus:Bool = focusedOnEditor();
 		
@@ -1363,7 +1364,12 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 						
 						var minTime:Float = Conductor.getStep(pushedNotes[0][0]);
 						for (note in pushedNotes)
-							note[0] = Conductor.getStep(note[0]);
+						{
+							var noteStep:Float = Conductor.getStep(note[0]);
+							if(note.length > 2 && !Std.isOfType(note[1], Array))
+								note[2] = Conductor.getStep(note[0] + note[2]) - noteStep;
+							note[0] = noteStep - minTime;
+						}
 					}
 				}
 				else if(FlxG.keys.justPressed.V) // Paste (Ctrl + V)
@@ -1844,8 +1850,22 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 				if (note.dragging) {
 					if (!FlxG.mouse.pressed) {
 						note.dragging = false;
+						if(note.isEvent)
+							events.sort(PlayState.sortByTime);
 					} else if (note.isEvent) {
-						continue; // lol
+						var shift:Bool = FlxG.keys.pressed.SHIFT;
+						var diffY:Float = (FlxG.mouse.y - gridBg.y);
+						if (!shift) diffY -= (diffY % (GRID_SIZE / (curQuant / 16)));
+
+						var noteDiffY:Float = diffY;
+						if (downScroll) noteDiffY = (gridBg.height - diffY - (shift ? 0 : GRID_SIZE));
+
+						var strumTime:Float = (noteDiffY / GRID_SIZE * Conductor.stepCrochet / curZoom) + cachedSectionTimes[curSec];
+						note.setStrumTime(Math.max(-5000, strumTime));
+						positionNoteYOnTime(note);
+						cast (note, EventMetaNote).updateEventInfo();
+						note.setColorTransform(1, 1, 1, note.alpha, -32 - 64, 64 - 64, 0 - 64);
+						continue;
 					} else {
 						var shift:Bool = FlxG.keys.pressed.SHIFT;
 						
@@ -3276,6 +3296,8 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 	var eventLayoutValues:Array<String> = ['', '', ''];
 	var eventLayoutGroupParts:Map<Int, Array<String>> = new Map();
 	var eventLayouts:Map<String, EventLayoutData> = new Map();
+	var scriptCharacterScanTimer:Float = 0;
+	var scriptCharacterSignature:String = null;
 
 	var eventsList:Array<Array<String>>;
 	var curEventSelected:Int = 0;
@@ -3362,7 +3384,7 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 				var note:EventMetaNote = event.note;
 				
 				if (!addedEvent.contains(note)) {
-					var newEvent = buildCurrentEventData();
+					var newEvent = buildCurrentEventData(true);
 					
 					note.events.push(newEvent);
 					note.updateEventInfo();
@@ -3523,6 +3545,8 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 		{
 			if(control != null)
 			{
+				if(Std.isOfType(control, PsychUIInputText) && PsychUIInputText.focusOn == cast control)
+					PsychUIInputText.focusOn = null;
 				tab_group.remove(control, true);
 				control.destroy();
 			}
@@ -4114,15 +4138,24 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 		return parts.join(separator);
 	}
 
-	function buildCurrentEventData():Array<String>
+	function buildCurrentEventData(useDefaults:Bool = false):Array<String>
 	{
 		var eventName:String = getCurrentEventName();
 		var layout:EventLayoutData = getEventLayout(eventName);
 		if(layout == null || layout.fields == null || layout.fields.length < 1)
-			return [eventName, value1InputText.text, value2InputText.text];
+			return [eventName, useDefaults ? '' : value1InputText.text, useDefaults ? '' : value2InputText.text];
 
 		var maxIndex:Int = 2;
 		var nextValueIndex:Int = 1;
+		var defaultValues:Array<String> = ['', '', ''];
+		var defaultGroupParts:Map<Int, Array<String>> = new Map();
+		function setDefaultValue(index:Int, value:String):Void
+		{
+			while(defaultValues.length <= index)
+				defaultValues.push('');
+			defaultValues[index] = value ?? '';
+		}
+
 		for(field in layout.fields)
 		{
 			if(!eventFieldStoresValue(field))
@@ -4131,11 +4164,31 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 			var valueIndex:Int = eventFieldOutputIndex(field, nextValueIndex);
 			nextValueIndex = Std.int(Math.max(nextValueIndex, valueIndex + 1));
 			maxIndex = Std.int(Math.max(maxIndex, valueIndex));
+
+			if(useDefaults)
+			{
+				var groupIndex:Int = eventFieldGroupIndex(field);
+				var defaultValue:String = eventFieldString(field, ['defaultValue', 'default', 'valueDefault'], '');
+				if(groupIndex > 0)
+				{
+					var partIndex:Int = eventFieldPartIndex(field, 1);
+					var separator:String = eventFieldSeparator(field);
+					var parts:Array<String> = defaultGroupParts.exists(groupIndex) ? defaultGroupParts.get(groupIndex) : [];
+					ensureEventGroupLength(parts, partIndex);
+					parts[partIndex - 1] = defaultValue;
+					defaultGroupParts.set(groupIndex, parts);
+					setDefaultValue(groupIndex, joinEventGroupValue(parts, separator));
+				}
+				else
+				{
+					setDefaultValue(valueIndex, defaultValue);
+				}
+			}
 		}
 
 		var result:Array<String> = [eventName];
 		for(i in 1...maxIndex + 1)
-			result.push(getEventLayoutValue(i));
+			result.push(useDefaults ? (defaultValues.length > i ? defaultValues[i] : '') : getEventLayoutValue(i));
 		return result;
 	}
 
@@ -4300,13 +4353,129 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 	function eventFieldOptions(field:Dynamic):Array<String>
 	{
 		var raw:Dynamic = eventFieldRaw(field, ['options', 'values', 'items']);
-		if(raw == null)
-			return [];
+		var options:Array<String> = [];
 
 		if(Std.isOfType(raw, Array))
-			return [for(option in (cast raw:Array<Dynamic>)) Std.string(option)];
+			options = [for(option in (cast raw:Array<Dynamic>)) Std.string(option)];
+		else if(raw != null)
+			options = [for(option in Std.string(raw).split(',')) option.trim()];
 
-		return [for(option in Std.string(raw).split(',')) option.trim()];
+		if(parseEventBool(Std.string(eventFieldRaw(field, ['includeExtraCharacters', 'extraCharacters', 'charactersFromScripts']))))
+		{
+			var data = getScriptCreatedCharacterData();
+			for(tag in data.tags)
+				if(!options.contains(tag))
+					options.push(tag);
+		}
+
+		return options;
+	}
+
+	function characterTagFromScriptName(characterName:String):String
+	{
+		if(characterName == null)
+			return null;
+
+		var normalized:String = characterName.replace('\\', '/');
+		var split:Array<String> = normalized.split('/');
+		var tag:String = split[split.length - 1].trim();
+		return tag.length > 0 ? tag.replace('.', '') : null;
+	}
+
+	function updateScriptCharacterDropdownData(elapsed:Float):Void
+	{
+		if(eventDropDown == null || noteTypeDropDown == null)
+			return;
+
+		scriptCharacterScanTimer -= elapsed;
+		if(scriptCharacterScanTimer > 0)
+			return;
+		scriptCharacterScanTimer = 0.75;
+
+		var data = getScriptCreatedCharacterData();
+		data.tags.sort(Reflect.compare);
+		data.noteTypes.sort(Reflect.compare);
+		var signature:String = data.tags.join('|') + '::' + data.noteTypes.join('|');
+		if(scriptCharacterSignature == null)
+		{
+			scriptCharacterSignature = signature;
+			return;
+		}
+		if(signature != scriptCharacterSignature)
+		{
+			scriptCharacterSignature = signature;
+			reloadNotesDropdowns();
+		}
+	}
+
+	function collectCreateCharMatches(text:String, tags:Array<String>, noteTypes:Array<String>):Void
+	{
+		if(text == null || text.length < 1)
+			return;
+
+		var tagRegex:EReg = ~/(?:createChar|createCharacter)\s*\(\s*(['"])([^'"]+)\1/;
+		var rest:String = text;
+		while(tagRegex.match(rest))
+		{
+			var tag:String = characterTagFromScriptName(tagRegex.matched(2));
+			if(tag != null && !tags.contains(tag))
+				tags.push(tag);
+			rest = tagRegex.matchedRight();
+		}
+
+		var noteRegex:EReg = ~/(?:createChar|createCharacter)\s*\(\s*(['"])([^'"]+)\1\s*,\s*[^,\)]*\s*,\s*[^,\)]*\s*,\s*(['"])([^'"]+)\3/;
+		rest = text;
+		while(noteRegex.match(rest))
+		{
+			var noteType:String = noteRegex.matched(4).trim();
+			if(noteType.length > 0 && !noteTypes.contains(noteType))
+				noteTypes.push(noteType);
+			rest = noteRegex.matchedRight();
+		}
+	}
+
+	function getScriptCreatedCharacterData():{tags:Array<String>, noteTypes:Array<String>}
+	{
+		var tags:Array<String> = [];
+		var noteTypes:Array<String> = [];
+		var folders:Array<String> = [];
+		var songFolder:String = Paths.formatToSongPath(PlayState.SONG != null ? PlayState.SONG.song : '');
+
+		if(songFolder.length > 0)
+			for(folder in Mods.directoriesWithFile(Paths.getSharedPath(), 'songs/$songFolder/'))
+				if(!folders.contains(folder))
+					folders.push(folder);
+		for(folder in Mods.directoriesWithFile(Paths.getSharedPath(), 'data/scripts/'))
+			if(!folders.contains(folder))
+				folders.push(folder);
+
+		if(Song.chartPath != null && Song.chartPath.length > 0)
+		{
+			var path:String = Song.chartPath.replace('\\', '/');
+			var folder:String = path.substr(0, path.lastIndexOf('/') + 1);
+			if(folder.length > 0 && FileSystem.exists(folder) && !folders.contains(folder))
+				folders.push(folder);
+		}
+
+		for(folder in folders)
+		{
+			if(!FileSystem.exists(folder))
+				continue;
+
+			for(file in FileSystem.readDirectory(folder))
+			{
+				var lower:String = file.toLowerCase();
+				if(!lower.endsWith('.lua') && !lower.endsWith('.hx'))
+					continue;
+
+				var path:String = haxe.io.Path.join([folder, file]);
+				try
+					collectCreateCharMatches(File.getContent(path), tags, noteTypes)
+				catch(e:Dynamic) {}
+			}
+		}
+
+		return {tags: tags, noteTypes: noteTypes};
 	}
 
 	function parseEventBool(value:String):Bool
@@ -4867,6 +5036,11 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 					}
 				}
 			}
+
+			var scriptCharacterData = getScriptCreatedCharacterData();
+			for(name in scriptCharacterData.noteTypes)
+				if(!noteTypes.contains(name))
+					noteTypes.push(name);
 			
 			var displayNoteTypes:Array<String> = noteTypes.copy();
 			for (id => key in displayNoteTypes)

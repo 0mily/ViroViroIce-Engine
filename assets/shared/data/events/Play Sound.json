@@ -1,0 +1,28 @@
+{
+  "name": "Play Sound",
+  "description": "Plays a sound from the sounds folder.",
+  "fields": [
+    {
+      "type": "input",
+      "label": "Sound",
+      "value": 1,
+      "default": "",
+      "width": 165,
+      "order": 1,
+      "advance": false
+    },
+    {
+      "type": "stepper",
+      "label": "Volume",
+      "value": 2,
+      "default": 1,
+      "step": 0.05,
+      "min": 0,
+      "max": 1,
+      "decimals": 2,
+      "width": 80,
+      "x": 205,
+      "order": 2
+    }
+  ]
+}

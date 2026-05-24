@@ -133,7 +133,7 @@ class PsychUIDropDownMenu extends PsychUIInputText
 	{
 		if(!vis)
 		{
-			text = selectedLabel;
+			text = selectedLabel ?? '';
 			_curFilter = null;
 		}
 

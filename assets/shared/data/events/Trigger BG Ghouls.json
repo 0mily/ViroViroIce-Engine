@@ -1,0 +1,12 @@
+{
+  "name": "Trigger BG Ghouls",
+  "description": "Triggers the background ghouls animation on the evil school stage.",
+  "fields": [
+    {
+      "type": "label",
+      "label": "No values needed.",
+      "width": 240,
+      "order": 1
+    }
+  ]
+}

@@ -28,31 +28,32 @@ class DialogueBoxPsych extends FlxSpriteGroup {
 	public static var LONG_TEXT_ADD = 24;
 	var scrollSpeed = 4000;
 
-	var dialogue:TypedAlphabet;
-	var dialogueList:DialogueFile = null;
+	public var dialogue:TypedAlphabet;
+	public var dialogueList:DialogueFile = null;
 	
 	public var canSkip(default, set):Bool = true;
 	public var canContinue:Bool = true;
 
 	public var finishThing:Void->Void;
 	public var nextDialogueThing:Void->Void = null;
+	public var lineStartThing:DialogueLine->Int->Void = null;
 	public var skipDialogueThing:Void->Void = null;
-	var bgFade:FlxSprite = null;
-	var box:FlxSprite;
+	public var bgFade:FlxSprite = null;
+	public var box:FlxSprite;
 	var textToType:String = '';
 
-	var arrayCharacters:Array<DialogueCharacter> = [];
+	public var arrayCharacters:Array<DialogueCharacter> = [];
 
-	var currentText:Int = 0;
+	public var currentText:Int = 0;
 	var offsetPos:Float = -600;
-	var skipText:FlxText;
+	public var skipText:FlxText;
 
 	var textBoxTypes:Array<String> = ['normal', 'angry'];
 	
 	var curCharacter:String = "";
 	//var charPositionList:Array<String> = ['left', 'center', 'right'];
 
-	public function new(dialogueList:DialogueFile, ?song:String = null) {
+	public function new(dialogueList:DialogueFile, ?song:String = null, autoStart:Bool = true) {
 		super();
 
 		//precache sounds
@@ -101,7 +102,8 @@ class DialogueBoxPsych extends FlxSpriteGroup {
 		
 		add(skipText);
 
-		startNextDialog();
+		if(autoStart)
+			startNextDialog();
 	}
 
 	var dialogueStarted:Bool = false;
@@ -153,7 +155,7 @@ class DialogueBoxPsych extends FlxSpriteGroup {
 		}
 	}
 
-	var daText:TypedAlphabet = null;
+	public var daText:TypedAlphabet = null;
 	var ignoreThisFrame:Bool = true; //First frame is reserved for loading dialogue images
 
 	public var closeSound:String = 'dialogueClose';
@@ -293,8 +295,8 @@ class DialogueBoxPsych extends FlxSpriteGroup {
 		return canSkip = yea;
 	}
 
-	var lastCharacter:Int = -1;
-	var lastBoxType:String = '';
+	public var lastCharacter:Int = -1;
+	public var lastBoxType:String = '';
 	public function startNextDialog():Void {
 		var curDialogue:DialogueLine = null;
 		do {
@@ -354,6 +356,10 @@ class DialogueBoxPsych extends FlxSpriteGroup {
 				char.animation.curAnim.frameRate = rate;
 			}
 		}
+
+		if(lineStartThing != null) {
+			lineStartThing(curDialogue, currentText);
+		}
 		currentText++;
 
 		if(nextDialogueThing != null) {
@@ -402,7 +408,34 @@ class DialogueBoxPsych extends FlxSpriteGroup {
 			FlxG.sound.music.fadeOut(1, 0, (_) -> FlxG.sound.music.stop());
 	}
 
+	public function setBoxVisible(value:Bool):Bool {
+		if(box != null)
+			box.visible = value;
+		return value;
+	}
+
+	public function setTextVisible(value:Bool):Bool {
+		if(daText != null)
+			daText.visible = value;
+		return value;
+	}
+
+	public function setBackgroundVisible(value:Bool):Bool {
+		if(bgFade != null)
+			bgFade.visible = value;
+		return value;
+	}
+
+	public function setSkipTextVisible(value:Bool):Bool {
+		if(skipText != null)
+			skipText.visible = value;
+		return value;
+	}
+
 	inline public static function parseDialogue(path:String):DialogueFile {
+		if(path != null && path.toLowerCase().endsWith('.xml'))
+			return DialoguePlus.parseXmlDialogue(path);
+
 		#if MODS_ALLOWED
 		return cast (FileSystem.exists(path)) ? Json.parse(Paths.getTextFromFile(path)) : dummy();
 		#else

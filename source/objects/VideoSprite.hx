@@ -18,6 +18,9 @@ class VideoSprite extends FlxSpriteGroup {
 	public var onSkip:Void->Void = null;
 
 	final _timeToSkip:Float = 1;
+	public var tag:String = null;
+	public var pauseWithGame:Bool = true;
+	public var syncWithSong:Bool = false;
 	public var holdingTime:Float = 0;
 	public var skipSprite:FlxPieDial;
 	public var cover:FlxSprite;
@@ -26,6 +29,12 @@ class VideoSprite extends FlxSpriteGroup {
 	private var videoName:String;
 
 	public var waiting:Bool = false;
+	var baseVideoScaleX:Float = 1;
+	var baseVideoScaleY:Float = 1;
+	var lastVideoScaleX:Float = -1;
+	var lastVideoScaleY:Float = -1;
+	var playTimer:FlxTimer = null;
+
 	#if hxvlc
 	public var videoSprite:FlxVideoSprite;
 	#elseif js
@@ -66,7 +75,8 @@ class VideoSprite extends FlxSpriteGroup {
 			*/
 			videoSprite.setGraphicSize(FlxG.width);
 			videoSprite.updateHitbox();
-			videoSprite.screenCenter();
+			storeBaseVideoScale();
+			applyVideoScale(true);
 		});
 
 		#elseif js
@@ -75,6 +85,7 @@ class VideoSprite extends FlxSpriteGroup {
 		#end
 		// callbacks
 		add(videoSprite);
+		storeBaseVideoScale();
 		if(canSkip) this.canSkip = true;
 	
 		// start video and adjust resolution to screen size
@@ -91,6 +102,11 @@ class VideoSprite extends FlxSpriteGroup {
 		{
 			remove(cover);
 			cover.destroy();
+		}
+		if(playTimer != null)
+		{
+			playTimer.cancel();
+			playTimer = null;
 		}
 		
 		finishCallback = null;
@@ -120,6 +136,8 @@ class VideoSprite extends FlxSpriteGroup {
 
 	override function update(elapsed:Float)
 	{
+		applyVideoScale(false);
+
 		if(canSkip)
 		{
 			if(Controls.instance.pressed('accept'))
@@ -146,6 +164,34 @@ class VideoSprite extends FlxSpriteGroup {
 			}
 		}
 		super.update(elapsed);
+	}
+
+	function storeBaseVideoScale():Void
+	{
+		if(videoSprite == null)
+			return;
+
+		baseVideoScaleX = videoSprite.scale.x;
+		baseVideoScaleY = videoSprite.scale.y;
+		lastVideoScaleX = -1;
+		lastVideoScaleY = -1;
+	}
+
+	function applyVideoScale(forceCenter:Bool):Void
+	{
+		if(videoSprite == null)
+			return;
+
+		var targetScaleX:Float = baseVideoScaleX * scale.x;
+		var targetScaleY:Float = baseVideoScaleY * scale.y;
+		if(forceCenter || targetScaleX != lastVideoScaleX || targetScaleY != lastVideoScaleY)
+		{
+			videoSprite.scale.set(targetScaleX, targetScaleY);
+			videoSprite.updateHitbox();
+			videoSprite.screenCenter();
+			lastVideoScaleX = targetScaleX;
+			lastVideoScaleY = targetScaleY;
+		}
 	}
 
 	function set_canSkip(newValue:Bool)
@@ -180,13 +226,74 @@ class VideoSprite extends FlxSpriteGroup {
 		skipSprite.alpha = FlxMath.remapToRange(skipSprite.amount, 0.025, 1, 0, 1);
 	}
 	#if hxvlc
-	public function play() videoSprite?.play();
+	public function play()
+	{
+		if(playTimer != null)
+			playTimer.cancel();
+		playTimer = new FlxTimer().start(0.001, function(_)
+		{
+			playTimer = null;
+			videoSprite?.play();
+		});
+	}
 	public function resume() videoSprite?.resume();
 	public function pause() videoSprite?.pause();
 	#elseif js
+	public function play() videoSprite?.resumeVideo();
 	public function resume() videoSprite?.resumeVideo();
 	public function pause() videoSprite?.pauseVideo();
 	#end
+	public function stop() destroy();
+
+	public function setTime(timeMs:Float):Void
+	{
+		if(Math.isNaN(timeMs))
+			timeMs = 0;
+		timeMs = Math.max(0, timeMs);
+
+		#if hxvlc
+		if(videoSprite != null && videoSprite.bitmap != null)
+			videoSprite.bitmap.time = Std.int(timeMs);
+		#elseif js
+		videoSprite?.seekVideo(timeMs / 1000);
+		#end
+	}
+
+	public function getTime():Float
+	{
+		#if hxvlc
+		if(videoSprite != null && videoSprite.bitmap != null)
+			return Std.parseFloat(Std.string(videoSprite.bitmap.time));
+		#elseif js
+		return videoSprite != null ? videoSprite.getTime() : 0;
+		#end
+		return 0;
+	}
+
+	public function getLength():Float
+	{
+		#if hxvlc
+		if(videoSprite != null && videoSprite.bitmap != null)
+			return Std.parseFloat(Std.string(videoSprite.bitmap.length));
+		#end
+		return 0;
+	}
+
+	public function isSeekable():Bool
+	{
+		#if hxvlc
+		return videoSprite != null && videoSprite.bitmap != null && videoSprite.bitmap.isSeekable;
+		#end
+		return true;
+	}
+
+	public function setPlaybackRate(rate:Float):Void
+	{
+		#if hxvlc
+		if(videoSprite != null && videoSprite.bitmap != null)
+			videoSprite.bitmap.rate = rate;
+		#end
+	}
 	#end
 }
 /**
@@ -285,6 +392,22 @@ class FlxVideo extends FlxSprite
     {
       netStream.seek(0);
     }
+  }
+
+  /**
+   * Tell the FlxVideo to seek to a position in seconds.
+   */
+  public function seekVideo(timeSeconds:Float):Void
+  {
+    if (netStream != null)
+    {
+      netStream.seek(Math.max(0, timeSeconds));
+    }
+  }
+
+  public function getTime():Float
+  {
+    return netStream != null ? netStream.time * 1000 : 0;
   }
 
   /**

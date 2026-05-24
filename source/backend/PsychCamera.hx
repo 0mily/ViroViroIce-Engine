@@ -1,7 +1,18 @@
 package backend;
 
+import flixel.graphics.frames.FlxFrame;
+import flixel.math.FlxAngle;
+import flixel.math.FlxMatrix;
 import flixel.math.FlxRect;
+import flixel.system.FlxAssets.FlxShader;
+import flixel.util.FlxColor;
 import flixel.util.FlxDestroyUtil;
+import openfl.display.BitmapData;
+import openfl.display.BlendMode;
+import openfl.display.Graphics;
+import openfl.geom.ColorTransform;
+
+using flixel.util.FlxColorTransformUtil;
 
 // PsychCamera handles followLerp based on elapsed
 // and stops camera from snapping at higher framerates
@@ -10,6 +21,29 @@ class PsychCamera extends FlxCamera
 {
 	public var logicalWidth:Float = 0;
 	public var logicalHeight:Float = 0;
+	public var rotateSprite(default, set):Bool = false;
+
+	@:noCompletion var _sinAngle:Float = 0;
+	@:noCompletion var _cosAngle:Float = 1;
+
+	function set_rotateSprite(rotate:Bool):Bool
+	{
+		rotateSprite = rotate;
+		set_angle(angle);
+		return rotateSprite;
+	}
+
+	override function set_angle(Angle:Float):Float
+	{
+		angle = Angle;
+		flashSprite.rotation = rotateSprite ? Angle : 0;
+
+		var radians:Float = angle * FlxAngle.TO_RAD;
+		_sinAngle = Math.sin(radians);
+		_cosAngle = Math.cos(radians);
+
+		return angle;
+	}
 
 	public function setLogicalSize(width:Float = 0, height:Float = 0):Void
 	{
@@ -201,5 +235,69 @@ class PsychCamera extends FlxCamera
 	{
 		updateFollowDelta();
 		scroll.copyFrom(_scrollTarget);
+	}
+
+	override public function drawPixels(?frame:FlxFrame, ?pixels:BitmapData, matrix:FlxMatrix, ?transform:ColorTransform, ?blend:BlendMode, ?smoothing:Bool = false,
+			?shader:FlxShader):Void
+	{
+		if (FlxG.renderBlit)
+		{
+			_helperMatrix.copyFrom(matrix);
+
+			if (_useBlitMatrix)
+			{
+				_helperMatrix.concat(_blitMatrix);
+				buffer.draw(pixels, _helperMatrix, null, null, null, (smoothing || antialiasing));
+			}
+			else
+			{
+				_helperMatrix.translate(-viewMarginLeft, -viewMarginTop);
+				buffer.draw(pixels, _helperMatrix, null, blend, null, (smoothing || antialiasing));
+			}
+		}
+		else
+		{
+			var isColored = (transform != null #if !html5 && transform.hasRGBMultipliers() #end);
+			var hasColorOffsets:Bool = (transform != null && transform.hasRGBAOffsets());
+
+			if(!rotateSprite && angle != 0)
+			{
+				matrix.translate(-width / 2, -height / 2);
+				matrix.rotateWithTrig(_cosAngle, _sinAngle);
+				matrix.translate(width / 2, height / 2);
+			}
+
+			#if FLX_RENDER_TRIANGLE
+			final drawItem = startTrianglesBatch(frame.parent, smoothing, isColored, blend, hasColorOffsets, shader);
+			#else
+			final drawItem = startQuadBatch(frame.parent, isColored, hasColorOffsets, blend, smoothing, shader);
+			#end
+			drawItem.addQuad(frame, matrix, transform);
+		}
+	}
+
+	override public function fill(Color:FlxColor, BlendAlpha:Bool = true, FxAlpha:Float = 1.0, ?graphics:Graphics):Void
+	{
+		if (FlxG.renderBlit)
+		{
+			if (BlendAlpha)
+			{
+				_fill.fillRect(_flashRect, Color);
+				buffer.copyPixels(_fill, _flashRect, _flashPoint, null, null, BlendAlpha);
+			}
+			else
+			{
+				buffer.fillRect(_flashRect, Color);
+			}
+		}
+		else
+		{
+			final targetGraphics = (graphics == null) ? canvas.graphics : graphics;
+
+			targetGraphics.overrideBlendMode(null);
+			targetGraphics.beginFill(Color, FxAlpha);
+			targetGraphics.drawRect(viewMarginLeft - 1, viewMarginTop - 1, viewWidth + 2, viewHeight + 2);
+			targetGraphics.endFill();
+		}
 	}
 }

@@ -1,0 +1,12 @@
+Rotates a camera.
+
+Value 1: camera, angle, mode
+Camera: game, hud, other, or a custom camera tag.
+Mode: set, add, subtract, reset.
+
+Value 2: ease, steps
+Use instant with 0 steps to apply immediately.
+
+Value 3: rotateSprite
+False rotates the rendered camera contents around the screen center.
+True rotates the camera sprite itself.

@@ -1,0 +1,26 @@
+{
+  "name": "Change Character",
+  "description": "Changes dad, boyfriend, or girlfriend to another character.",
+  "fields": [
+    {
+      "type": "dropdown",
+      "label": "Character",
+      "value": 1,
+      "default": "dad",
+      "options": ["dad", "bf", "gf"],
+      "includeExtraCharacters": true,
+      "width": 130,
+      "order": 1,
+      "advance": false
+    },
+    {
+      "type": "input",
+      "label": "New",
+      "value": 2,
+      "default": "",
+      "width": 170,
+      "x": 165,
+      "order": 2
+    }
+  ]
+}

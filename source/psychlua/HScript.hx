@@ -27,6 +27,7 @@ class HScriptMacro {
 import flixel.FlxState;
 import flixel.FlxSubState;
 import openfl.Lib;
+import openfl.utils.Assets;
 
 import states.MainMenuState;
 
@@ -216,6 +217,41 @@ class HScript extends Iris {
 		return newScript;
 	}
 
+	public static function initFromFileWithVars(file:String, ?parent:FlxState, ?varsToBring:Any = null, ?base:Class<HScript>, ?onCreateInstance:HScript->Void) {
+		var newScript:HScript = null;
+
+		try {
+			trace('LOADING HX: $file');
+
+			newScript = Type.createInstance(base ?? HScript, [null, file, varsToBring, true, parent]);
+			if(onCreateInstance != null)
+				onCreateInstance(newScript);
+			newScript.unsafe = true;
+			newScript.execute();
+
+			if (newScript.exists('onCreate'))
+				newScript.call('onCreate');
+
+			newScript.unsafe = false;
+		} catch(e:Dynamic) {
+			var script:HScript = cast (Iris.instances.get(file), HScript);
+			if (Std.isOfType(e, IrisError)) {
+				var pos:HScriptInfos = cast {showLine: true, isLua: false, fileName: e.origin, lineNumber: e.line};
+				Iris.fatal(Printer.errorToString(e, false), pos);
+			} else if(script != null) {
+				var pos:HScriptInfos = @:privateAccess { cast script.interp.posInfos(); }
+				Iris.fatal(Std.string(e), pos);
+			} else {
+				Iris.fatal(Std.string(e), Iris.getDefaultPos(file));
+			}
+
+			script?.destroy();
+			newScript = null;
+		}
+
+		return newScript;
+	}
+
 	var varsToBring(default, set):Any = null;
 	override function preset() {
 		super.preset();
@@ -242,6 +278,9 @@ class HScript extends Iris {
 		set('Countdown', backend.BaseStage.Countdown);
 		set('PlayState', PlayState);
 		set('Paths', Paths);
+		set('DialoguePlus', cutscenes.DialoguePlus);
+		set('DialoguePlusRuntime', cutscenes.DialoguePlusRuntime);
+		set('ResolutionManager', backend.ResolutionManager);
 		set('Conductor', Conductor);
 		set('ClientPrefs', ClientPrefs);
 		set('CustomCursor', backend.CustomCursor);
@@ -332,6 +371,238 @@ class HScript extends Iris {
 		
 		set('global', variableMap);
 		set('globalStatic', HScript.globalStatic);
+		set('startDialoguePlus', function(dialogueFile:String = 'dialogue', ?music:String = null) {
+			return PlayState.instance != null ? PlayState.instance.startDialoguePlus(dialogueFile, music) : false;
+		});
+		set('startXmlDialogue', function(dialogueFile:String = 'dialogue', ?music:String = null) {
+			if(PlayState.instance == null)
+				return false;
+
+			var found = cutscenes.DialoguePlus.findDialogueFile(dialogueFile, ['xml']);
+			if(found == null)
+				return false;
+
+			var parsed = cutscenes.DialoguePlus.parseXmlDialogue(found.path);
+			if(!cutscenes.DialoguePlus.isValidDialogue(parsed))
+				return false;
+
+			PlayState.instance.startDialogue(parsed, music, true);
+			return true;
+		});
+		set('startPsychDialogue', function(dialogueFile:String = 'dialogue', ?music:String = null) {
+			if(PlayState.instance == null)
+				return false;
+
+			var found = cutscenes.DialoguePlus.findDialogueFile(dialogueFile, ['json']);
+			if(found == null)
+				return false;
+
+			var parsed = cutscenes.DialogueBoxPsych.parseDialogue(found.path);
+			if(!cutscenes.DialoguePlus.isValidDialogue(parsed))
+				return false;
+
+			PlayState.instance.startDialogue(parsed, music);
+			return true;
+		});
+		set('finishDialoguePlus', function(callFinish:Bool = true) {
+			if(PlayState.instance == null)
+				return false;
+			PlayState.instance.finishDialoguePlusCutscene(callFinish);
+			return true;
+		});
+		set('setCameraAngle', function(camera:String, angle:Float) {
+			var cam:FlxCamera = LuaUtils.cameraFromString(camera);
+			if(cam != null)
+				cam.angle = angle;
+			return angle;
+		});
+		set('addCameraAngle', function(camera:String, angle:Float) {
+			var cam:FlxCamera = LuaUtils.cameraFromString(camera);
+			if(cam != null)
+				cam.angle += angle;
+			return cam != null ? cam.angle : 0;
+		});
+		set('getCameraAngle', function(camera:String) {
+			var cam:FlxCamera = LuaUtils.cameraFromString(camera);
+			return cam != null ? cam.angle : 0;
+		});
+		set('setCameraRotateSprite', function(camera:String, rotateSprite:Bool = false) {
+			var cam:FlxCamera = LuaUtils.cameraFromString(camera);
+			if(Std.isOfType(cam, backend.PsychCamera))
+			{
+				cast(cam, backend.PsychCamera).rotateSprite = rotateSprite;
+				return true;
+			}
+			return false;
+		});
+		set('changeRes', function(width:Int, height:Int, resizable:Bool = true) return backend.ResolutionManager.changeRes(width, height, resizable));
+		set('ChangeRes', function(width:Int, height:Int, resizable:Bool = true) return backend.ResolutionManager.changeRes(width, height, resizable));
+		set('resetRes', function() return backend.ResolutionManager.reset());
+		set('ResetRes', function() return backend.ResolutionManager.reset());
+		set('preloadVideo', function(name:String) return LoadingState.preloadVideo(name) != null);
+		set('precacheVideo', function(name:String) return LoadingState.preloadVideo(name) != null);
+		set('getSongPosition', function() return Conductor.songPosition);
+		set('setSongTime', function(time:Float, offset:Bool = true, clearPastNotes:Bool = true) {
+			if(PlayState.instance == null)
+				return false;
+			PlayState.instance.setSongTime(time, offset);
+			if(clearPastNotes)
+				PlayState.instance.clearNotesBefore(Conductor.songPosition);
+			return true;
+		});
+		set('createChar', function(name:String, x:Float = 0, y:Float = 0, noteType:String = '', isPlayer:Bool = false) {
+			return PlayState.instance != null ? PlayState.instance.createChar(name, x, y, noteType, isPlayer) : null;
+		});
+		set('createCharacter', function(name:String, x:Float = 0, y:Float = 0, noteType:String = '', isPlayer:Bool = false) {
+			return PlayState.instance != null ? PlayState.instance.createChar(name, x, y, noteType, isPlayer) : null;
+		});
+		set('getCharacterTag', function(name:String) {
+			return PlayState.instance != null ? PlayState.instance.getExtraCharacterTag(name) : null;
+		});
+		set('getCharacterX', function(type:String) {
+			if(PlayState.instance == null) return 0.0;
+			var group = PlayState.instance.getCharacterGroupByName(type);
+			return group != null ? group.x : 0.0;
+		});
+		set('getCharacterY', function(type:String) {
+			if(PlayState.instance == null) return 0.0;
+			var group = PlayState.instance.getCharacterGroupByName(type);
+			return group != null ? group.y : 0.0;
+		});
+		set('setCharacterX', function(type:String, value:Float) {
+			if(PlayState.instance == null) return;
+			var group = PlayState.instance.getCharacterGroupByName(type);
+			if(group != null) group.x = value;
+		});
+		set('setCharacterY', function(type:String, value:Float) {
+			if(PlayState.instance == null) return;
+			var group = PlayState.instance.getCharacterGroupByName(type);
+			if(group != null) group.y = value;
+		});
+		set('cameraSetTarget', function(target:String) {
+			PlayState.instance?.changeFocus(target);
+		});
+		set('changeFocus', function(target:String, x:Float = 0, y:Float = 0, ease:String = 'classic', steps:Float = 0) {
+			PlayState.instance?.changeFocus(target, x, y, ease, steps);
+		});
+		set('ChangeFocus', function(target:String, x:Float = 0, y:Float = 0, ease:String = 'classic', steps:Float = 0) {
+			PlayState.instance?.changeFocus(target, x, y, ease, steps);
+		});
+		set('changeIcon', function(icon:String, side:Int = 0) {
+			return PlayState.instance != null && PlayState.instance.changeHealthIcon(icon, side);
+		});
+		set('ChangeIcon', function(icon:String, side:Int = 0) {
+			return PlayState.instance != null && PlayState.instance.changeHealthIcon(icon, side);
+		});
+		set('setIconFrame', function(side:Int = 0, frame:Int = 0) {
+			return PlayState.instance != null && PlayState.instance.setIconFrame(side, frame);
+		});
+		set('addIcon', function(frame:Int = 0, ?side:Null<Int> = null) {
+			if(PlayState.instance == null) return false;
+			if(side == null)
+				return PlayState.instance.setIconFrame(0, frame) && PlayState.instance.setIconFrame(1, frame);
+			return PlayState.instance.setIconFrame(side, frame);
+		});
+		set('AddIcon', function(frame:Int = 0, ?side:Null<Int> = null) {
+			if(PlayState.instance == null) return false;
+			if(side == null)
+				return PlayState.instance.setIconFrame(0, frame) && PlayState.instance.setIconFrame(1, frame);
+			return PlayState.instance.setIconFrame(side, frame);
+		});
+		#if VIDEOS_ALLOWED
+		function getVideoObject(tag:String):objects.VideoSprite
+		{
+			if(tag == null)
+				return null;
+			if(PlayState.instance != null && PlayState.instance.videoCutscene != null && tag == 'videoCutscene')
+				return PlayState.instance.videoCutscene;
+			if(variableMap == null)
+				return null;
+			var obj:Dynamic = variableMap.get(tag.replace('.', ''));
+			return Std.isOfType(obj, objects.VideoSprite) ? cast obj : null;
+		}
+		var makeVideoFunction = function(tag:String, videoFile:String, x:Float = 0, y:Float = 0, camera:String = 'other', canSkip:Bool = false, pauseWithGame:Bool = true, shouldLoop:Bool = false, playOnLoad:Bool = true, syncWithSong:Bool = false) {
+			return PlayState.instance != null ? PlayState.instance.createVideo(tag, videoFile, x, y, camera, canSkip, pauseWithGame, shouldLoop, playOnLoad, syncWithSong) : null;
+		};
+		set('makeVideo', makeVideoFunction);
+		set('makeLuaVideo', makeVideoFunction);
+		set('addVideo', function(tag:String, front:Bool = true) {
+			var video:objects.VideoSprite = getVideoObject(tag);
+			if(video == null || PlayState.instance == null)
+				return false;
+			if(front) PlayState.instance.add(video);
+			else PlayState.instance.insert(0, video);
+			return true;
+		});
+		set('removeVideo', function(tag:String, destroy:Bool = true) {
+			return PlayState.instance != null && PlayState.instance.removeVideo(tag, destroy);
+		});
+		set('videoExists', function(tag:String) return getVideoObject(tag) != null);
+		set('playVideo', function(tag:String) {
+			var video = getVideoObject(tag);
+			if(video == null) return false;
+			video.play();
+			return true;
+		});
+		set('pauseVideo', function(tag:String) {
+			var video = getVideoObject(tag);
+			if(video == null) return false;
+			video.pause();
+			return true;
+		});
+		set('resumeVideo', function(tag:String) {
+			var video = getVideoObject(tag);
+			if(video == null) return false;
+			video.resume();
+			return true;
+		});
+		set('stopVideo', function(tag:String, destroy:Bool = true) {
+			var video = getVideoObject(tag);
+			if(video == null) return false;
+			if(destroy && PlayState.instance != null)
+				return PlayState.instance.removeVideo(tag, true);
+			video.stop();
+			return true;
+		});
+		set('setVideoCanSkip', function(tag:String, canSkip:Bool = true) {
+			var video = getVideoObject(tag);
+			if(video == null) return false;
+			video.canSkip = canSkip;
+			return true;
+		});
+		set('setVideoPauseWithGame', function(tag:String, pauseWithGame:Bool = true) {
+			var video = getVideoObject(tag);
+			if(video == null) return false;
+			video.pauseWithGame = pauseWithGame;
+			return true;
+		});
+		set('setVideoSyncWithSong', function(tag:String, syncWithSong:Bool = true) {
+			var video = getVideoObject(tag);
+			if(video == null) return false;
+			video.syncWithSong = syncWithSong;
+			return true;
+		});
+		set('seekVideo', function(tag:String, timeMs:Float) {
+			var video = getVideoObject(tag);
+			if(video == null) return false;
+			video.setTime(timeMs);
+			return true;
+		});
+		set('setVideoTime', function(tag:String, timeMs:Float) {
+			var video = getVideoObject(tag);
+			if(video == null) return false;
+			video.setTime(timeMs);
+			return true;
+		});
+		set('getVideoTime', function(tag:String) {
+			var video = getVideoObject(tag);
+			return video != null ? video.getTime() : 0;
+		});
+		set('getVideoLength', function(tag:String) {
+			var video = getVideoObject(tag);
+			return video != null ? video.getLength() : 0;
+		});
+		#end
 		set('setVar', function(name:String, value:Dynamic) {
 			variableMap?.set(name, value);
 			return value;
@@ -452,6 +723,12 @@ class HScript extends Iris {
 		
 		#if LUA_ALLOWED
 		set('parentLua', parentLua);
+		set('runLuaCode', function(codeToRun:String, ?funcToRun:String = null, ?funcArgs:Array<Dynamic> = null, keepAlive:Bool = false):Dynamic {
+			return runLuaCodeFromHScript(codeToRun, funcToRun, funcArgs, keepAlive, parentState);
+		});
+		set('runLuaScript', function(luaFile:String, ?funcToRun:String = null, ?funcArgs:Array<Dynamic> = null, keepAlive:Bool = true):Dynamic {
+			return runLuaScriptFromHScript(luaFile, funcToRun, funcArgs, keepAlive, parentState);
+		});
 		
 		set('createGlobalCallback', function(name:String, func:Dynamic)
 		{
@@ -530,6 +807,78 @@ class HScript extends Iris {
 	}
 
 	#if LUA_ALLOWED
+	static function runLuaCodeFromHScript(codeToRun:String, ?funcToRun:String = null, ?funcArgs:Array<Dynamic> = null, keepAlive:Bool = false, ?state:FlxState):Dynamic {
+		if(codeToRun == null || codeToRun.trim().length < 1)
+			return null;
+
+		state ??= FlxG.state;
+		var lua:FunkinLua = FunkinLua.initFromFile(codeToRun, state);
+		if(lua == null)
+			return null;
+
+		var ret:Dynamic = null;
+		if(funcToRun != null && funcToRun.trim().length > 0)
+			ret = lua.call(funcToRun, funcArgs);
+
+		if(keepAlive && Std.isOfType(state, ScriptedSubState))
+			cast(state, ScriptedSubState).luaArray.push(lua);
+		else
+			lua.stop();
+
+		return LuaUtils.isLuaSupported(ret) ? ret : null;
+	}
+
+	static function runLuaScriptFromHScript(luaFile:String, ?funcToRun:String = null, ?funcArgs:Array<Dynamic> = null, keepAlive:Bool = true, ?state:FlxState):Dynamic {
+		var path:String = findLuaScriptPath(luaFile);
+		if(path == null)
+		{
+			Iris.error('runLuaScript: Script does not exist: $luaFile', Iris.getDefaultPos('HScript'));
+			return null;
+		}
+
+		state ??= FlxG.state;
+		var lua:FunkinLua = null;
+		if(keepAlive && Std.isOfType(state, ScriptedSubState))
+			lua = cast(state, ScriptedSubState).initLuaScript(path);
+		else
+			lua = FunkinLua.initFromFile(path, state);
+
+		if(lua == null)
+			return null;
+
+		var ret:Dynamic = true;
+		if(funcToRun != null && funcToRun.trim().length > 0)
+			ret = lua.call(funcToRun, funcArgs);
+
+		if(!keepAlive)
+			lua.stop();
+
+		return LuaUtils.isLuaSupported(ret) ? ret : null;
+	}
+
+	static function findLuaScriptPath(luaFile:String):String {
+		if(luaFile == null)
+			return null;
+
+		luaFile = luaFile.trim().replace('\\', '/');
+		if(luaFile.length < 1)
+			return null;
+		if(!luaFile.toLowerCase().endsWith('.lua'))
+			luaFile += '.lua';
+
+		#if sys
+		if(FileSystem.exists(luaFile))
+			return luaFile;
+		#end
+
+		var path:String = Paths.getPath(luaFile, TEXT);
+		#if sys
+		return FileSystem.exists(path) ? path : null;
+		#else
+		return Assets.exists(path, TEXT) ? path : null;
+		#end
+	}
+
 	public static function implementLocal(funk:FunkinLua) {
 		funk.addLocalCallback("runHaxeCode", function(codeToRun:String, ?varsToBring:Any = null, ?funcToRun:String = null, ?funcArgs:Array<Dynamic> = null):Dynamic {
 			initHaxeModuleCode(funk, codeToRun, varsToBring);

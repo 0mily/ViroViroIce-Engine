@@ -14,6 +14,8 @@ import psychlua.GlobalScriptHandler;
 
 class ScriptedState extends ScriptedSubState {
 	public var camOther:FlxCamera = null;
+	public var customCameras:Map<String, FlxCamera> = new Map();
+	var customCameraAutoSize:Map<String, Bool> = new Map();
 	
 	@:dox(hide) var _psychCameraInitialized:Bool = false;
 	
@@ -43,7 +45,7 @@ class ScriptedState extends ScriptedSubState {
 		#if GLOBAL_SCRIPTS GlobalScriptHandler.refreshScripts(); #end
 		
 		if (camOther == null) {
-			camOther = new FlxCamera();
+			camOther = new PsychCamera();
 			camOther.bgColor.alpha = 0;
 			FlxG.cameras.add(camOther, false);
 		}
@@ -105,6 +107,119 @@ class ScriptedState extends ScriptedSubState {
 		_psychCameraInitialized = true;
 		return camera;
 	}
+
+	public function getCamera(tag:String):FlxCamera {
+		if(tag == null || tag.trim().length < 1)
+			return null;
+
+		tag = tag.trim();
+		switch(tag.toLowerCase())
+		{
+			case 'camother' | 'other':
+				return camOther;
+			case 'camhud' | 'hud':
+				var cam:Dynamic = variables.get('camHUD');
+				return Std.isOfType(cam, FlxCamera) ? cast cam : camOther;
+			case 'cammain' | 'main' | 'camgame' | 'game':
+				var cam:Dynamic = variables.get('camGame');
+				return Std.isOfType(cam, FlxCamera) ? cast cam : FlxG.camera;
+		}
+
+		var object:Dynamic = variables.get(tag);
+		return Std.isOfType(object, FlxCamera) ? cast object : null;
+	}
+
+	public function addCamera(tag:String, bgColor:String = '00000000', x:Float = 0, y:Float = 0, width:Int = -1, height:Int = -1, zoom:Float = 1, front:Bool = false):FlxCamera {
+		if(tag == null)
+			return null;
+
+		tag = tag.trim();
+		if(tag.length < 1 || variables.exists(tag))
+			return null;
+
+		var autoSize:Bool = width <= 0 || height <= 0;
+		if(width <= 0) width = FlxG.width;
+		if(height <= 0) height = FlxG.height;
+
+		var camera:PsychCamera = new PsychCamera();
+		camera.setSize(width, height);
+		camera.x = x;
+		camera.y = y;
+		camera.zoom = zoom;
+		camera.bgColor = CoolUtil.colorFromString(bgColor);
+
+		if(front || FlxG.cameras.list.length < 1)
+			FlxG.cameras.add(camera, false);
+		else
+			FlxG.cameras.insert(camera, Std.int(Math.max(0, FlxG.cameras.list.length - 1)), false);
+
+		variables.set(tag, camera);
+		customCameras.set(tag, camera);
+		customCameraAutoSize.set(tag, autoSize);
+		return camera;
+	}
+
+	public function removeCamera(tag:String, destroy:Bool = true):Bool {
+		if(tag == null)
+			return false;
+
+		tag = tag.trim();
+		if(!customCameras.exists(tag))
+			return false;
+
+		var camera:FlxCamera = customCameras.get(tag);
+		if(camera == null)
+			return false;
+
+		FlxG.cameras.remove(camera, destroy);
+		customCameras.remove(tag);
+		customCameraAutoSize.remove(tag);
+		variables.remove(tag);
+		return true;
+	}
+
+	public function setMainCamera(tag:String):Bool {
+		var camera:FlxCamera = getCamera(tag);
+		if(camera == null)
+			return false;
+
+		FlxG.cameras.setDefaultDrawTarget(camera, true);
+		variables.set('camMain', camera);
+		variables.set('camGame', camera);
+		return true;
+	}
+
+	public function setCameraOrder(tag:String, index:Int):Bool {
+		var camera:FlxCamera = getCamera(tag);
+		if(camera == null || !FlxG.cameras.list.contains(camera))
+			return false;
+
+		var defaultDrawTarget:Bool = camera == FlxG.camera || camera == variables.get('camMain');
+		FlxG.cameras.remove(camera, false);
+		FlxG.cameras.insert(camera, index, defaultDrawTarget);
+		return true;
+	}
+
+	public function applyCustomCameraResize():Void {
+		for(tag => camera in customCameras)
+		{
+			if(camera != null && customCameraAutoSize.exists(tag) && customCameraAutoSize.get(tag) == true)
+			{
+				camera.setSize(CameraResizeFix.baseWidth(), CameraResizeFix.baseHeight());
+				camera.x = 0;
+				camera.y = 0;
+				if(Std.isOfType(camera, PsychCamera))
+					cast(camera, PsychCamera).setLogicalSize(CameraResizeFix.baseWidth(), CameraResizeFix.baseHeight());
+			}
+		}
+	}
+
+	public function shouldAutoResizeCamera(camera:FlxCamera):Bool {
+		for(tag => customCamera in customCameras)
+			if(customCamera == camera)
+				return customCameraAutoSize.exists(tag) && customCameraAutoSize.get(tag) == true;
+		return true;
+	}
 	
 	override function getFolderName():String {
 		return 'states';
@@ -137,23 +252,6 @@ class ScriptedState extends ScriptedSubState {
 			var object:Dynamic = LuaUtils.getObjectDirectly(tag, false, this);
 			return Std.isOfType(object, FlxBackdrop) ? cast object : null;
 		}
-		function getCamera(tag:String):FlxCamera {
-			if (tag == null || tag.trim().length < 1)
-				return null;
-
-			var object:Dynamic = LuaUtils.getObjectDirectly(tag, false, this);
-			return Std.isOfType(object, FlxCamera) ? cast object : null;
-		}
-		function setMainCameraInternal(camera:FlxCamera):Bool {
-			if (camera == null)
-				return false;
-
-			FlxG.cameras.setDefaultDrawTarget(camera, true);
-			MusicBeatState.getVariables().set('camMain', camera);
-			MusicBeatState.getVariables().set('camGame', camera);
-			return true;
-		}
-
 		lua.addLocalCallback('addGridBackdrop', function(tag:String, cellWidth:Int = 80, cellHeight:Int = 80, width:Int = 160, height:Int = 160, velocityX:Float = 0, velocityY:Float = 0, color1:String = '33FFFFFF', color2:String = '000000', alpha:Float = 1, x:Float = 0, y:Float = 0, repeatAxes:String = 'xy') {
 			if (tag == null || tag.trim().length < 1)
 				return false;
@@ -193,34 +291,19 @@ class ScriptedState extends ScriptedSubState {
 		});
 
 		lua.addLocalCallback('addCamera', function(tag:String, bgColor:String = '00000000', x:Float = 0, y:Float = 0, width:Int = -1, height:Int = -1, zoom:Float = 1, front:Bool = false) {
-			if (tag == null || tag.trim().length < 1)
-				return false;
-			if (LuaUtils.getObjectDirectly(tag, false, this) != null)
-				return false;
-
-			var camera:FlxCamera = new FlxCamera(x, y, width, height, zoom);
-			camera.bgColor = CoolUtil.colorFromString(bgColor);
-			FlxG.cameras.add(camera, front);
-			MusicBeatState.getVariables().set(tag, camera);
-			return true;
+			return addCamera(tag, bgColor, x, y, width, height, zoom, front) != null;
 		});
 
 		lua.addLocalCallback('setMainCamera', function(tag:String) {
-			return setMainCameraInternal(getCamera(tag));
+			return setMainCamera(tag);
+		});
+
+		lua.addLocalCallback('setCameraOrder', function(tag:String, index:Int) {
+			return setCameraOrder(tag, index);
 		});
 
 		lua.addLocalCallback('removeCamera', function(tag:String, destroy:Bool = true) {
-			var camera = getCamera(tag);
-			if (camera == null)
-				return false;
-			if (camera == MusicBeatState.getVariables().get('camMain'))
-				return false;
-
-			FlxG.cameras.remove(camera, destroy);
-			if (destroy)
-				camera.destroy();
-			MusicBeatState.getVariables().remove(tag);
-			return true;
+			return removeCamera(tag, destroy);
 		});
 	}
 	#end

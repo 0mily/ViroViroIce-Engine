@@ -1,0 +1,15 @@
+{
+  "name": "Dadbattle Spotlight",
+  "description": "Controls the Dad Battle spotlight state and target.",
+  "fields": [
+    {
+      "type": "dropdown",
+      "label": "Mode",
+      "value": 1,
+      "default": "0",
+      "options": ["0", "1", "2", "3"],
+      "width": 110,
+      "order": 1
+    }
+  ]
+}

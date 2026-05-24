@@ -634,10 +634,17 @@ class PsychUIInputText extends FlxSpriteGroup
 	var _boundaries:Array<Float> = [];
 	function set_text(v:String)
 	{
+		if(_boundaries == null)
+			_boundaries = [];
 		for (i in 0..._boundaries.length) _boundaries.pop();
 		v = (v ?? '');
 		v = filter(v);
 
+		if(textObj == null)
+		{
+			text = v;
+			return text;
+		}
 		textObj.text = '';
 		if(v != null && v.length > 0)
 		{

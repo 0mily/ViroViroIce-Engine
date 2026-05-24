@@ -101,7 +101,7 @@ class MusicBeatState extends MusicBeatSubstate {
 		#if GLOBAL_SCRIPTS GlobalScriptHandler.refreshScripts(); #end
 		
 		if (camOther == null) {
-			camOther = new FlxCamera();
+			camOther = new PsychCamera();
 			camOther.bgColor.alpha = 0;
 			FlxG.cameras.add(camOther, false);
 		}

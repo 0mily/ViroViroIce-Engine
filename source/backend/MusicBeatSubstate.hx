@@ -76,6 +76,7 @@ class MusicBeatSubstate extends flixel.FlxSubState {
 	
 	public override function create() {
 		parent = _parentState;
+		ResolutionManager.resetForEditor(this);
 		subStateClosed.add((_) -> updatePresence());
 
 		if (!_pre) preCreate();

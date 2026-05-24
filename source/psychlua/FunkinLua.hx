@@ -5,6 +5,7 @@ import backend.Song;
 import backend.WeekData;
 import backend.Highscore;
 import backend.ScriptedState;
+import backend.ResolutionManager;
 
 import openfl.Lib;
 import openfl.utils.Assets;
@@ -18,11 +19,13 @@ import flixel.addons.display.FlxRuntimeShader;
 #end
 
 import cutscenes.DialogueBoxPsych;
+import cutscenes.DialoguePlus;
 
 import objects.StrumNote;
 import objects.Note;
 import objects.NoteSplash;
 import objects.Character;
+import objects.VideoSprite;
 
 import states.MainMenuState;
 import states.StoryMenuState;
@@ -1140,6 +1143,10 @@ class FunkinLua {
 			FlxG.state.persistentUpdate = false;
 			MusicBeatState.resetState();
 		});
+		registerFunction('changeRes', function(width:Int, height:Int, resizable:Bool = true) return ResolutionManager.changeRes(width, height, resizable));
+		registerFunction('ChangeRes', function(width:Int, height:Int, resizable:Bool = true) return ResolutionManager.changeRes(width, height, resizable));
+		registerFunction('resetRes', function() return ResolutionManager.reset());
+		registerFunction('ResetRes', function() return ResolutionManager.reset());
 
 		//Identical functions
 		registerFunction('FlxColor', function(color:String) return FlxColor.fromString(color));
@@ -1151,8 +1158,18 @@ class FunkinLua {
 		registerFunction('precacheImage', function(name:String, ?allowGPU:Bool = true) Paths.image(name, allowGPU));
 		registerFunction('precacheSound', function(name:String) Paths.sound(name));
 		registerFunction('precacheMusic', function(name:String) Paths.music(name));
+		registerFunction('preloadVideo', function(name:String) return LoadingState.preloadVideo(name) != null);
+		registerFunction('precacheVideo', function(name:String) return LoadingState.preloadVideo(name) != null);
 		
 		registerFunction('getSongPosition', () -> Conductor.songPosition);
+		registerFunction('setSongTime', function(time:Float, ?offset:Bool = true, ?clearPastNotes:Bool = true) {
+			if(game == null)
+				return false;
+			game.setSongTime(time, offset);
+			if(clearPastNotes)
+				game.clearNotesBefore(Conductor.songPosition);
+			return true;
+		});
 
 		registerFunction('setCameraScroll', function(x:Float, y:Float) backend.CameraResizeFix.centralizarScroll(FlxG.camera, x, y));
 		registerFunction('addCameraScroll', function(?x:Float = 0, ?y:Float = 0) FlxG.camera.scroll.add(x, y));
@@ -1162,6 +1179,31 @@ class FunkinLua {
 		registerFunction('cameraShake', function(camera:String, intensity:Float, duration:Float) LuaUtils.cameraFromString(camera).shake(intensity, duration));
 		registerFunction('cameraFlash', function(camera:String, color:String, duration:Float,forced:Bool) LuaUtils.cameraFromString(camera).flash(CoolUtil.colorFromString(color), duration, null, forced));
 		registerFunction('cameraFade', function(camera:String, color:String, duration:Float, forced:Bool, ?fadeOut:Bool = false) LuaUtils.cameraFromString(camera).fade(CoolUtil.colorFromString(color), duration, fadeOut, null, forced));
+		registerFunction('setCameraAngle', function(camera:String, angle:Float) {
+			var cam:FlxCamera = LuaUtils.cameraFromString(camera);
+			if(cam != null)
+				cam.angle = angle;
+			return angle;
+		});
+		registerFunction('addCameraAngle', function(camera:String, angle:Float) {
+			var cam:FlxCamera = LuaUtils.cameraFromString(camera);
+			if(cam != null)
+				cam.angle += angle;
+			return cam != null ? cam.angle : 0;
+		});
+		registerFunction('getCameraAngle', function(camera:String) {
+			var cam:FlxCamera = LuaUtils.cameraFromString(camera);
+			return cam != null ? cam.angle : 0;
+		});
+		registerFunction('setCameraRotateSprite', function(camera:String, rotateSprite:Bool = false) {
+			var cam:FlxCamera = LuaUtils.cameraFromString(camera);
+			if(Std.isOfType(cam, backend.PsychCamera))
+			{
+				cast(cam, backend.PsychCamera).rotateSprite = rotateSprite;
+				return true;
+			}
+			return false;
+		});
 
 		registerFunction('getMidpointX', function(variable:String) {
 			var obj:FlxObject = LuaUtils.getObjectDirectly(variable);
@@ -1546,6 +1588,15 @@ class FunkinLua {
 				default: 0;
 			});
 		});
+		registerFunction('createChar', function(name:String, ?x:Float = 0, ?y:Float = 0, ?noteType:String = '', ?isPlayer:Bool = false) {
+			return game.createChar(name, x, y, noteType, isPlayer);
+		});
+		registerFunction('createCharacter', function(name:String, ?x:Float = 0, ?y:Float = 0, ?noteType:String = '', ?isPlayer:Bool = false) {
+			return game.createChar(name, x, y, noteType, isPlayer);
+		});
+		registerFunction('getCharacterTag', function(name:String) {
+			return game.getExtraCharacterTag(name);
+		});
 		
 		// others
 		registerFunction('triggerEvent', function(name:String, ?value1:String = '', ?value2:String = '') {
@@ -1631,52 +1682,147 @@ class FunkinLua {
 			game.timeBar.setColors(left_color, right_color);
 		});
 		registerFunction('startDialogue', function(dialogueFile:String, ?music:String = null) {
-			var path:String;
-			var songPath:String = Paths.formatToSongPath(Song.loadedSongName);
-			#if TRANSLATIONS_ALLOWED
-			path = Paths.getPath('data/$songPath/${dialogueFile}_${ClientPrefs.data.language}.json', TEXT);
-			#if MODS_ALLOWED
-			if(!FileSystem.exists(path))
-			#else
-			if(!Assets.exists(path, TEXT))
-			#end
-			#end
-				path = Paths.getPath('data/$songPath/$dialogueFile.json', TEXT);
-
-			// luaTrace('startDialogue: Trying to load dialogue: ' + path);
-
-			#if MODS_ALLOWED
-			if(FileSystem.exists(path))
-			#else
-			if(Assets.exists(path, TEXT))
-			#end
-			{
-				var shit:DialogueFile = DialogueBoxPsych.parseDialogue(path);
-				if (shit.dialogue.length > 0) {
-					game.startDialogue(shit, music);
-					// luaTrace('startDialogue: Successfully loaded dialogue', false, false, FlxColor.GREEN);
-					return true;
-				} else {
-					luaTrace('startDialogue: Dialogue file is badly formatted', false, false, ERROR);
-				}
-			} else {
+			if(!DialoguePlus.start(game, dialogueFile, music)) {
 				luaTrace('startDialogue: Dialogue file not found', false, false, ERROR);
 				if (game.endingSong) {
 					game.endSong();
 				} else {
 					game.startCountdown();
 				}
+				return false;
+			}
+			return true;
+		});
+		registerFunction('startDialoguePlus', function(dialogueFile:String = 'dialogue', ?music:String = null) return game.startDialoguePlus(dialogueFile, music));
+
+		#if VIDEOS_ALLOWED
+		function getVideoObject(tag:String):VideoSprite
+		{
+			if(tag == null)
+				return null;
+			if(game != null && game.videoCutscene != null && tag == 'videoCutscene')
+				return game.videoCutscene;
+			var obj:Dynamic = MusicBeatState.getVariables().get(tag.replace('.', ''));
+			return Std.isOfType(obj, VideoSprite) ? cast obj : null;
+		}
+		function makeVideoCallback(tag:String, videoFile:String, ?x:Float = 0, ?y:Float = 0, ?camera:String = 'other', ?canSkip:Bool = false, ?pauseWithGame:Bool = true, ?shouldLoop:Bool = false, ?playOnLoad:Bool = true, ?syncWithSong:Bool = false) {
+			#if VIDEOS_ALLOWED
+			if(game == null)
+				return false;
+			return game.createVideo(tag, videoFile, x, y, camera, canSkip, pauseWithGame, shouldLoop, playOnLoad, syncWithSong) != null;
+			#else
+			luaTrace('makeVideo: Platform not supported!', false, false, ERROR);
+			return false;
+			#end
+		}
+		registerFunction('makeVideo', makeVideoCallback);
+		registerFunction('makeLuaVideo', makeVideoCallback);
+		registerFunction('addVideo', function(tag:String, ?front:Bool = true) {
+			var video:VideoSprite = getVideoObject(tag);
+			if(video == null || game == null) {
+				luaTrace('addVideo: Video "$tag" does not exist!', false, false, ERROR);
+				return false;
+			}
+			if(front) game.add(video);
+			else game.insert(0, video);
+			return true;
+		});
+		registerFunction('removeVideo', function(tag:String, ?destroy:Bool = true) {
+			return game != null && game.removeVideo(tag, destroy);
+		});
+		registerFunction('videoExists', function(tag:String) {
+			return getVideoObject(tag) != null;
+		});
+		registerFunction('playVideo', function(tag:String) {
+			var video:VideoSprite = getVideoObject(tag);
+			if(video != null) {
+				video.play();
+				return true;
 			}
 			return false;
 		});
-		registerFunction('startVideo', function(videoFile:String, ?canSkip:Bool = true, ?forMidSong:Bool = false, ?shouldLoop:Bool = false, ?playOnLoad:Bool = true) {
+		registerFunction('pauseVideo', function(tag:String) {
+			var video:VideoSprite = getVideoObject(tag);
+			if(video != null) {
+				video.pause();
+				return true;
+			}
+			return false;
+		});
+		registerFunction('resumeVideo', function(tag:String) {
+			var video:VideoSprite = getVideoObject(tag);
+			if(video != null) {
+				video.resume();
+				return true;
+			}
+			return false;
+		});
+		registerFunction('stopVideo', function(tag:String, ?destroy:Bool = true) {
+			var video:VideoSprite = getVideoObject(tag);
+			if(video == null)
+				return false;
+			if(destroy && game != null)
+				return game.removeVideo(tag, true);
+			video.stop();
+			return true;
+		});
+		registerFunction('setVideoCanSkip', function(tag:String, canSkip:Bool = true) {
+			var video:VideoSprite = getVideoObject(tag);
+			if(video != null) {
+				video.canSkip = canSkip;
+				return true;
+			}
+			return false;
+		});
+		registerFunction('setVideoPauseWithGame', function(tag:String, pauseWithGame:Bool = true) {
+			var video:VideoSprite = getVideoObject(tag);
+			if(video != null) {
+				video.pauseWithGame = pauseWithGame;
+				return true;
+			}
+			return false;
+		});
+		registerFunction('setVideoSyncWithSong', function(tag:String, syncWithSong:Bool = true) {
+			var video:VideoSprite = getVideoObject(tag);
+			if(video != null) {
+				video.syncWithSong = syncWithSong;
+				return true;
+			}
+			return false;
+		});
+		registerFunction('seekVideo', function(tag:String, timeMs:Float) {
+			var video:VideoSprite = getVideoObject(tag);
+			if(video != null) {
+				video.setTime(timeMs);
+				return true;
+			}
+			return false;
+		});
+		registerFunction('setVideoTime', function(tag:String, timeMs:Float) {
+			var video:VideoSprite = getVideoObject(tag);
+			if(video != null) {
+				video.setTime(timeMs);
+				return true;
+			}
+			return false;
+		});
+		registerFunction('getVideoTime', function(tag:String) {
+			var video:VideoSprite = getVideoObject(tag);
+			return video != null ? video.getTime() : 0;
+		});
+		registerFunction('getVideoLength', function(tag:String) {
+			var video:VideoSprite = getVideoObject(tag);
+			return video != null ? video.getLength() : 0;
+		});
+		#end
+		registerFunction('startVideo', function(videoFile:String, ?canSkip:Bool = true, ?forMidSong:Bool = false, ?shouldLoop:Bool = false, ?playOnLoad:Bool = true, ?pauseWithGame:Bool = true) {
 			#if VIDEOS_ALLOWED
 			if (FileSystem.exists(Paths.video(videoFile))) {
 				if (game.videoCutscene != null) {
 					game.remove(game.videoCutscene);
 					game.videoCutscene.destroy();
 				}
-				game.videoCutscene = game.startVideo(videoFile, forMidSong, canSkip, shouldLoop, playOnLoad);
+				game.videoCutscene = game.startVideo(videoFile, forMidSong, canSkip, shouldLoop, playOnLoad, pauseWithGame);
 				return true;
 			} else {
 				luaTrace('startVideo: Video file not found: ' + videoFile, false, false, ERROR);
@@ -1699,45 +1845,48 @@ class FunkinLua {
 		
 		// character
 		registerFunction('getCharacterX', function(type:String) {
-			return switch(type.toLowerCase()) {
-				case 'dad' | 'opponent': game.dadGroup.x;
-				case 'gf' | 'girlfriend': game.gfGroup.x;
-				default: game.boyfriendGroup.x;
-			}
+			var group = game.getCharacterGroupByName(type);
+			return group != null ? group.x : 0;
 		});
 		registerFunction('getCharacterY', function(type:String) {
-			return switch(type.toLowerCase()) {
-				case 'dad' | 'opponent': game.dadGroup.y;
-				case 'gf' | 'girlfriend': game.gfGroup.y;
-				default: game.boyfriendGroup.y;
-			}
+			var group = game.getCharacterGroupByName(type);
+			return group != null ? group.y : 0;
 		});
 		registerFunction('setCharacterX', function(type:String, value:Float) {
-			switch(type.toLowerCase()) {
-				case 'dad' | 'opponent': game.dadGroup.x = value;
-				case 'gf' | 'girlfriend': game.gfGroup.x = value;
-				default: game.boyfriendGroup.x = value;
-			}
+			var group = game.getCharacterGroupByName(type);
+			if(group != null) group.x = value;
 		});
 		registerFunction('setCharacterY', function(type:String, value:Float) {
-			switch(type.toLowerCase()) {
-				case 'dad' | 'opponent': game.dadGroup.y = value;
-				case 'gf' | 'girlfriend': game.gfGroup.y = value;
-				default: game.boyfriendGroup.y = value;
-			}
+			var group = game.getCharacterGroupByName(type);
+			if(group != null) group.y = value;
 		});
 		registerFunction('cameraSetTarget', function(target:String) {
-			switch(target.trim().toLowerCase()) {
-				case 'gf' | 'girlfriend': game.moveCamera(false, true);
-				case 'dad' | 'opponent': game.moveCamera(true);
-				default: game.moveCamera(false);
-			}
+			game.changeFocus(target);
 		});
 		registerFunction('changeFocus', function(target:String, ?x:Float = 0, ?y:Float = 0, ?ease:String = 'classic', ?steps:Float = 0) {
 			game.changeFocus(target, x, y, ease, steps);
 		});
 		registerFunction('ChangeFocus', function(target:String, ?x:Float = 0, ?y:Float = 0, ?ease:String = 'classic', ?steps:Float = 0) {
 			game.changeFocus(target, x, y, ease, steps);
+		});
+		registerFunction('changeIcon', function(icon:String, ?side:Int = 0) {
+			return game.changeHealthIcon(icon, side);
+		});
+		registerFunction('ChangeIcon', function(icon:String, ?side:Int = 0) {
+			return game.changeHealthIcon(icon, side);
+		});
+		registerFunction('setIconFrame', function(side:Int = 0, frame:Int = 0) {
+			return game.setIconFrame(side, frame);
+		});
+		registerFunction('addIcon', function(frame:Int = 0, ?side:Null<Int> = null) {
+			if(side == null)
+				return game.setIconFrame(0, frame) && game.setIconFrame(1, frame);
+			return game.setIconFrame(side, frame);
+		});
+		registerFunction('AddIcon', function(frame:Int = 0, ?side:Null<Int> = null) {
+			if(side == null)
+				return game.setIconFrame(0, frame) && game.setIconFrame(1, frame);
+			return game.setIconFrame(side, frame);
 		});
 		
 		// camfollow

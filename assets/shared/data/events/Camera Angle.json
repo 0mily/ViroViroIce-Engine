@@ -1,15 +1,14 @@
 {
-  "name": "Focus Camera",
-  "description": "Moves camera focus to a character with optional X/Y offsets and tween easing.",
+  "name": "Camera Angle",
+  "description": "Rotates a selected camera instantly or with a step-based tween.",
   "fields": [
     {
       "type": "dropdown",
-      "label": "Target",
+      "label": "Camera",
       "group": 1,
       "part": 1,
-      "default": "dad",
-      "options": ["dad", "bf", "gf"],
-      "includeExtraCharacters": true,
+      "default": "game",
+      "options": ["game", "hud", "other"],
       "width": 140,
       "height": 22,
       "textSize": 9,
@@ -19,13 +18,13 @@
     },
     {
       "type": "stepper",
-      "label": "X",
+      "label": "Angle",
       "group": 1,
       "part": 2,
       "default": 0,
       "step": 1,
-      "min": -9999,
-      "max": 9999,
+      "min": -360,
+      "max": 360,
       "decimals": 2,
       "width": 72,
       "height": 22,
@@ -36,19 +35,16 @@
       "order": 2
     },
     {
-      "type": "stepper",
-      "label": "Y",
+      "type": "dropdown",
+      "label": "Mode",
       "group": 1,
       "part": 3,
-      "default": 0,
-      "step": 1,
-      "min": -9999,
-      "max": 9999,
-      "decimals": 2,
-      "width": 72,
+      "default": "set",
+      "options": ["set", "add", "subtract", "reset"],
+      "width": 140,
       "height": 22,
       "textSize": 9,
-      "buttonSize": 18,
+      "buttonSize": 22,
       "x": 290,
       "order": 3
     },
@@ -57,14 +53,14 @@
       "label": "Ease",
       "group": 2,
       "part": 1,
-      "default": "classic",
-      "options": ["classic", "instant", "linear", "quadIn", "quadOut", "quadInOut", "cubeIn", "cubeOut", "cubeInOut", "sineIn", "sineOut", "sineInOut", "expoIn", "expoOut", "expoInOut", "backIn", "backOut", "backInOut", "elasticOut", "bounceOut"],
+      "default": "instant",
+      "options": ["instant", "linear", "quadIn", "quadOut", "quadInOut", "cubeIn", "cubeOut", "cubeInOut", "sineIn", "sineOut", "sineInOut", "expoIn", "expoOut", "expoInOut", "backIn", "backOut", "backInOut", "elasticOut", "bounceOut"],
       "width": 170,
       "height": 22,
       "textSize": 9,
       "buttonSize": 22,
       "advance": false,
-      "order": 5
+      "order": 4
     },
     {
       "type": "stepper",
@@ -81,6 +77,19 @@
       "textSize": 9,
       "buttonSize": 18,
       "x": 215,
+      "advance": false,
+      "order": 5
+    },
+    {
+      "type": "checkbox",
+      "label": "Rotate Sprite",
+      "value": 3,
+      "default": "false",
+      "width": 150,
+      "height": 22,
+      "textSize": 9,
+      "buttonSize": 18,
+      "x": 310,
       "order": 6
     }
   ]

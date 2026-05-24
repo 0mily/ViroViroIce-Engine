@@ -341,6 +341,7 @@ class ContentMenuState extends MusicBeatState
 
 				Language.reloadPhrases();
 				Difficulty.resetList();
+				backend.ResolutionManager.reset();
 
 				MusicBeatState.switchState(new TitleState());
 			});

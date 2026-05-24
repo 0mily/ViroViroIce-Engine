@@ -1,0 +1,32 @@
+{
+  "name": "Change Scroll Speed GOOD",
+  "description": "Changes song scroll speed to an absolute value.",
+  "fields": [
+    {
+      "type": "stepper",
+      "label": "Speed",
+      "value": 1,
+      "default": 1,
+      "step": 0.1,
+      "min": 0.05,
+      "max": 10,
+      "decimals": 3,
+      "width": 85,
+      "order": 1,
+      "advance": false
+    },
+    {
+      "type": "stepper",
+      "label": "Seconds",
+      "value": 2,
+      "default": 0,
+      "step": 0.25,
+      "min": 0,
+      "max": 60,
+      "decimals": 2,
+      "width": 80,
+      "x": 125,
+      "order": 2
+    }
+  ]
+}

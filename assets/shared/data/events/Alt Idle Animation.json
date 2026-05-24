@@ -1,0 +1,26 @@
+{
+  "name": "Alt Idle Animation",
+  "description": "Changes a character idle animation suffix.",
+  "fields": [
+    {
+      "type": "dropdown",
+      "label": "Character",
+      "value": 1,
+      "default": "dad",
+      "options": ["dad", "bf", "gf"],
+      "includeExtraCharacters": true,
+      "width": 130,
+      "order": 1,
+      "advance": false
+    },
+    {
+      "type": "input",
+      "label": "Suffix",
+      "value": 2,
+      "default": "",
+      "width": 150,
+      "x": 165,
+      "order": 2
+    }
+  ]
+}

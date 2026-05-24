@@ -191,7 +191,7 @@ class MainMenuState extends ScriptedState
 		if (justEntered && !openDebugMenu)
 			yea = false;
 		
-		FlxG.mouse.visible = true;
+		FlxG.mouse.visible = !yea;
 		selectedSomethin = yea;
 		justEntered = false;
 	}
@@ -396,7 +396,7 @@ class MainMenuState extends ScriptedState
 			} else {
 				timeNotMoving += elapsed;
 				if (timeNotMoving > 2)
-					FlxG.mouse.visible = true;
+					FlxG.mouse.visible = false;
 			}
 
 			switch(curColumn) {
@@ -435,7 +435,7 @@ class MainMenuState extends ScriptedState
 				if (!blockedFNF) {
 					FlxG.sound.play(Paths.sound('confirmMenu'));
 					selectedSomethin = true;
-					FlxG.mouse.visible = true;
+					FlxG.mouse.visible = false;
 					
 					if (ClientPrefs.data.flashing)
 						FlxFlicker.flicker(magenta, 1.1, 0.15, false);
@@ -457,7 +457,7 @@ class MainMenuState extends ScriptedState
 			}
 			if (controls.justPressed('debug_1')) {
 				selectedSomethin = true;
-				FlxG.mouse.visible = true;
+				FlxG.mouse.visible = false;
 				openSubState(new MasterEditorMenu());
 			}
 		}

@@ -18,6 +18,8 @@ import openfl.events.KeyboardEvent;
 import haxe.Json;
 
 import cutscenes.DialogueBoxPsych;
+import cutscenes.DialoguePlus;
+import cutscenes.DialoguePlusRuntime;
 
 import states.StoryMenuState;
 import states.FreeplayState;
@@ -100,6 +102,10 @@ class PlayState extends ScriptedState
 	 * Map containing all precached characters the speakers (middle) character will change to (with the Change Character event).
 	*/
 	public var gfMap:Map<String, Character> = new Map<String, Character>();
+	public var extraCharacterMap:Map<String, Character> = new Map<String, Character>();
+	public var extraCharacterGroups:Map<String, FlxSpriteGroup> = new Map<String, FlxSpriteGroup>(); // XIXI COCO BUCETA. NUM FUNFA
+	public var extraCharacterNoteTypes:Map<String, String> = new Map<String, String>();
+	var extraCharacterIsPlayer:Map<String, Bool> = new Map<String, Bool>();
 	
 
 	var BF_X:Float = 770;
@@ -321,6 +327,10 @@ class PlayState extends ScriptedState
 	 * Multiplier for the decay time of the camera bopping.
 	*/
 	public var camZoomingDecay:Float = 1;
+	/**
+	 * Disables the default section camera bop while a scripted camera bop event is active.
+	*/
+	public var scriptedCameraBopActive:Bool = false;
 
 	/**
 	 * How frequently the speakers (middle) character should bop every beat.
@@ -434,6 +444,7 @@ class PlayState extends ScriptedState
 	public var cameraMoveOffset:Float = 30;
 	@:dox(hide) var cameraFocusTween:FlxTween;
 	@:dox(hide) var cameraMoveTween:FlxTween;
+	var cameraAngleTweens:Map<FlxCamera, FlxTween> = [];
 	var cameraFocusBaseX:Float = 0;
 	var cameraFocusBaseY:Float = 0;
 	var cameraMoveOffsetX:Float = 0;
@@ -586,7 +597,7 @@ class PlayState extends ScriptedState
 
 		// var gameCam:FlxCamera = FlxG.camera;
 		camGame = initPsychCamera();
-		camHUD = new FlxCamera();
+		camHUD = new backend.PsychCamera();
 		camHUD.bgColor.alpha = 0;
 		FlxG.cameras.add(camHUD, false);
 
@@ -839,11 +850,13 @@ class PlayState extends ScriptedState
 		iconP2.alpha = ClientPrefs.data.healthBarAlpha;
 		uiGroup.add(iconP2);
 
-		scoreTxt = new FlxText(0, healthBar.y + 40, FlxG.width, "", 20);
-		scoreTxt.setFormat(Paths.font("vcr.ttf"), 20, FlxColor.WHITE, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
+		scoreTxt = new FlxText(0, healthBar.y + 40, FlxG.width, "", 13);
+		scoreTxt.setFormat(Paths.font("better-vcr.ttf"), 13, FlxColor.WHITE, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
 		scoreTxt.scrollFactor.set();
-		scoreTxt.borderSize = 1.25;
+		scoreTxt.borderSize = 1;
+		scoreTxt.antialiasing = true;
 		scoreTxt.visible = !ClientPrefs.data.hideHud;
+		scoreTxt.updateHitbox();
 		uiGroup.add(scoreTxt);
 		
 		if (ClientPrefs.data.downScroll) scoreTxt.y = 100;
@@ -1101,7 +1114,8 @@ class PlayState extends ScriptedState
 		Conductor.offset = Reflect.hasField(PlayState.SONG, 'offset') ? (PlayState.SONG.offset / value) : 0;
 		Conductor.safeZoneOffset = (ClientPrefs.data.safeFrames / 60) * 1000 * value;
 		#if VIDEOS_ALLOWED
-		if(videoCutscene != null && videoCutscene.videoSprite != null) #if hxvlc videoCutscene.videoSprite.bitmap.rate = value; #end
+		if(videoCutscene != null)
+			videoCutscene.setPlaybackRate(value);
 		#end
 		setOnScripts('playbackRate', playbackRate);
 		#else
@@ -1153,6 +1167,201 @@ class PlayState extends ScriptedState
 					startCharacterScripts(newGf.curCharacter);
 				}
 		}
+	}
+
+	function extraCharacterTag(characterName:String):String
+	{
+		if(characterName == null)
+			return null;
+
+		var normalized:String = characterName.replace('\\', '/');
+		var split:Array<String> = normalized.split('/');
+		var tag:String = split[split.length - 1].trim();
+		return tag.length > 0 ? tag.replace('.', '') : null;
+	}
+
+	function insertExtraCharacterGroup(group:FlxSpriteGroup):Void
+	{
+		if(group == null || members.contains(group))
+			return;
+
+		var targetGroup:FlxSpriteGroup = boyfriendGroup;
+		var targetIndex:Int = targetGroup != null ? members.indexOf(targetGroup) : -1;
+		if(targetIndex < 0)
+			add(group);
+		else
+			insert(targetIndex, group);
+	}
+
+	public function getExtraCharacterTag(characterName:String):String
+		return extraCharacterTag(characterName);
+
+	public function getCharacterGroupByName(name:String):FlxSpriteGroup
+	{
+		var target:String = normalizeCharacterTarget(name);
+		return switch(target)
+		{
+			case 'boyfriend': boyfriendGroup;
+			case 'dad': dadGroup;
+			case 'gf': gfGroup;
+			default: extraCharacterGroups.get(target);
+		}
+	}
+
+	public function getCharacterByName(name:String):Character
+	{
+		var target:String = normalizeCharacterTarget(name);
+		return switch(target)
+		{
+			case 'boyfriend': boyfriend;
+			case 'dad': dad;
+			case 'gf': gf;
+			default: extraCharacterMap.get(target);
+		}
+	}
+
+	function normalizeCharacterTarget(target:String):String
+	{
+		if(target == null) return 'dad';
+
+		var raw:String = target.trim();
+		return switch(raw.toLowerCase())
+		{
+			case 'bf' | 'boyfriend' | 'player' | '0':
+				'boyfriend';
+			case 'gf' | 'girlfriend' | '2':
+				'gf';
+			case 'dad' | 'opponent' | '1':
+				'dad';
+			default:
+				extraCharacterTag(raw) ?? raw;
+		}
+	}
+
+	function assignExtraCharacterToNote(note:Note):Void
+	{
+		if(note == null || note.noteType == null)
+			return;
+
+		for(tag => noteType in extraCharacterNoteTypes)
+		{
+			if(noteType != null && noteType.length > 0 && note.noteType == noteType)
+			{
+				var character:Character = extraCharacterMap.get(tag);
+				if(character != null)
+					note.character = character;
+				return;
+			}
+		}
+	}
+
+	function assignExtraCharacterToExistingNotes(tag:String):Void
+	{
+		var noteType:String = extraCharacterNoteTypes.get(tag);
+		if(noteType == null || noteType.length < 1)
+			return;
+
+		var character:Character = extraCharacterMap.get(tag);
+		if(character == null)
+			return;
+
+		for(note in unspawnNotes)
+			if(note != null && note.noteType == noteType)
+				note.character = character;
+
+		if(notes != null)
+			for(note in notes.members)
+				if(note != null && note.noteType == noteType)
+					note.character = character;
+	}
+
+	public function createChar(characterName:String, x:Float = 0, y:Float = 0, noteType:String = '', isPlayer:Bool = false):String
+	{
+		var tag:String = extraCharacterTag(characterName);
+		if(tag == null)
+			return null;
+
+		var group:FlxSpriteGroup = extraCharacterGroups.get(tag);
+		if(group == null)
+		{
+			group = new FlxSpriteGroup(x, y);
+			extraCharacterGroups.set(tag, group);
+			variables.set(tag, group);
+			setVar(tag, group);
+			insertExtraCharacterGroup(group); // eu esqueci de colocarisso
+		}
+		else
+		{
+			group.setPosition(x, y);
+			insertExtraCharacterGroup(group);
+		}
+
+		var oldCharacter:Character = extraCharacterMap.get(tag);
+		if(oldCharacter != null)
+			group.remove(oldCharacter, true);
+
+		var character:Character = new Character(0, 0, characterName, isPlayer);
+		startCharacterPos(character);
+		group.add(character);
+		extraCharacterMap.set(tag, character);
+		extraCharacterIsPlayer.set(tag, isPlayer);
+		if(noteType != null && noteType.length > 0)
+			extraCharacterNoteTypes.set(tag, noteType);
+		else
+			extraCharacterNoteTypes.remove(tag);
+
+		variables.set(tag + 'Character', character);
+		setVar(tag + 'Character', character);
+		startCharacterScripts(character.curCharacter);
+		assignExtraCharacterToExistingNotes(tag);
+		setOnScripts('extraCharacterNames', [for(tag in extraCharacterMap.keys()) tag]);
+		return tag;
+	}
+
+	public function changeExtraCharacter(tag:String, newCharacter:String):Bool
+	{
+		tag = normalizeCharacterTarget(tag);
+		if(!extraCharacterGroups.exists(tag))
+			return false;
+
+		var group:FlxSpriteGroup = extraCharacterGroups.get(tag);
+		var oldCharacter:Character = extraCharacterMap.get(tag);
+		var alpha:Float = oldCharacter != null ? oldCharacter.alpha : 1;
+		var shader = oldCharacter != null ? oldCharacter.shader : null;
+		var isPlayer:Bool = extraCharacterIsPlayer.exists(tag) ? extraCharacterIsPlayer.get(tag) : false;
+
+		if(oldCharacter != null)
+			group.remove(oldCharacter, true);
+
+		var character:Character = new Character(0, 0, newCharacter, isPlayer);
+		startCharacterPos(character);
+		character.alpha = alpha;
+		character.shader = shader;
+		group.add(character);
+		extraCharacterMap.set(tag, character);
+		variables.set(tag + 'Character', character);
+		setVar(tag + 'Character', character);
+		startCharacterScripts(character.curCharacter);
+		assignExtraCharacterToExistingNotes(tag);
+		return true;
+	}
+
+	public function setIconFrame(side:Int, frame:Int):Bool
+	{
+		var icon:HealthIcon = side == 1 ? iconP1 : iconP2;
+		if(icon == null)
+			return false;
+		icon.setIconFrame(frame);
+		return true;
+	}
+
+	public function changeHealthIcon(iconName:String, side:Int = 0):Bool
+	{
+		var icon:HealthIcon = side == 1 ? iconP1 : iconP2;
+		if(icon == null)
+			return false;
+		icon.changeIcon(iconName);
+		return true;
 	}
 
 	@:dox(hide) function startCharacterScripts(name:String)
@@ -1238,6 +1447,151 @@ class PlayState extends ScriptedState
 	 * Video instance used when playing cutscenes.
 	*/
 	public var videoCutscene:VideoSprite = null;
+
+	function videoFileExists(fileName:String):Bool
+	{
+		#if sys
+		return FileSystem.exists(fileName);
+		#else
+		return OpenFlAssets.exists(fileName);
+		#end
+	}
+
+	/**
+	 * Creates a scriptable video object. The returned object is stored in the state variables map,
+	 * so Lua/HScript can tween and edit it like a sprite.
+	*/
+	public function createVideo(tag:String, name:String, x:Float = 0, y:Float = 0, camera:String = 'other', canSkip:Bool = false, pauseWithGame:Bool = true, loop:Bool = false, playOnLoad:Bool = true, syncWithSong:Bool = false):VideoSprite
+	{
+		#if VIDEOS_ALLOWED
+		if(tag == null || tag.trim().length < 1)
+			return null;
+
+		tag = tag.replace('.', '');
+		var fileName:String = Paths.video(name);
+		if(!videoFileExists(fileName))
+		{
+			#if (SCRIPTS_ALLOWED)
+			addTextToDebug("Video not found: " + fileName, FlxColor.RED);
+			#else
+			FlxG.log.error("Video not found: " + fileName);
+			#end
+			return null;
+		}
+
+		removeVideo(tag);
+
+		var video:VideoSprite = new VideoSprite(fileName, true, canSkip, loop);
+		video.tag = tag;
+		video.pauseWithGame = pauseWithGame;
+		video.syncWithSong = syncWithSong;
+		video.setPosition(x, y);
+		video.cameras = [LuaUtils.cameraFromString(camera)];
+		var vars:Map<String, Dynamic> = MusicBeatState.getVariables();
+		vars.set(tag, video);
+
+		video.finishCallback = function()
+		{
+			if(vars.get(tag) == video)
+				vars.remove(tag);
+			callOnScripts('onVideoCompleted', [tag, name]);
+		};
+		video.onSkip = function()
+		{
+			if(vars.get(tag) == video)
+				vars.remove(tag);
+			callOnScripts('onVideoSkipped', [tag, name]);
+		};
+
+		if(playOnLoad)
+			video.play();
+		return video;
+		#else
+		FlxG.log.warn('Platform not supported!');
+		return null;
+		#end
+	}
+
+	public function removeVideo(tag:String, destroy:Bool = true):Bool
+	{
+		#if VIDEOS_ALLOWED
+		if(tag == null)
+			return false;
+
+		tag = tag.replace('.', '');
+		var vars:Map<String, Dynamic> = MusicBeatState.getVariables();
+		var obj:Dynamic = vars.get(tag);
+		if((obj == null || !Std.isOfType(obj, VideoSprite)) && tag == 'videoCutscene')
+			obj = videoCutscene;
+		if(obj == null || !Std.isOfType(obj, VideoSprite))
+			return false;
+
+		var video:VideoSprite = cast obj;
+		if(videoCutscene == video)
+			videoCutscene = null;
+		if(members.contains(video))
+			remove(video, true);
+		vars.remove(tag);
+		if(destroy)
+			video.destroy();
+		return true;
+		#else
+		return false;
+		#end
+	}
+
+	function forEachVideo(func:VideoSprite->Void, onlyPauseManaged:Bool = false):Void
+	{
+		#if VIDEOS_ALLOWED
+		var handled:Array<VideoSprite> = [];
+		function handle(video:VideoSprite):Void
+		{
+			if(video != null && !handled.contains(video) && (!onlyPauseManaged || video.pauseWithGame))
+			{
+				handled.push(video);
+				func(video);
+			}
+		}
+
+		handle(videoCutscene);
+		for(value in variables)
+			if(value != null && Std.isOfType(value, VideoSprite))
+				handle(cast value);
+		#end
+	}
+
+	function forEachManagedVideo(func:VideoSprite->Void):Void
+	{
+		#if VIDEOS_ALLOWED
+		forEachVideo(func, true);
+		#end
+	}
+
+	function syncVideosToSongTime():Void
+	{
+		#if VIDEOS_ALLOWED
+		var videoTime:Float = Math.max(0, Conductor.songPosition - Conductor.offset);
+		forEachVideo((video) -> {
+			if(video.syncWithSong)
+				video.setTime(videoTime);
+		});
+		#end
+	}
+
+	function pauseManagedVideos():Void
+	{
+		#if VIDEOS_ALLOWED
+		forEachManagedVideo((video) -> video.pause());
+		#end
+	}
+
+	function resumeManagedVideos():Void
+	{
+		#if VIDEOS_ALLOWED
+		forEachManagedVideo((video) -> video.resume());
+		#end
+	}
+
 	/**
 	 * Starts a video cutscene.
 	 * 
@@ -1249,27 +1603,20 @@ class PlayState extends ScriptedState
 	 * 
 	 * @return 	The video cutscene.
 	*/
-	public function startVideo(name:String, forMidSong:Bool = false, canSkip:Bool = true, loop:Bool = false, playOnLoad:Bool = true)
+	public function startVideo(name:String, forMidSong:Bool = false, canSkip:Bool = true, loop:Bool = false, playOnLoad:Bool = true, pauseWithGame:Bool = true)
 	{
 		#if VIDEOS_ALLOWED
 		inCutscene = !forMidSong;
 		canPause = forMidSong;
 
-		var foundFile:Bool = false;
 		var fileName:String = Paths.video(name);
 
-		#if sys
-		if (FileSystem.exists(fileName))
-		#else
-		if (OpenFlAssets.exists(fileName))
-		#end
-		foundFile = true;
-		if (foundFile)
+		if (videoFileExists(fileName))
 		{
 			videoCutscene = new VideoSprite(fileName, forMidSong, canSkip, loop);
-			#if hxvlc
-			if(forMidSong) videoCutscene.videoSprite.bitmap.rate = playbackRate;
-			#end
+			videoCutscene.pauseWithGame = pauseWithGame;
+			videoCutscene.syncWithSong = forMidSong;
+			if(forMidSong) videoCutscene.setPlaybackRate(playbackRate);
 			// Finish callback
 			if (!forMidSong)
 			{
@@ -1288,12 +1635,21 @@ class PlayState extends ScriptedState
 				videoCutscene.finishCallback = onVideoEnd;
 				videoCutscene.onSkip = onVideoEnd;
 			}
+			else
+			{
+				var curVideo:VideoSprite = videoCutscene;
+				function onMidSongVideoEnd()
+				{
+					if(videoCutscene == curVideo)
+						videoCutscene = null;
+				}
+				videoCutscene.finishCallback = onMidSongVideoEnd;
+				videoCutscene.onSkip = onMidSongVideoEnd;
+			}
 			if (GameOverSubstate.instance != null && isDead) GameOverSubstate.instance.add(videoCutscene);
 			else add(videoCutscene);
-			#if hxvlc
 			if (playOnLoad)
 				videoCutscene.play();
-			#end
 			return videoCutscene;
 		}
 		#if (SCRIPTS_ALLOWED)
@@ -1377,6 +1733,10 @@ class PlayState extends ScriptedState
 
 	var dialogueCount:Int = 0;
 	public var psychDialogue:DialogueBoxPsych;
+	#if HSCRIPT_ALLOWED
+	public var dialoguePlusScript:HScript = null;
+	#end
+	public var dialoguePlusController:DialoguePlusRuntime = null;
 	//You don't have to add a song, just saying. You can just do "startDialogue(DialogueBoxPsych.parseDialogue(Paths.json(songName + '/dialogue')))" and it should load dialogue.json
 	/**
 	 * Starts a dialogue cutscene.
@@ -1384,34 +1744,176 @@ class PlayState extends ScriptedState
 	 * @param 	dialogueFile 	Dialogue file used to play the cutscene. Use `DialogueBoxPsych.parseDialogue(path)` to parse a file!
 	 * @param 	song 			If specified, plays music with this name. Should be in the `music/` folder.
 	*/
-	public function startDialogue(dialogueFile:DialogueFile, ?song:String = null):Void
+	public function startDialogue(dialogueFile:DialogueFile, ?song:String = null, callFirstCallback:Bool = false):Void
 	{
 		// TO DO: Make this more flexible, maybe?
 		if(psychDialogue != null) return;
 
 		if(dialogueFile.dialogue.length > 0) {
 			inCutscene = true;
-			psychDialogue = new DialogueBoxPsych(dialogueFile, song);
+			dialogueCount = 0;
+			psychDialogue = new DialogueBoxPsych(dialogueFile, song, !callFirstCallback);
 			psychDialogue.scrollFactor.set();
 			if(endingSong) {
 				psychDialogue.finishThing = function() {
 					psychDialogue = null;
+					#if HSCRIPT_ALLOWED
+					finishDialoguePlusScript();
+					#end
 					endSong();
 				}
 			} else {
 				psychDialogue.finishThing = function() {
 					psychDialogue = null;
+					#if HSCRIPT_ALLOWED
+					finishDialoguePlusScript();
+					#end
 					startCountdown();
 				}
 			}
 			psychDialogue.nextDialogueThing = startNextDialogue;
+			psychDialogue.lineStartThing = function(line:DialogueLine, index:Int) {
+				if(dialoguePlusController != null)
+					dialoguePlusController.onLine(index + 1, index, line);
+			}
 			psychDialogue.skipDialogueThing = skipDialogue;
 			psychDialogue.cameras = [camHUD];
 			add(psychDialogue);
+			if(dialoguePlusController != null)
+				dialoguePlusController.applySettings();
+			if(callFirstCallback)
+				psychDialogue.startNextDialog();
 		} else {
 			FlxG.log.warn('Your dialogue file is badly formatted!');
+			#if HSCRIPT_ALLOWED
+			finishDialoguePlusScript(false);
+			#end
 			startAndEnd();
 		}
+	}
+
+	public function startDialoguePlus(dialogueFile:String = 'dialogue', ?music:String = null):Bool
+	{
+		var started:Bool = DialoguePlus.start(this, dialogueFile, music);
+		if(!started)
+		{
+			#if (SCRIPTS_ALLOWED)
+			addTextToDebug('Dialogue Plus file not found: $dialogueFile', FlxColor.RED);
+			#else
+			FlxG.log.warn('Dialogue Plus file not found: $dialogueFile');
+			#end
+			finishDialoguePlusCutscene(false);
+		}
+		return started;
+	}
+
+	#if HSCRIPT_ALLOWED
+	public function startDialoguePlusScript(path:String, dialogueName:String = 'dialogue', ?music:String = null):Bool
+	{
+		if(dialoguePlusScript != null && !dialoguePlusScript.closed)
+			return false;
+
+		inCutscene = true;
+		var controller:DialoguePlusRuntime = new DialoguePlusRuntime(this, dialogueName, music, path);
+		dialoguePlusController = controller;
+		var script:HScript = HScript.initFromFileWithVars(path, this, {
+			dialogueName: dialogueName,
+			dialogueMusic: music,
+			dialoguePath: path,
+			dialoguePlus: controller,
+			loadXml: controller.loadXml,
+			addLine: controller.addLine,
+			addLines: controller.addLines,
+			clearLines: controller.clearLines,
+			stopDialogueMusic: controller.stopDialogueMusic,
+			playDialogueMusic: controller.playDialogueMusic,
+			setCanContinue: controller.setCanContinue,
+			setCanSkip: controller.setCanSkip,
+			setDialogueVisible: controller.setDialogueVisible,
+			setBoxVisible: controller.setBoxVisible,
+			setTextVisible: controller.setTextVisible,
+			setBackgroundVisible: controller.setBackgroundVisible,
+			setSkipTextVisible: controller.setSkipTextVisible,
+			dialogueTimer: controller.dialogueTimer
+		}, null, function(newScript:HScript) {
+			dialoguePlusScript = newScript;
+			if(hscriptArray != null && !hscriptArray.contains(newScript))
+				hscriptArray.push(newScript);
+		});
+		if(script == null)
+		{
+			if(dialoguePlusScript != null && hscriptArray != null)
+				hscriptArray.remove(dialoguePlusScript);
+			dialoguePlusScript = null;
+			dialoguePlusController = null;
+			finishDialoguePlusCutscene(false);
+			return false;
+		}
+		if(script.closed)
+			return true;
+
+		var data:Dynamic = null;
+		if(script.exists('create'))
+		{
+			var call = script.call('create', [controller]);
+			if(call != null)
+				data = call.returnValue;
+		}
+		if(script.closed)
+			return true;
+		if(script.exists('buildDialogue'))
+		{
+			var call = script.call('buildDialogue', [dialogueName, music]);
+			if(call != null)
+				data = call.returnValue;
+		}
+		if(data == null && script.exists('dialogueFile'))
+			data = script.get('dialogueFile');
+		if(data == null && script.exists('dialogue'))
+			data = script.get('dialogue');
+
+		var parsed:DialogueFile = DialoguePlus.normalizeDialogue(data);
+		if(DialoguePlus.isValidDialogue(parsed))
+			controller.addLines(parsed, controller.hasLines());
+
+		if(controller.hasLines())
+			startDialogue(controller.getDialogueFile(), music, true);
+		else if(psychDialogue == null && !script.exists('onUpdate') && !script.exists('onCreate') && !script.exists('create'))
+			finishDialoguePlusCutscene(false);
+
+		return true;
+	}
+
+	public function finishDialoguePlusScript(callFinish:Bool = true):Void
+	{
+		if(dialoguePlusScript == null)
+			return;
+
+		var script:HScript = dialoguePlusScript;
+		dialoguePlusScript = null;
+		dialoguePlusController = null;
+		if(callFinish && script.exists('onDialogueFinish'))
+			script.call('onDialogueFinish');
+
+		if(hscriptArray != null)
+			hscriptArray.remove(script);
+		script.destroy();
+	}
+	#end
+
+	public function finishDialoguePlusCutscene(callFinish:Bool = true):Void
+	{
+		#if HSCRIPT_ALLOWED
+		finishDialoguePlusScript(callFinish);
+		#end
+		dialoguePlusController = null;
+		psychDialogue = null;
+		inCutscene = false;
+
+		if(endingSong)
+			endSong();
+		else
+			startCountdown();
 	}
 
 	var startTimer:FlxTimer;
@@ -1647,8 +2149,6 @@ class PlayState extends ScriptedState
 			return;
 
 		updateScoreText();
-		if (!miss && !cpuControlled && scoreBop)
-			doScoreBop();
 
 		callOnScripts('onUpdateScore', [miss]);
 	}
@@ -1660,7 +2160,7 @@ class PlayState extends ScriptedState
 	{
 		var accText:String = "0.00%";
 		if (totalPlayed != 0)
-			accText = '${CoolUtil.floorDecimal(ratingPercent * 100, 2)}%';
+			accText = '${FlxStringUtil.formatMoney(ratingPercent * 100, true, true)}%';
 
 		var currentFC:String = (ratingFC == "") ? "?" : ratingFC;
 
@@ -1745,19 +2245,12 @@ class PlayState extends ScriptedState
 	 * Makes the score text do a bopping animation.
 	*/
 	public function doScoreBop():Void {
-		if(!ClientPrefs.data.scoreZoom)
-			return;
-
 		if(scoreTxtTween != null)
 			scoreTxtTween.cancel();
 
-		scoreTxt.scale.x = 1.075;
-		scoreTxt.scale.y = 1.075;
-		scoreTxtTween = FlxTween.tween(scoreTxt.scale, {x: 1, y: 1}, 0.2, {
-			onComplete: function(twn:FlxTween) {
-				scoreTxtTween = null;
-			}
-		});
+		scoreTxtTween = null;
+		if(scoreTxt != null)
+			scoreTxt.scale.set(1, 1);
 	}
 
 	/**
@@ -1795,6 +2288,7 @@ class PlayState extends ScriptedState
 		}
 		
 		Conductor.songPosition = (time + (offset ? Conductor.offset : 0));
+		syncVideosToSongTime();
 	}
 
 	public function startNextDialogue() {
@@ -1962,6 +2456,7 @@ class PlayState extends ScriptedState
 				swagNote.sustainLength = holdLength;
 				swagNote.mustPress = gottaHitNote;
 				swagNote.noteType = noteType;
+				assignExtraCharacterToNote(swagNote);
 				swagNote.section = sectionI;
 	
 				swagNote.scrollFactor.set();
@@ -1979,6 +2474,7 @@ class PlayState extends ScriptedState
 						sustainNote.animSuffix = swagNote.animSuffix;
 						sustainNote.mustPress = swagNote.mustPress;
 						sustainNote.noteType = swagNote.noteType;
+						assignExtraCharacterToNote(sustainNote);
 						sustainNote.gfNote = swagNote.gfNote;
 						sustainNote.scrollFactor.set();
 						sustainNote.section = sectionI;
@@ -2065,20 +2561,16 @@ class PlayState extends ScriptedState
 	function eventPushedUnique(event:EventNote) {
 		switch(event.event) {
 			case "Change Character":
-				var charType:Int = 0;
-				switch(event.value1.toLowerCase()) {
-					case 'gf' | 'girlfriend':
-						charType = 2;
-					case 'dad' | 'opponent':
-						charType = 1;
-					default:
-						var val1:Int = Std.parseInt(event.value1);
-						if(Math.isNaN(val1)) val1 = 0;
-						charType = val1;
+				var target:String = normalizeCharacterTarget(event.value1);
+				var charType:Int = switch(target) {
+					case 'gf': 2;
+					case 'dad': 1;
+					case 'boyfriend': 0;
+					default: -1;
 				}
-
 				var newCharacter:String = event.value2;
-				addCharacterToList(newCharacter, charType);
+				if(charType >= 0)
+					addCharacterToList(newCharacter, charType);
 
 			case 'Play Sound':
 				Paths.sound(event.value1); //Precache sound
@@ -2198,6 +2690,7 @@ class PlayState extends ScriptedState
 			FlxG.sound.music?.pause();
 			opponentVocals?.pause();
 			vocals?.pause();
+			pauseManagedVideos();
 			
 			FlxTimer.globalManager.forEach(function(tmr:FlxTimer) if(!tmr.finished) tmr.active = false);
 			FlxTween.globalManager.forEach(function(twn:FlxTween) if(!twn.finished) twn.active = false);
@@ -2220,6 +2713,7 @@ class PlayState extends ScriptedState
 			}
 			FlxTimer.globalManager.forEach(function(tmr:FlxTimer) if(!tmr.finished) tmr.active = true);
 			FlxTween.globalManager.forEach(function(twn:FlxTween) if(!twn.finished) twn.active = true);
+			resumeManagedVideos();
 
 			paused = false;
 			callOnScripts('onResume');
@@ -2824,17 +3318,35 @@ class PlayState extends ScriptedState
 
 		switch(eventName) {
 			case 'Hey!':
+				var rawTarget:String = value1.toLowerCase().trim();
+				var targetName:String = switch(rawTarget) {
+					case 'bf' | 'boyfriend' | '0': 'boyfriend';
+					case 'gf' | 'girlfriend' | '1': 'gf';
+					case 'dad' | 'opponent': 'dad';
+					default: normalizeCharacterTarget(value1);
+				}
+				var target:Character = getCharacterByName(targetName);
 				var value:Int = 2;
-				switch(value1.toLowerCase().trim()) {
-					case 'bf' | 'boyfriend' | '0':
+				switch(targetName) {
+					case 'boyfriend':
 						value = 0;
-					case 'gf' | 'girlfriend' | '1':
+					case 'gf':
 						value = 1;
 				}
 
 				if(flValue2 == null || flValue2 <= 0) flValue2 = 0.6;
 
-				if(value != 0) {
+				if(target != null && rawTarget != 'both' && rawTarget.length > 0) {
+					for(animCheck in ['hey', 'cheer']) {
+						if(target.hasAnimation(animCheck)) {
+							target.playAnim(animCheck, true);
+							target.specialAnim = true;
+							target.heyTimer = flValue2;
+							break;
+						}
+					}
+				}
+				else if(value != 0) {
 					if(dad.curCharacter.startsWith('gf')) { //Tutorial GF is actually Dad! The GF is an imposter!! ding ding ding ding ding ding ding, dindinding, end my suffering
 						dad.playAnim('cheer', true);
 						dad.specialAnim = true;
@@ -2864,21 +3376,19 @@ class PlayState extends ScriptedState
 					camHUD.zoom += flValue2;
 				}
 
+			case 'Camera Module Bop':
+				scriptedCameraBopActive = value2 != null && value2.trim().length > 0;
+
 			case 'Play Animation':
 				//trace('Anim to play: ' + value1);
-				var char:Character = dad;
-				switch(value2.toLowerCase().trim()) {
-					case 'bf' | 'boyfriend':
-						char = boyfriend;
-					case 'gf' | 'girlfriend':
-						char = gf;
-					default:
-						if(flValue2 == null) flValue2 = 0;
-						switch(Math.round(flValue2)) {
-							case 1: char = boyfriend;
-							case 2: char = gf;
-						}
+				var char:Character = switch((value2 ?? '').toLowerCase().trim()) {
+					case '1': boyfriend;
+					case '2': gf;
+					case '0': dad;
+					default: getCharacterByName(value2);
 				}
+				if(char == null)
+					char = dad;
 
 				if (char != null)
 				{
@@ -2913,21 +3423,14 @@ class PlayState extends ScriptedState
 				changeFocus(focus[0], Std.parseFloat(focus[1]), Std.parseFloat(focus[2]), focus[3], Std.parseFloat(focus[4]));
 
 			case 'Alt Idle Animation':
-				var char:Character = dad;
-				switch(value1.toLowerCase().trim()) {
-					case 'gf' | 'girlfriend':
-						char = gf;
-					case 'boyfriend' | 'bf':
-						char = boyfriend;
-					default:
-						var val:Int = Std.parseInt(value1);
-						if(Math.isNaN(val)) val = 0;
-
-						switch(val) {
-							case 1: char = boyfriend;
-							case 2: char = gf;
-						}
+				var char:Character = switch((value1 ?? '').toLowerCase().trim()) {
+					case '1': boyfriend;
+					case '2': gf;
+					case '0': dad;
+					default: getCharacterByName(value1);
 				}
+				if(char == null)
+					char = dad;
 
 				if (char != null)
 				{
@@ -2954,15 +3457,12 @@ class PlayState extends ScriptedState
 
 
 			case 'Change Character':
-				var charType:Int = 0;
-				switch(value1.toLowerCase().trim()) {
-					case 'gf' | 'girlfriend':
-						charType = 2;
-					case 'dad' | 'opponent':
-						charType = 1;
-					default:
-						charType = Std.parseInt(value1);
-						if(Math.isNaN(charType)) charType = 0;
+				var target:String = normalizeCharacterTarget(value1);
+				var charType:Int = switch(target) {
+					case 'gf': 2;
+					case 'dad': 1;
+					case 'boyfriend': 0;
+					default: -1;
 				}
 
 				switch(charType) {
@@ -3027,6 +3527,8 @@ class PlayState extends ScriptedState
 							}
 							setOnScripts('gfName', gf.curCharacter);
 						}
+					default:
+						changeExtraCharacter(target, value2);
 				}
 				reloadHealthBarColors();
 
@@ -3142,6 +3644,21 @@ class PlayState extends ScriptedState
 								}
 						}
 
+			case 'Camera Angle' | 'Camera Rotate' | 'Camera Rotation':
+				var angleData:Array<String> = splitCameraEventValues(value1);
+				var tweenData:Array<String> = splitCameraEventValues(value2);
+				var cameraName:String = angleData[0] ?? 'game';
+				var angle:Float = Std.parseFloat(angleData[1] ?? '0');
+				var mode:String = angleData[2] ?? 'set';
+				var ease:String = tweenData[0] ?? angleData[3] ?? 'instant';
+				var steps:Float = Std.parseFloat(tweenData[1] ?? angleData[4] ?? '0');
+				var rotateSprite:Null<Bool> = null;
+
+				if(values != null && values.length > 2)
+					rotateSprite = parseNullableEventBool(values[2]);
+
+				applyCameraAngleEvent(cameraName, angle, mode, ease, steps, rotateSprite);
+
 			case 'Set Property':
 				try {
 					var set:Dynamic = value2.trim();
@@ -3186,6 +3703,77 @@ class PlayState extends ScriptedState
 				args.push(values[i] != null ? values[i] : '');
 		}
 		return args;
+	}
+
+	function parseNullableEventBool(value:String):Null<Bool> {
+		if(value == null) return null;
+
+		return switch(value.toLowerCase().trim())
+		{
+			case 'true' | '1' | 'yes' | 'y' | 'on':
+				true;
+			case 'false' | '0' | 'no' | 'n' | 'off':
+				false;
+			default:
+				null;
+		}
+	}
+
+	function applyCameraAngleEvent(cameraName:String, angle:Float, mode:String, ease:String, steps:Float, rotateSprite:Null<Bool>):Void {
+		if(cameraName == null || cameraName.trim().length < 1)
+			cameraName = 'game';
+		if(Math.isNaN(angle))
+			angle = 0;
+		if(Math.isNaN(steps) || steps < 0)
+			steps = 0;
+		if(mode == null || mode.trim().length < 1)
+			mode = 'set';
+		if(ease == null || ease.trim().length < 1)
+			ease = 'instant';
+
+		var camera:FlxCamera = LuaUtils.cameraFromString(cameraName.trim());
+		if(camera == null) return;
+
+		if(rotateSprite != null && Std.isOfType(camera, backend.PsychCamera))
+			cast(camera, backend.PsychCamera).rotateSprite = rotateSprite;
+
+		var targetAngle:Float = angle;
+		switch(mode.toLowerCase().trim())
+		{
+			case 'add' | 'relative' | 'mr' | '+':
+				targetAngle = camera.angle + angle;
+			case 'subtract' | 'sub' | 'lss' | '-':
+				targetAngle = camera.angle - angle;
+			case 'reset' | 'zero':
+				targetAngle = 0;
+			default:
+				targetAngle = angle;
+		}
+
+		var oldTween:FlxTween = cameraAngleTweens.get(camera);
+		if(oldTween != null)
+		{
+			oldTween.cancel();
+			cameraAngleTweens.remove(camera);
+		}
+
+		var easeMode:String = ease.toLowerCase().trim();
+		if(steps <= 0 || easeMode == 'instant' || easeMode == 'classic' || easeMode == 'og')
+		{
+			camera.angle = targetAngle;
+			return;
+		}
+
+		var duration:Float = (steps * Conductor.stepCrochet / 1000) / playbackRate;
+		var tween:FlxTween = FlxTween.tween(camera, {angle: targetAngle}, duration, {
+			ease: getCameraZoomEase(easeMode),
+			onComplete: function(twn:FlxTween)
+			{
+				if(cameraAngleTweens.get(camera) == twn)
+					cameraAngleTweens.remove(camera);
+			}
+		});
+		cameraAngleTweens.set(camera, tween);
 	}
 
 	function parseCameraFocusEvent(value1:String, value2:String):Array<String> {
@@ -3330,16 +3918,17 @@ class PlayState extends ScriptedState
 	}
 
 	function normalizeCameraTarget(target:String):String {
-		if(target == null) return 'dad';
-
-		return switch(target.toLowerCase().trim())
+		var normalized:String = normalizeCharacterTarget(target);
+		return switch(normalized)
 		{
-			case 'bf' | 'boyfriend' | 'player' | '0':
+			case 'boyfriend':
 				'boyfriend';
-			case 'gf' | 'girlfriend' | '2':
+			case 'gf':
 				'gf';
-			default:
+			case 'dad':
 				'dad';
+			default:
+				normalized;
 		}
 	}
 
@@ -3384,7 +3973,7 @@ class PlayState extends ScriptedState
 				point.x += dad.cameraPosition[0] + opponentCameraOffset[0];
 				point.y += dad.cameraPosition[1] + opponentCameraOffset[1];
 
-			default:
+			case 'boyfriend':
 				if(boyfriend == null)
 				{
 					point.put();
@@ -3394,6 +3983,18 @@ class PlayState extends ScriptedState
 				point.set(boyfriend.getMidpoint().x - 100, boyfriend.getMidpoint().y - 100);
 				point.x -= boyfriend.cameraPosition[0] - boyfriendCameraOffset[0];
 				point.y += boyfriend.cameraPosition[1] + boyfriendCameraOffset[1];
+
+			default:
+				var characterObj:Character = extraCharacterMap.get(character);
+				if(characterObj == null)
+				{
+					point.put();
+					return null;
+				}
+
+				point.set(characterObj.getMidpoint().x, characterObj.getMidpoint().y);
+				point.x += characterObj.cameraPosition[0];
+				point.y += characterObj.cameraPosition[1];
 		}
 
 		point.x += x;
@@ -3407,7 +4008,8 @@ class PlayState extends ScriptedState
 		{
 			case 'gf': gf;
 			case 'boyfriend': boyfriend;
-			default: dad;
+			case 'dad': dad;
+			default: extraCharacterMap.get(cameraFocus);
 		}
 	}
 
@@ -3417,6 +4019,9 @@ class PlayState extends ScriptedState
 		if(character == boyfriend) return 'boyfriend';
 		if(character == gf) return 'gf';
 		if(character == dad) return 'dad';
+		for(tag => extraCharacter in extraCharacterMap)
+			if(character == extraCharacter)
+				return tag;
 		return null;
 	}
 
@@ -4489,7 +5094,7 @@ class PlayState extends ScriptedState
 
 	public override function sectionHit(section:Int):Void {
 		if (SONG.notes[section] != null) {
-			if (camZooming && FlxG.camera.zoom < defaultCamZoom + 0.35 && ClientPrefs.data.camZooms) {
+			if (!scriptedCameraBopActive && camZooming && FlxG.camera.zoom < defaultCamZoom + 0.35 && ClientPrefs.data.camZooms) {
 				FlxG.camera.zoom += 0.015 * camZoomingMult;
 				camHUD.zoom += 0.03 * camZoomingMult;
 			}

@@ -11,6 +11,11 @@ class CameraResizeFix
 	public static var altuMulti:Float = 3.5;
 	public static inline var BASE_WIDTH:Int = 1280;
 	public static inline var BASE_HEIGHT:Int = 720;
+	public static inline function baseWidth():Int
+		return ResolutionManager.width;
+
+	public static inline function baseHeight():Int
+		return ResolutionManager.height;
 
 	public static function pegarExtraX(camera:FlxCamera):Float
 		return camera == null ? 0 : Math.max(0, camera.width - FlxG.width);
@@ -137,11 +142,11 @@ class CameraResizeFix
 		if(camera == null)
 			return;
 
-		camera.setSize(Std.int(Math.max(1, FlxG.width)), Std.int(Math.max(1, FlxG.height)));
+		camera.setSize(Std.int(Math.max(1, baseWidth())), Std.int(Math.max(1, baseHeight()))); // porra cara, isso demora :disappointed:
 		camera.x = 0;
 		camera.y = 0;
 		if(Std.isOfType(camera, PsychCamera))
-			cast(camera, PsychCamera).setLogicalSize();
+			cast(camera, PsychCamera).setLogicalSize(baseWidth(), baseHeight());
 	}
 
 	public static function aplyGameCamera(camera:FlxCamera):Void
@@ -150,8 +155,16 @@ class CameraResizeFix
 			return;
 
 		if(Std.isOfType(camera, PsychCamera))
-			cast(camera, PsychCamera).setLogicalSize(BASE_WIDTH, BASE_HEIGHT);
+			cast(camera, PsychCamera).setLogicalSize(baseWidth(), baseHeight());
 
+		if(ResolutionManager.hasCustomResolution())
+		{
+			camera.setSize(baseWidth(), baseHeight());
+			camera.x = 0;
+			camera.y = 0;
+			aplyCentroOFS(camera);
+			return;
+		}
 		aplyExpand(camera, largMulti, altuMulti);
 	}
 
@@ -159,7 +172,7 @@ class CameraResizeFix
 	{
 		var playState = states.PlayState.instance;
 		if(playState == null)
-			return false;
+			return ResolutionManager.hasCustomResolution();
 
 		return camera == playState.camGame || camera == playState.camHUD || camera == playState.camOther;
 	}
@@ -168,7 +181,7 @@ class CameraResizeFix
 	{
 		var playState = states.PlayState.instance;
 		if(playState != null && camera == playState.camGame)
-			return BASE_WIDTH;
+			return baseWidth();
 		return FlxG.width;
 	}
 
@@ -176,7 +189,7 @@ class CameraResizeFix
 	{
 		var playState = states.PlayState.instance;
 		if(playState != null && camera == playState.camGame)
-			return BASE_HEIGHT;
+			return baseHeight();
 		return FlxG.height;
 	}
 
@@ -203,8 +216,38 @@ class CameraResizeFix
 		if(playState != null)
 		{
 			aplyGameCamera(playState.camGame);
-			aplyExpand(playState.camHUD);
-			aplyExpand(playState.camOther);
+			if(ResolutionManager.hasCustomResolution())
+			{
+				resetGameCamera(playState.camHUD);
+				resetGameCamera(playState.camOther);
+			}
+			else
+			{
+				aplyExpand(playState.camHUD);
+				aplyExpand(playState.camOther);
+			}
+			playState.applyCustomCameraResize();
+		}
+		else
+			aplyStateCameras();
+	}
+
+	static function aplyStateCameras():Void
+	{
+		if(FlxG.cameras == null)
+			return;
+
+		var scriptedState:ScriptedState = Std.isOfType(FlxG.state, ScriptedState) ? cast FlxG.state : null;
+		for(camera in FlxG.cameras.list)
+		{
+			if(camera == null)
+				continue;
+
+			if(scriptedState != null && !scriptedState.shouldAutoResizeCamera(camera))
+				continue;
+
+			resetGameCamera(camera);
+			aplyCentroOFS(camera);
 		}
 	}
 }

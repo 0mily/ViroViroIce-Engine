@@ -423,6 +423,15 @@ class LuaUtils
 			group = PlayState.instance.dadGroup;
 			pos = newPos;
 		}
+		for(extraGroup in PlayState.instance.extraCharacterGroups)
+		{
+			newPos = PlayState.instance.members.indexOf(extraGroup);
+			if(newPos >= 0 && newPos < pos)
+			{
+				group = extraGroup;
+				pos = newPos;
+			}
+		}
 		return group;
 	}
 	

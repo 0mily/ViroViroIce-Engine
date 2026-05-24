@@ -415,6 +415,8 @@ class LoadingState extends ScriptedState
 	static var soundsToPrepare:Array<String> = [];
 	static var musicToPrepare:Array<String> = [];
 	static var songsToPrepare:Array<String> = [];
+	static var videosToPrepare:Array<String> = [];
+	public static var preloadedVideos:Map<String, Bool> = new Map();
 	
 	static var initialThreadCompleted:Bool = true;
 	static var dontPreloadDefaultVoices:Bool = false;
@@ -435,6 +437,7 @@ class LoadingState extends ScriptedState
 		soundsToPrepare.resize(0);
 		musicToPrepare.resize(0);
 		songsToPrepare.resize(0);
+		videosToPrepare.resize(0);
 		futures.resize(0);
 		jobs.resize(0);
 		
@@ -506,6 +509,8 @@ class LoadingState extends ScriptedState
 								soundsToPrepare.push(asset.substr('sounds/'.length));
 							else if(asset.startsWith('music/'))
 								musicToPrepare.push(asset.substr('music/'.length));
+							else if(asset.startsWith('videos/')) // provavelmente vai garantir que o video carregue antes e nn fique PRETO
+								videosToPrepare.push(asset.substr('videos/'.length));
 						}
 					}
 				}
@@ -535,6 +540,8 @@ class LoadingState extends ScriptedState
 								soundsToPrepare.push(asset.substr('sounds/'.length));
 							else if(asset.startsWith('music/'))
 								musicToPrepare.push(asset.substr('music/'.length));
+							else if(asset.startsWith('videos/'))
+								videosToPrepare.push(asset.substr('videos/'.length));
 						}
 					}
 				}
@@ -593,6 +600,10 @@ class LoadingState extends ScriptedState
 				} else #end
 				preloadCharacter(gfVersion, prefixVocals);
 			}
+
+			for(video in collectScriptVideos(folder))
+				if(!videosToPrepare.contains(video))
+					videosToPrepare.push(video);
 			
 			threadsMax ++;
 			completedThread();
@@ -610,8 +621,9 @@ class LoadingState extends ScriptedState
 		clearInvalidFrom(soundsToPrepare, 'sounds', '.${Paths.SOUND_EXT}', SOUND);
 		clearInvalidFrom(musicToPrepare, 'music', '.${Paths.SOUND_EXT}', SOUND); // erro pequeno
 		clearInvalidFrom(songsToPrepare, 'songs', '.${Paths.SOUND_EXT}', SOUND, 'songs');
+		clearInvalidFrom(videosToPrepare, 'videos', '.${Paths.VIDEO_EXT}', BINARY);
 
-		for (arr in [imagesToPrepare, soundsToPrepare, musicToPrepare, songsToPrepare])
+		for (arr in [imagesToPrepare, soundsToPrepare, musicToPrepare, songsToPrepare, videosToPrepare])
 			while (arr.contains(null))
 				arr.remove(null);
 	}
@@ -664,7 +676,7 @@ class LoadingState extends ScriptedState
 		
 		// trace('${imagesToPrepare.length} images');
 		// trace('${soundsToPrepare.length + musicToPrepare.length + songsToPrepare.length} sounds');
-		loadMax = imagesToPrepare.length + soundsToPrepare.length + musicToPrepare.length + songsToPrepare.length;
+		loadMax = imagesToPrepare.length + soundsToPrepare.length + musicToPrepare.length + songsToPrepare.length + videosToPrepare.length;
 		loaded = 0;
 
 		//then start threads
@@ -678,6 +690,7 @@ class LoadingState extends ScriptedState
 		for (sound in soundsToPrepare) jobs.push(SOUND('sounds/$sound'));
 		for (music in musicToPrepare) jobs.push(SOUND('music/$music'));
 		for (song in songsToPrepare) jobs.push(SOUND(song, 'songs', true));
+		for (video in videosToPrepare) jobs.push(VIDEO(video));
 		for (image in imagesToPrepare) jobs.push(BMD(image));
 	}
 	
@@ -716,11 +729,15 @@ class LoadingState extends ScriptedState
 			switch (job) {
 				case SOUND(key, path, ignoreMods): initThread(() -> preloadSound(key, path, ignoreMods), 'sound $key');
 				case BMD(key): initThread(() -> preloadGraphic(key), 'image $key');
+				case VIDEO(key): initThread(() -> preloadVideo(key), 'video $key');
 			}
 		} else #end {
 			var future:Future<Dynamic> = switch (job) {
 				case SOUND(key, path, ignoreMods): preloadSound(key, path, ignoreMods);
 				case BMD(key): preloadGraphic(key);
+				case VIDEO(key):
+					preloadVideo(key);
+					null;
 			}
 			
 			if (future != null) {
@@ -786,6 +803,104 @@ class LoadingState extends ScriptedState
 		{
 			trace(e.details());
 		}
+	}
+
+	static function collectScriptVideos(songFolder:String):Array<String>
+	{
+		var videos:Array<String> = [];
+		var folders:Array<String> = [];
+		if(songFolder != null && songFolder.length > 0)
+			for(folder in Mods.directoriesWithFile(Paths.getSharedPath(), 'songs/$songFolder/'))
+				if(!folders.contains(folder))
+					folders.push(folder);
+		for(folder in Mods.directoriesWithFile(Paths.getSharedPath(), 'data/scripts/'))
+			if(!folders.contains(folder))
+				folders.push(folder);
+
+		function addVideo(name:String):Void
+		{
+			if(name == null)
+				return;
+			name = name.trim();
+			if(name.length > 0 && !videos.contains(name))
+				videos.push(name);
+		}
+
+		var videoRegex:EReg = ~/(?:preloadVideo|startVideo)\s*\(\s*(['"])([^'"]+)\1/;
+		var makeVideoRegex:EReg = ~/(?:makeVideo|makeLuaVideo)\s*\(\s*(['"])([^'"]+)\1\s*,\s*(['"])([^'"]+)\3/;
+		for(folder in folders)
+		{
+			if(!FileSystem.exists(folder))
+				continue;
+
+			for(file in FileSystem.readDirectory(folder))
+			{
+				var lower:String = file.toLowerCase();
+				if(!lower.endsWith('.lua') && !lower.endsWith('.hx'))
+					continue;
+
+				var text:String = try File.getContent(haxe.io.Path.join([folder, file])) catch(e:Dynamic) null;
+				if(text == null)
+					continue;
+
+				var rest:String = text;
+				while(videoRegex.match(rest))
+				{
+					addVideo(videoRegex.matched(2));
+					rest = videoRegex.matchedRight();
+				}
+
+				rest = text;
+				while(makeVideoRegex.match(rest))
+				{
+					addVideo(makeVideoRegex.matched(4));
+					rest = makeVideoRegex.matchedRight();
+				}
+			}
+		}
+		return videos;
+	}
+
+	public static function preloadVideo(key:String):Dynamic
+	{
+		if(key == null || key.trim().length < 1)
+			return null;
+
+		key = key.trim();
+		var file:String = Paths.video(key);
+		if(preloadedVideos.exists(file))
+			return file;
+
+		#if sys
+		if(FileSystem.exists(file))
+		{
+			try
+			{
+				File.getBytes(file);
+				preloadedVideos.set(file, true);
+				return file;
+			}
+			catch(err:Dynamic)
+				trace('ERROR! fail on preloading video $file -> $err');
+		}
+		else
+		#end
+		if(OpenFlAssets.exists(file, BINARY))
+		{
+			return OpenFlAssets.loadBytes(file).onComplete(function(_)
+			{
+				preloadedVideos.set(file, true);
+			}).onError(function(err)
+			{
+				trace('ERROR! fail on preloading video $file -> $err');
+			});
+		}
+		else
+		{
+			trace('VIDEO NOT FOUND: $key');
+			FlxG.log.error('VIDEO NOT FOUND: $key');
+		}
+		return null;
 	}
 	
 	static function preloadSound(key:String, ?path:String, ?modsAllowed:Bool = true):Dynamic {
@@ -884,4 +999,5 @@ class LoadingState extends ScriptedState
 @:dox(hide) enum LoaderJob {
 	SOUND(key:String, ?path:String, ?ignoreMods:Bool);
 	BMD(key:String);
+	VIDEO(key:String);
 }

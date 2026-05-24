@@ -1,0 +1,24 @@
+{
+  "name": "Set Property",
+  "description": "Sets a property path to a new value.",
+  "fields": [
+    {
+      "type": "input",
+      "label": "Property",
+      "value": 1,
+      "default": "",
+      "width": 170,
+      "order": 1,
+      "advance": false
+    },
+    {
+      "type": "input",
+      "label": "Value",
+      "value": 2,
+      "default": "",
+      "width": 150,
+      "x": 205,
+      "order": 2
+    }
+  ]
+}

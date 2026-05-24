@@ -1,0 +1,59 @@
+{
+  "name": "Camera Module Bop",
+  "description": "Runs repeated camera bops on beats or steps. Empty Value 2 disables it.",
+  "fields": [
+    {
+      "type": "stepper",
+      "label": "Every",
+      "group": 1,
+      "part": 1,
+      "default": 1,
+      "step": 1,
+      "min": 1,
+      "max": 999,
+      "decimals": 0,
+      "width": 70,
+      "order": 1,
+      "advance": false
+    },
+    {
+      "type": "dropdown",
+      "label": "Unit",
+      "group": 1,
+      "part": 2,
+      "default": "beat",
+      "options": ["beat", "step"],
+      "width": 110,
+      "x": 105,
+      "order": 2
+    },
+    {
+      "type": "stepper",
+      "label": "Game",
+      "group": 2,
+      "part": 1,
+      "default": 0.015,
+      "step": 0.005,
+      "min": -2,
+      "max": 2,
+      "decimals": 4,
+      "width": 82,
+      "order": 3,
+      "advance": false
+    },
+    {
+      "type": "stepper",
+      "label": "HUD",
+      "group": 2,
+      "part": 2,
+      "default": 0.03,
+      "step": 0.005,
+      "min": -2,
+      "max": 2,
+      "decimals": 4,
+      "width": 82,
+      "x": 125,
+      "order": 4
+    }
+  ]
+}
