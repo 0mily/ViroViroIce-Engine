@@ -20,7 +20,8 @@ using StringTools;
 	public var extra:Bool = false;
 	public var neatRating:Bool = true;
 	public var neatWindow:Float = 22.0;
-	public var sustainAlpha:Float = 0.6;
+	public var sustainAlpha:Float = 1;
+	public var opaqueSustains:Bool = false;
 	//public var customScore:Bool = false;
 
 // deles

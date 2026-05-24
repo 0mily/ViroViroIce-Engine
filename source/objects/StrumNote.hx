@@ -148,6 +148,30 @@ class StrumNote extends FlxSprite
 	}
 
 	override function update(elapsed:Float) {
+
+        if(!ClientPrefs.data.opaqueSustains) 
+		{
+			if(animation.curAnim != null && animation.curAnim.name != 'static' && animation.curAnim.name != 'pressed')
+			{
+				alpha = 1;
+			}
+			else
+			{
+				alpha = 0.8;
+			}
+        }
+		else
+		{
+			if(animation.curAnim != null && animation.curAnim.name != 'static' && animation.curAnim.name != 'pressed')
+			{
+				alpha = 1;
+			}
+			else
+			{
+				alpha = 1;
+			}
+		}
+
         if(resetAnim > 0) {
             resetAnim -= elapsed;
             if(resetAnim <= 0) {

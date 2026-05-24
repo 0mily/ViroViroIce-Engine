@@ -89,12 +89,18 @@ class VisualsSettingsSubState extends BaseOptionsMenu
 		option.decimals = 1;
 		addOption(option);
 
+		var option:Option = new Option('Opaque Notes',
+			'If checked, the displayed notes will become opaque.',
+			'opaqueSustains',
+			BOOL);
+		addOption(option);
+
 		var option:Option = new Option('Long Note Opacity',
 			'How much transparent should the Long Note be.',
 			'sustainAlpha',
 			PERCENT);
 		option.scrollSpeed = 1.6;
-		option.minValue = 0.5;
+		option.minValue = 0.2;
 		option.maxValue = 1;
 		option.changeValue = 0.1;
 		option.decimals = 1;
@@ -187,7 +193,7 @@ class VisualsSettingsSubState extends BaseOptionsMenu
 		
 		switch(curOption.variable)
 		{
-			case 'noteSkin', 'splashSkin', 'splashAlpha':
+			case 'noteSkin', 'splashSkin', 'splashAlpha', 'opaqueSustains':
 				if(!notesShown)
 				{
 					for (note in notes.members)
