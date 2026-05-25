@@ -436,7 +436,7 @@ class DialogueBoxPsych extends FlxSpriteGroup {
 		if(path != null && path.toLowerCase().endsWith('.xml'))
 			return DialoguePlus.parseXmlDialogue(path);
 
-		#if MODS_ALLOWED
+		#if ADDONS_ALLOWED
 		return cast (FileSystem.exists(path)) ? Json.parse(Paths.getTextFromFile(path)) : dummy();
 		#else
 		return cast (Assets.exists(path, TEXT)) ? Json.parse(Assets.getText(path)) : dummy();

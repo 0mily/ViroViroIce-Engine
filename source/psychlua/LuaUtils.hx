@@ -69,7 +69,7 @@ class LuaUtils
 	}
 	
 	public static function getModSetting(saveTag:String, ?modName:String = null) {
-		#if MODS_ALLOWED
+		#if ADDONS_ALLOWED
 		if(FlxG.save.data.modSettings == null) FlxG.save.data.modSettings = new Map<String, Dynamic>();
 
 		var settings:Map<String, Dynamic> = FlxG.save.data.modSettings.get(modName);

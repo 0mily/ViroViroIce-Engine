@@ -26,7 +26,7 @@ class AchievementPopup extends openfl.display.Sprite {
 		var achievement:Achievement = null;
 		if(Achievements.exists(achieve)) achievement = Achievements.get(achieve);
 
-		#if MODS_ALLOWED
+		#if ADDONS_ALLOWED
 		var lastMod = Mods.currentModDirectory;
 		if(achievement != null) Mods.currentModDirectory = achievement.mod != null ? achievement.mod : '';
 		#end
@@ -38,7 +38,7 @@ class AchievementPopup extends openfl.display.Sprite {
 		}
 		else graphic = Paths.image(image, false);
 
-		#if MODS_ALLOWED
+		#if ADDONS_ALLOWED
 		Mods.currentModDirectory = lastMod;
 		#end
 

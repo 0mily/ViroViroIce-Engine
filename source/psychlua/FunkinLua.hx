@@ -91,7 +91,7 @@ class FunkinLua {
 		this.scriptName = scriptName.trim();
 		this.parentState = state;
 		
-		#if MODS_ALLOWED
+		#if ADDONS_ALLOWED
 		this.modFolder = Mods.getModFolderFromPath(this.scriptName);
 		#end
 		
@@ -119,7 +119,7 @@ class FunkinLua {
 		
 		// mod settings
 		addLocalCallback("getModSetting", function(saveTag:String, ?modName:String = null) {
-			#if MODS_ALLOWED
+			#if ADDONS_ALLOWED
 			if(modName == null)
 			{
 				if(this.modFolder == null)
@@ -346,7 +346,7 @@ class FunkinLua {
 	static function findScript(scriptFile:String, ext:String = '.lua') {
 		if(!scriptFile.endsWith(ext)) scriptFile += ext;
 		var path:String = Paths.getPath(scriptFile, TEXT);
-		#if MODS_ALLOWED
+		#if ADDONS_ALLOWED
 		if(FileSystem.exists(path))
 		#else
 		if(Assets.exists(path, TEXT))
@@ -354,7 +354,7 @@ class FunkinLua {
 		{
 			return path;
 		}
-		#if MODS_ALLOWED
+		#if ADDONS_ALLOWED
 		else if(FileSystem.exists(scriptFile))
 		#else
 		else if(Assets.exists(scriptFile, TEXT))
@@ -408,7 +408,7 @@ class FunkinLua {
 		}
 
 		var foldersToCheck:Array<String> = [Paths.getSharedPath('shaders/')];
-		#if MODS_ALLOWED
+		#if ADDONS_ALLOWED
 		if(Mods.rootAddonsAllowed())
 			foldersToCheck.push(Paths.mods('shaders/'));
 		for(mod in Mods.getActiveModDirectories())
@@ -468,6 +468,7 @@ class FunkinLua {
 		CustomState.implement();
 		TextFunctions.implement();
 		ExtraFunctions.implement();
+		FreeplayLuaFunctions.implement();
 		CustomSubstate.implement();
 		ReflectionFunctions.implement();
 		DeprecatedFunctions.implement();

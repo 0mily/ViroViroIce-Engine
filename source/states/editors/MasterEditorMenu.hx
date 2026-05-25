@@ -77,7 +77,7 @@ class MasterEditorMenu extends ScriptedSubState
 		optionFunctions['Note Splash Editor'] =  () -> MusicBeatState.switchState(new NoteSplashEditorState());
 		optionFunctions['Test Stickers'] =  () -> MusicBeatState.switchState(new StickerTest());
 		
-		#if MODS_ALLOWED
+		#if ADDONS_ALLOWED
 		textBG = new FlxSprite(0, FlxG.height - 42).makeGraphic(FlxG.width, 42, 0xFF000000);
 		textBG.scrollFactor.set();
 		textBG.alpha = 0.6;
@@ -129,7 +129,7 @@ class MasterEditorMenu extends ScriptedSubState
 		{
 			changeSelection(1);
 		}
-		#if MODS_ALLOWED
+		#if ADDONS_ALLOWED
 		if(controls.UI_LEFT_P)
 		{
 			changeDirectory(-1);
@@ -177,7 +177,7 @@ class MasterEditorMenu extends ScriptedSubState
 		}
 	}
 
-	#if MODS_ALLOWED
+	#if ADDONS_ALLOWED
 	function changeDirectory(change:Int = 0) {
 		var next:Int = FlxMath.wrap(curDirectory + change, 0, directories.length - 1);
 		curDirectory = next;

@@ -139,7 +139,7 @@ class HScript extends Iris {
 		if (filePath != null && filePath.length > 0)
 		{
 			this.origin = filePath;
-			#if MODS_ALLOWED
+			#if ADDONS_ALLOWED
 			this.modFolder = Mods.getModFolderFromPath(filePath);
 			#end
 		}

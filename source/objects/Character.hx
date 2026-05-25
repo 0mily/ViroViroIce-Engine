@@ -186,7 +186,7 @@ class Character extends FlxSprite
 
 	static function getCharacterCacheContext():String
 	{
-		#if MODS_ALLOWED
+		#if ADDONS_ALLOWED
 		return [
 			Mods.getSelectedContentDirectory(),
 			Mods.currentModDirectory ?? '',
@@ -334,7 +334,7 @@ class Character extends FlxSprite
 
 	public static function readCharacterPath(path:String):String
 	{
-		#if MODS_ALLOWED
+		#if ADDONS_ALLOWED
 		return Paths.getTextFromFile(path);
 		#else
 		return Assets.getText(path);

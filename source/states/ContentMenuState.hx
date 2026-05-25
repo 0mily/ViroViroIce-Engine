@@ -133,7 +133,7 @@ class ContentMenuState extends MusicBeatState
 	function buildEntries():Array<ContentEntry>
 	{
 		var list:Array<ContentEntry> = [ContentEntry.baseGame()];
-		#if MODS_ALLOWED
+		#if ADDONS_ALLOWED
 		Mods.clearContentCaches();
 		for (folder in Mods.getContentDirectories())
 			list.push(new ContentEntry(folder));

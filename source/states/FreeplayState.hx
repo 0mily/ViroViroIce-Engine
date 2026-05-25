@@ -500,7 +500,7 @@ class FreeplayState extends ScriptedState
 			stopMusicPlay = true;
 
 			destroyFreeplayVocals();
-			#if (MODS_ALLOWED && DISCORD_ALLOWED)
+			#if (ADDONS_ALLOWED && DISCORD_ALLOWED)
 			DiscordClient.loadModRPC();
 			#end
 		}
@@ -522,7 +522,7 @@ class FreeplayState extends ScriptedState
 		try
 		{
 			var path:String = Paths.getPath('characters/$char.json', TEXT);
-			#if MODS_ALLOWED
+			#if ADDONS_ALLOWED
 			var character:Dynamic = Json.parse(Paths.getTextFromFile(path));
 			#else
 			var character:Dynamic = Json.parse(Assets.getText(path));

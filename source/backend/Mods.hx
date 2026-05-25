@@ -305,7 +305,7 @@ class Mods
 	{
 		var list:Array<String> = [];
 		
-		#if MODS_ALLOWED
+		#if ADDONS_ALLOWED
 		var modsFolder:String = Paths.mods();
 
 		if (FileSystem.exists(modsFolder)) {
@@ -326,7 +326,7 @@ class Mods
 
 		var list:Array<String> = [];
 
-		#if MODS_ALLOWED
+		#if ADDONS_ALLOWED
 		var contentsFolder:String = Paths.contents();
 		if (FileSystem.exists(contentsFolder))
 		{
@@ -346,7 +346,7 @@ class Mods
 
 	static function directoryIsContent(folder:String):Bool
 	{
-		#if MODS_ALLOWED
+		#if ADDONS_ALLOWED
 		folder = normalizeFolderKey(folder);
 		if (folder.length < 1)
 			return false;
@@ -365,7 +365,7 @@ class Mods
 	{
 		var list:Array<String> = [];
 
-		#if MODS_ALLOWED
+		#if ADDONS_ALLOWED
 		content = normalizeFolderKey(content ?? getSelectedContentDirectory());
 		if (content.length < 1 || !directoryIsContent(content))
 			return list;
@@ -413,7 +413,7 @@ class Mods
 
 	public static function getEditorModDirectories(?list:ModsList):Array<String>
 	{
-		#if MODS_ALLOWED
+		#if ADDONS_ALLOWED
 		if (hasSelectedContent())
 			return getGameplayModDirectories(list);
 
@@ -483,7 +483,7 @@ class Mods
 
 	public static function getContentData(?folder:String):ContentData
 	{
-		#if MODS_ALLOWED
+		#if ADDONS_ALLOWED
 		folder = normalizeFolderKey(folder);
 		if (folder.length < 1)
 			return null;
@@ -606,7 +606,7 @@ class Mods
 				addFolder(pth);
 		}
 
-		#if MODS_ALLOWED
+		#if ADDONS_ALLOWED
 		if(mods)
 		{
 			if(isCurrentPackageActive() && packageSupportsKey(fileToFind))
@@ -639,7 +639,7 @@ class Mods
 
 	public static function getPack(?folder:String = null):Dynamic
 	{
-		#if MODS_ALLOWED
+		#if ADDONS_ALLOWED
 		if(folder == null) folder = Mods.currentModDirectory;
 		if(folder == null || folder.trim().length < 1)
 			return null;
@@ -779,7 +779,7 @@ class Mods
 	{
 		var list:Array<String> = [];
 
-		#if MODS_ALLOWED
+		#if ADDONS_ALLOWED
 		mod = mod == null ? '' : mod.trim();
 		for(rootFolder in PACKAGE_MOD_FOLDERS)
 		{
@@ -809,7 +809,7 @@ class Mods
 
 	static function isPackageFolder(absolute:String):Bool  // é mais facil fazer com carinho eu acho
 	{
-		#if MODS_ALLOWED
+		#if ADDONS_ALLOWED
 		if (absolute == null || !FileSystem.exists(absolute) || !FileSystem.isDirectory(absolute))
 			return false;
 
@@ -828,7 +828,7 @@ class Mods
 
 	public static function getPackagePack(?packageFolder:String):PackageModData
 	{
-		#if MODS_ALLOWED
+		#if ADDONS_ALLOWED
 		if (packageFolder == null) packageFolder = currentPackageDirectory;
 		if (packageFolder == null || packageFolder.trim().length < 1)
 			return null;
@@ -884,7 +884,7 @@ class Mods
 				list.push(folder);
 		};
 
-		#if MODS_ALLOWED
+		#if ADDONS_ALLOWED
 		if (includeCurrent && isCurrentPackageActive())
 			addPackage(currentPackageDirectory);
 
@@ -917,7 +917,7 @@ class Mods
 	inline public static function parseList():ModsList {
 		var list:ModsList = {enabled: [], disabled: [], all: [], available: []};
 
-		#if MODS_ALLOWED
+		#if ADDONS_ALLOWED
 		#if sys
 		var listFile:String = FileSystem.exists(ADDONS_LIST_FILE) ? ADDONS_LIST_FILE : LEGACY_MODS_LIST_FILE;
 		if (FileSystem.exists(listFile)) {
@@ -955,7 +955,7 @@ class Mods
 	}
 
 	public static function updateModList(?list:ModsList) {
-		#if MODS_ALLOWED
+		#if ADDONS_ALLOWED
 		var list:ModsList = (list ?? parseList());
 
 		for (folder in getModDirectories()) {
@@ -1015,7 +1015,7 @@ class Mods
 		Mods.currentModDirectory = '';
 		Mods.currentPackageDirectory = '';
 
-		#if MODS_ALLOWED
+		#if ADDONS_ALLOWED
 		syncSelectedContentFromPrefs();
 		var contentMods:Array<String> = getContentModDirectories();
 		if (contentMods.length > 0)

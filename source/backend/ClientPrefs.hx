@@ -305,7 +305,7 @@ class ClientPrefs {
 				modsEnabled.set(mod, enabled);
 		}
 		loadContentSelectionStateFromSave();
-		#if MODS_ALLOWED
+		#if ADDONS_ALLOWED
 		Mods.loadTopMod();
 		Mods.pushGlobalMods();
 		#end

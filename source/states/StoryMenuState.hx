@@ -481,7 +481,7 @@ class StoryMenuState extends ScriptedState
 			FreeplayState.destroyFreeplayVocals();
 		});
 		
-		#if (MODS_ALLOWED && DISCORD_ALLOWED)
+		#if (ADDONS_ALLOWED && DISCORD_ALLOWED)
 		DiscordClient.loadModRPC();
 		#end
 		

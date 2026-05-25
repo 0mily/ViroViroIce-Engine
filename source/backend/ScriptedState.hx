@@ -31,7 +31,7 @@ class ScriptedState extends ScriptedSubState {
 	}
 	
 	public override function create():Void {
-		#if MODS_ALLOWED Mods.updatedOnState = false; #end
+		#if ADDONS_ALLOWED Mods.updatedOnState = false; #end
 		
 		super.create();
 		
@@ -69,7 +69,7 @@ class ScriptedState extends ScriptedSubState {
 	}
 
 	public override function update(elapsed:Float):Void {
-		#if MODS_ALLOWED
+		#if ADDONS_ALLOWED
 		if (FlxG.keys.justPressed.TAB && subState == null && MusicBeatState.isMainMenuContext(this))
 		{
 			FlxG.sound.play(Paths.sound('scrollMenu'), 0.6);

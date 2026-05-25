@@ -28,7 +28,7 @@ import sys.FileSystem;
 import sys.io.File;
 #end
 
-#if MODS_ALLOWED
+#if ADDONS_ALLOWED
 import backend.Mods;
 #end
 
@@ -158,7 +158,7 @@ class Paths
 
 	public static function getPath(file:String, ?type:AssetType = TEXT, ?parentfolder:String, ?modsAllowed:Bool = true):String
 	{
-		#if MODS_ALLOWED
+		#if ADDONS_ALLOWED
 		if(modsAllowed)
 		{
 			var customFile:String = file;
@@ -210,7 +210,7 @@ class Paths
 
 	static public function video(key:String)
 	{
-		#if MODS_ALLOWED
+		#if ADDONS_ALLOWED
 		var file:String = modsVideo(key);
 		if(FileSystem.exists(file)) return file;
 		#end
@@ -254,7 +254,7 @@ class Paths
 		if (bitmap == null)
 		{
 			var file:String = getPath(key, IMAGE, parentFolder, true);
-			#if (MODS_ALLOWED && sys)
+			#if (ADDONS_ALLOWED && sys)
 			if (FileSystem.exists(file))
 				bitmap = BitmapData.fromFile(file);
 			else #end if (OpenFlAssets.exists(file, IMAGE))
@@ -309,7 +309,7 @@ class Paths
 	inline static public function font(key:String, embedded:Bool = true)
 	{
 		var folderKey:String = Language.getFileTranslation('fonts/$key');
-		#if (MODS_ALLOWED && sys)
+		#if (ADDONS_ALLOWED && sys)
 		var file:String = modFolders(folderKey);
 		if (FileSystem.exists(file)) return file;
 		#end
@@ -319,7 +319,7 @@ class Paths
 
 	public static function fileExists(key:String, type:AssetType, ?ignoreMods:Bool = false, ?parentFolder:String = null)
 {
-	#if MODS_ALLOWED
+	#if ADDONS_ALLOWED
 	if(!ignoreMods)
 	{
 		var modKey:String = key;
@@ -339,9 +339,9 @@ class Paths
 		var imageLoaded:FlxGraphic = image(key, parentFolder, allowGPU);
 
 		var myXml:Dynamic = getPath('images/$key.xml', TEXT, parentFolder, true);
-		if(OpenFlAssets.exists(myXml) #if MODS_ALLOWED || (FileSystem.exists(myXml) && (useMod = true)) #end )
+		if(OpenFlAssets.exists(myXml) #if ADDONS_ALLOWED || (FileSystem.exists(myXml) && (useMod = true)) #end )
 		{
-			#if MODS_ALLOWED
+			#if ADDONS_ALLOWED
 			return FlxAtlasFrames.fromSparrow(imageLoaded, (useMod ? getTextFromFile(myXml) : myXml));
 			#else
 			return FlxAtlasFrames.fromSparrow(imageLoaded, myXml);
@@ -350,9 +350,9 @@ class Paths
 		else
 		{
 			var myJson:Dynamic = getPath('images/$key.json', TEXT, parentFolder, true);
-			if(OpenFlAssets.exists(myJson) #if MODS_ALLOWED || (FileSystem.exists(myJson) && (useMod = true)) #end )
+			if(OpenFlAssets.exists(myJson) #if ADDONS_ALLOWED || (FileSystem.exists(myJson) && (useMod = true)) #end )
 			{
-				#if MODS_ALLOWED
+				#if ADDONS_ALLOWED
 				return FlxAtlasFrames.fromTexturePackerJson(imageLoaded, (useMod ? getTextFromFile(myJson) : myJson));
 				#else
 				return FlxAtlasFrames.fromTexturePackerJson(imageLoaded, myJson);
@@ -405,7 +405,7 @@ class Paths
 	inline static public function getSparrowAtlas(key:String, ?parentFolder:String = null, ?allowGPU:Bool = true):FlxAtlasFrames
 	{
 		var imageLoaded:FlxGraphic = image(key, parentFolder, allowGPU);
-		#if (MODS_ALLOWED && sys)
+		#if (ADDONS_ALLOWED && sys)
 		var xmlExists:Bool = false;
 
 		var xml:String = modsXml(key);
@@ -420,7 +420,7 @@ class Paths
 	inline static public function getPackerAtlas(key:String, ?parentFolder:String = null, ?allowGPU:Bool = true):FlxAtlasFrames
 	{
 		var imageLoaded:FlxGraphic = image(key, parentFolder, allowGPU);
-		#if (MODS_ALLOWED && sys)
+		#if (ADDONS_ALLOWED && sys)
 		var txtExists:Bool = false;
 		
 		var txt:String = modsTxt(key);
@@ -435,7 +435,7 @@ class Paths
 	inline static public function getAsepriteAtlas(key:String, ?parentFolder:String = null, ?allowGPU:Bool = true):FlxAtlasFrames
 	{
 		var imageLoaded:FlxGraphic = image(key, parentFolder, allowGPU);
-		#if (MODS_ALLOWED && sys)
+		#if (ADDONS_ALLOWED && sys)
 		var jsonExists:Bool = false;
 
 		var json:String = modsImagesJson(key);
@@ -462,7 +462,7 @@ class Paths
 		//trace('precaching sound: $file');
 		if(!currentTrackedSounds.exists(file))
 		{
-			#if (MODS_ALLOWED && sys)
+			#if (ADDONS_ALLOWED && sys)
 			if(FileSystem.exists(file))
 				currentTrackedSounds.set(file, Sound.fromFile(file));
 			#else
@@ -480,7 +480,7 @@ class Paths
 		return currentTrackedSounds.get(file);
 	}
 
-	#if MODS_ALLOWED
+	#if ADDONS_ALLOWED
 	inline static public function mods(key:String = '')
 		return Mods.resolveModPath(key);
 

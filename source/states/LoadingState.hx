@@ -486,7 +486,7 @@ class LoadingState extends ScriptedState
 				var path:String = Paths.json('$folder/preload');
 				var json:Dynamic = null;
 
-				#if MODS_ALLOWED
+				#if ADDONS_ALLOWED
 				var moddyFile:String = Paths.modsJson('$folder/preload');
 				if (FileSystem.exists(moddyFile)) json = Json.parse(Paths.getTextFromFile(moddyFile));
 				else json = Json.parse(Paths.getTextFromFile(path));
@@ -763,7 +763,7 @@ class LoadingState extends ScriptedState
 			img = img.trim();
 			#if flxanimate
 			var animToFind:String = Paths.getPath('images/$img/Animation.json', TEXT);
-			if (#if MODS_ALLOWED FileSystem.exists(animToFind) || #end Assets.exists(animToFind))
+			if (#if ADDONS_ALLOWED FileSystem.exists(animToFind) || #end Assets.exists(animToFind))
 				isAnimateAtlas = true;
 			#end
 

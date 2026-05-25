@@ -1408,7 +1408,7 @@ class PlayState extends ScriptedState
 		for(folder in Character.CHARACTER_FILE_FOLDERS)
 		{
 			var scriptFile:String = folder + name + '.' + extension;
-			#if MODS_ALLOWED
+			#if ADDONS_ALLOWED
 			var replacePath:String = Paths.modFolders(scriptFile);
 			if(FileSystem.exists(replacePath))
 				return replacePath;

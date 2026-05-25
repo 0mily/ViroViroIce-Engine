@@ -90,9 +90,16 @@ class PsychUIDropDownMenu extends PsychUIInputText
 	{
 		var lastFocus = PsychUIInputText.focusOn;
 		super.update(elapsed);
+		if(button == null || !button.exists)
+			return;
+
+		var inputCamera:FlxCamera = camera != null ? camera : FlxG.camera;
+		if(inputCamera == null)
+			return;
+
 		if(FlxG.mouse.justPressed)
 		{
-			if(FlxG.mouse.overlaps(button, camera))
+			if(FlxG.mouse.overlaps(button, inputCamera))
 			{
 				button.animation.play('pressed', true);
 				if(lastFocus != this)
@@ -186,6 +193,8 @@ class PsychUIDropDownMenu extends PsychUIInputText
 	{
 		selectedIndex = num;
 		showDropDown(false);
+		if(PsychUIInputText.focusOn == this)
+			PsychUIInputText.focusOn = null;
 		if(onSelect != null) onSelect(num, label);
 		if(broadcastDropDownEvent) PsychUIEventHandler.event(CLICK_EVENT, this);
 	}
@@ -211,7 +220,10 @@ class PsychUIDropDownMenu extends PsychUIInputText
 		showDropDown(false);
 
 		for (item in _items)
+		{
+			remove(item, true);
 			item.kill();
+		}
 
 		_items = [];
 		list = [];

@@ -39,7 +39,7 @@ class CreditsState extends ScriptedState
 		grpOptions = new FlxTypedGroup<Alphabet>();
 		add(grpOptions);
 
-		#if MODS_ALLOWED
+		#if ADDONS_ALLOWED
 		for (mod in Mods.getGameplayModDirectories())
 			creditsStuff = creditsStuff.concat(parseCredits(mod));
 		#end
@@ -253,11 +253,11 @@ class CreditsState extends ScriptedState
 	public static function parseCredits(?folder:String):Array<Array<String>> {
 		var list:Array<Array<String>> = [];
 		var path:String = 'data/credits.txt';
-		var creditsFile:String = (#if MODS_ALLOWED folder != null ? Paths.mods('$folder/$path') : #end Paths.getPath(path, TEXT, null, false));
+		var creditsFile:String = (#if ADDONS_ALLOWED folder != null ? Paths.mods('$folder/$path') : #end Paths.getPath(path, TEXT, null, false));
 		
 		#if TRANSLATIONS_ALLOWED
 		path = 'data/credits-${ClientPrefs.data.language}.txt';
-		var translatedCredits:String = (#if MODS_ALLOWED folder != null ? Paths.mods('$folder/$path') : #end Paths.getPath(path, TEXT, null, false));
+		var translatedCredits:String = (#if ADDONS_ALLOWED folder != null ? Paths.mods('$folder/$path') : #end Paths.getPath(path, TEXT, null, false));
 		#end
 
 		if (#if TRANSLATIONS_ALLOWED (FileSystem.exists(translatedCredits) && (creditsFile = translatedCredits) == translatedCredits) || #end FileSystem.exists(creditsFile))

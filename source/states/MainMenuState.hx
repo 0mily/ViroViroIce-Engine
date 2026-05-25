@@ -37,7 +37,7 @@ class MainMenuState extends ScriptedState
 	var optionShit:Array<String> = [
 		'story_mode',
 		'freeplay',
-		#if MODS_ALLOWED 'mods', #end
+		#if ADDONS_ALLOWED 'mods', #end
 		'credits',
 		'options'
 	];
@@ -59,7 +59,7 @@ class MainMenuState extends ScriptedState
 		openDebugMenu = debug;
 	}
 	override function create() {
-		#if MODS_ALLOWED
+		#if ADDONS_ALLOWED
 		Mods.loadTopMod();
 		Mods.pushGlobalMods();
 		#end
@@ -123,7 +123,7 @@ class MainMenuState extends ScriptedState
 		if (leDate.getDay() == 5 && leDate.getHours() >= 18)
 			Achievements.unlock('friday_night_play');
 
-		#if MODS_ALLOWED
+		#if ADDONS_ALLOWED
 		Achievements.reloadList();
 		#end
 		#end

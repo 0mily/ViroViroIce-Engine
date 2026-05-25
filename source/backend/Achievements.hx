@@ -206,7 +206,7 @@ class Achievements {
 		_sortID++;
 	}
 
-	#if MODS_ALLOWED
+	#if ADDONS_ALLOWED
 	public static function reloadList()
 	{
 		// remove modded achievements

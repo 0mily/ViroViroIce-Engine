@@ -45,7 +45,7 @@ class LanguageSubState extends ScriptedSubState
 					if(!displayLanguages.exists(langFile))
 					{
 						var path:String = '$directory/$file';
-						#if MODS_ALLOWED 
+						#if ADDONS_ALLOWED 
 						var txt:String = Paths.getTextFromFile(path);
 						#else
 						var txt:String = Assets.getText(path);

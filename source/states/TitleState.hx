@@ -610,7 +610,7 @@ class TitleState extends ScriptedState
 
 	function getTitleTextFileLines(fileName:String):Array<String>
 	{
-		#if MODS_ALLOWED
+		#if ADDONS_ALLOWED
 		return Mods.mergeAllTextsNamed('data/$fileName.txt');
 		#else
 		var fullText:String = Assets.getText(Paths.txt(fileName));
@@ -692,7 +692,7 @@ class TitleState extends ScriptedState
 
 	function getIntroTextShit():Array<Array<String>>
 	{
-		#if MODS_ALLOWED
+		#if ADDONS_ALLOWED
 		var firstArray:Array<String> = Mods.mergeAllTextsNamed('data/introText.txt');
 		#else
 		var fullText:String = Assets.getText(Paths.txt('introText'));

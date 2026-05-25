@@ -134,7 +134,7 @@ class ExtraFunctions {
 
 		// File management
 		FunkinLua.registerFunction("checkFileExists", function(filename:String, absolute:Bool = false) {
-			#if MODS_ALLOWED
+			#if ADDONS_ALLOWED
 			if(absolute) return FileSystem.exists(filename);
 
 			return FileSystem.exists(Paths.getPath(filename, TEXT));
@@ -148,7 +148,7 @@ class ExtraFunctions {
 		FunkinLua.registerFunction("saveFile", function(path:String, content:String, absolute:Bool = false)
 		{
 			try {
-				#if MODS_ALLOWED
+				#if ADDONS_ALLOWED
 				if(!absolute)
 					File.saveContent(Paths.mods(path), content);
 				else

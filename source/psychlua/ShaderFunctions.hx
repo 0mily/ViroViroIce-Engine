@@ -33,7 +33,7 @@ class ShaderFunctions
 		shaderMap.get(owner).set(tag, shader);
 	}
 
-	#if (!flash && MODS_ALLOWED && sys)
+	#if (!flash && ADDONS_ALLOWED && sys)
 	public static function getShader(obj:String, ?shaderTag:String):FlxRuntimeShader
 	{
 		if (shaderTag != null && shaderTag.length > 0)
@@ -69,7 +69,7 @@ class ShaderFunctions
 	{
 		funk.addLocalCallback("initLuaShader", function(name:String) {
 			if (!ClientPrefs.data.shaders) return false;
-			#if (!flash && MODS_ALLOWED && sys)
+			#if (!flash && ADDONS_ALLOWED && sys)
 			return funk.initLuaShader(name);
 			#else
 			FunkinLua.luaTrace("initLuaShader: Platform unsupported for Runtime Shaders!!!!!", false, false, ERROR);
@@ -107,7 +107,7 @@ class ShaderFunctions
 
 		// removeSpriteShader(obj, ?shaderTag)
 		funk.addLocalCallback("removeSpriteShader", function(obj:String, ?shaderTag:String) {
-			#if (!flash && MODS_ALLOWED && sys)
+			#if (!flash && ADDONS_ALLOWED && sys)
 			if (shaderTag != null && shaderTag.length > 0) {
 				if (shaderMap.exists(obj)) shaderMap.get(obj).remove(shaderTag);
 			} else {
@@ -130,7 +130,7 @@ class ShaderFunctions
 		// setCameraShader(cam, shader, ?shaderTag)
 		funk.addLocalCallback("setCameraShader", function(cam:String, shader:String, ?shaderTag:String) {
 			if (!ClientPrefs.data.shaders) return false;
-			#if (!flash && MODS_ALLOWED && sys)
+			#if (!flash && ADDONS_ALLOWED && sys)
 			if (!funk.runtimeShaders.exists(shader) && !funk.initLuaShader(shader)) {
 				FunkinLua.luaTrace('setCameraShader: Shader "$shader" não encontrado!', false, false, ERROR);
 				return false;
@@ -156,7 +156,7 @@ class ShaderFunctions
 
 		// removeCameraShader(cam, ?shaderTag)
 		funk.addLocalCallback("removeCameraShader", function(cam:String, ?shaderTag:String) {
-			#if (!flash && MODS_ALLOWED && sys)
+			#if (!flash && ADDONS_ALLOWED && sys)
 			var leCam:FlxCamera = LuaUtils.cameraFromString(cam);
 			if (leCam != null) {
 				if (shaderTag != null && shaderTag.length > 0) {
@@ -186,7 +186,7 @@ class ShaderFunctions
 		// setWindowShader(shader, ?shaderTag)
 		funk.addLocalCallback("setWindowShader", function(shader:String, ?shaderTag:String) {
 			if (!ClientPrefs.data.shaders) return false;
-			#if (!flash && MODS_ALLOWED && sys)
+			#if (!flash && ADDONS_ALLOWED && sys)
 			if (!funk.runtimeShaders.exists(shader) && !funk.initLuaShader(shader)) {
 				FunkinLua.luaTrace('setWindowShader: Shader "$shader" não encontrado!', false, false, ERROR);
 				return false;
@@ -210,7 +210,7 @@ class ShaderFunctions
 
 		// removeWindowShader(?shaderTag)
 		funk.addLocalCallback("removeWindowShader", function(?shaderTag:String) {
-			#if (!flash && MODS_ALLOWED && sys)
+			#if (!flash && ADDONS_ALLOWED && sys)
 			if (shaderTag != null && shaderTag.length > 0) {
 				if (shaderMap.exists("window") && shaderMap.get("window").exists(shaderTag)) {
 					var toRemove:FlxRuntimeShader = shaderMap.get("window").get(shaderTag);
@@ -239,7 +239,7 @@ class ShaderFunctions
 
 		// doTweenShader(tag, obj, shaderTag, prop, value, duration, ?ease)
 		funk.addLocalCallback("doTweenShader", function(tag:String, obj:String, shaderTag:String, prop:String, value:Float, duration:Float, ?ease:String = "linear") {
-			#if (!flash && MODS_ALLOWED && sys)
+			#if (!flash && ADDONS_ALLOWED && sys)
 			var shader:FlxRuntimeShader = getShader(obj, shaderTag);
 			if (shader == null) {
 				FunkinLua.luaTrace('doTweenShader: Shader "$shaderTag" in "$obj" not found!!!!!', false, false, ERROR);
@@ -266,7 +266,7 @@ class ShaderFunctions
 
 		// getShaderBool(obj, prop, ?shaderTag)
 		funk.addLocalCallback("getShaderBool", function(obj:String, prop:String, ?shaderTag:String) {
-			#if (!flash && MODS_ALLOWED && sys)
+			#if (!flash && ADDONS_ALLOWED && sys)
 			var shader = getShader(obj, shaderTag);
 			if (shader == null) { FunkinLua.luaTrace('getShaderBool: shader not found in "$obj"!', false, false, ERROR); return null; }
 			return shader.getBool(prop);
@@ -278,7 +278,7 @@ class ShaderFunctions
 
 		// getShaderBoolArray(obj, prop, ?shaderTag)
 		funk.addLocalCallback("getShaderBoolArray", function(obj:String, prop:String, ?shaderTag:String) {
-			#if (!flash && MODS_ALLOWED && sys)
+			#if (!flash && ADDONS_ALLOWED && sys)
 			var shader = getShader(obj, shaderTag);
 			if (shader == null) { FunkinLua.luaTrace('getShaderBoolArray: shader not found in "$obj"!', false, false, ERROR); return null; }
 			return shader.getBoolArray(prop);
@@ -290,7 +290,7 @@ class ShaderFunctions
 
 		// getShaderInt(obj, prop, ?shaderTag)
 		funk.addLocalCallback("getShaderInt", function(obj:String, prop:String, ?shaderTag:String) {
-			#if (!flash && MODS_ALLOWED && sys)
+			#if (!flash && ADDONS_ALLOWED && sys)
 			var shader = getShader(obj, shaderTag);
 			if (shader == null) { FunkinLua.luaTrace('getShaderInt: shader not found in "$obj"!', false, false, ERROR); return null; }
 			return shader.getInt(prop);
@@ -302,7 +302,7 @@ class ShaderFunctions
 
 		// getShaderIntArray(obj, prop, ?shaderTag)
 		funk.addLocalCallback("getShaderIntArray", function(obj:String, prop:String, ?shaderTag:String) {
-			#if (!flash && MODS_ALLOWED && sys)
+			#if (!flash && ADDONS_ALLOWED && sys)
 			var shader = getShader(obj, shaderTag);
 			if (shader == null) { FunkinLua.luaTrace('getShaderIntArray: shader not found in "$obj"!', false, false, ERROR); return null; }
 			return shader.getIntArray(prop);
@@ -314,7 +314,7 @@ class ShaderFunctions
 
 		// getShaderFloat(obj, prop, ?shaderTag)
 		funk.addLocalCallback("getShaderFloat", function(obj:String, prop:String, ?shaderTag:String) {
-			#if (!flash && MODS_ALLOWED && sys)
+			#if (!flash && ADDONS_ALLOWED && sys)
 			var shader = getShader(obj, shaderTag);
 			if (shader == null) { FunkinLua.luaTrace('getShaderFloat: shader not found in "$obj"!', false, false, ERROR); return null; }
 			return shader.getFloat(prop);
@@ -326,7 +326,7 @@ class ShaderFunctions
 
 		// getShaderFloatArray(obj, prop, ?shaderTag)
 		funk.addLocalCallback("getShaderFloatArray", function(obj:String, prop:String, ?shaderTag:String) {
-			#if (!flash && MODS_ALLOWED && sys)
+			#if (!flash && ADDONS_ALLOWED && sys)
 			var shader = getShader(obj, shaderTag);
 			if (shader == null) { FunkinLua.luaTrace('getShaderFloatArray: shader not found in "$obj"!', false, false, ERROR); return null; }
 			return shader.getFloatArray(prop);
@@ -343,7 +343,7 @@ class ShaderFunctions
 
 		// setShaderBool(obj, prop, value, ?shaderTag)
 		funk.addLocalCallback("setShaderBool", function(obj:String, prop:String, value:Bool, ?shaderTag:String) {
-			#if (!flash && MODS_ALLOWED && sys)
+			#if (!flash && ADDONS_ALLOWED && sys)
 			var shader = getShader(obj, shaderTag);
 			if (shader == null) { FunkinLua.luaTrace('setShaderBool: shader not found in "$obj"!', false, false, ERROR); return false; }
 			shader.setBool(prop, value);
@@ -356,7 +356,7 @@ class ShaderFunctions
 
 		// setShaderBoolArray(obj, prop, values, ?shaderTag)
 		funk.addLocalCallback("setShaderBoolArray", function(obj:String, prop:String, values:Dynamic, ?shaderTag:String) {
-			#if (!flash && MODS_ALLOWED && sys)
+			#if (!flash && ADDONS_ALLOWED && sys)
 			var shader = getShader(obj, shaderTag);
 			if (shader == null) { FunkinLua.luaTrace('setShaderBoolArray: shader not found in "$obj"!', false, false, ERROR); return false; }
 			shader.setBoolArray(prop, values);
@@ -369,7 +369,7 @@ class ShaderFunctions
 
 		// setShaderInt(obj, prop, value, ?shaderTag)
 		funk.addLocalCallback("setShaderInt", function(obj:String, prop:String, value:Int, ?shaderTag:String) {
-			#if (!flash && MODS_ALLOWED && sys)
+			#if (!flash && ADDONS_ALLOWED && sys)
 			var shader = getShader(obj, shaderTag);
 			if (shader == null) { FunkinLua.luaTrace('setShaderInt: shader not found in "$obj"!', false, false, ERROR); return false; }
 			shader.setInt(prop, value);
@@ -382,7 +382,7 @@ class ShaderFunctions
 
 		// setShaderIntArray(obj, prop, values, ?shaderTag)
 		funk.addLocalCallback("setShaderIntArray", function(obj:String, prop:String, values:Dynamic, ?shaderTag:String) {
-			#if (!flash && MODS_ALLOWED && sys)
+			#if (!flash && ADDONS_ALLOWED && sys)
 			var shader = getShader(obj, shaderTag);
 			if (shader == null) { FunkinLua.luaTrace('setShaderIntArray: shader not found in "$obj"!', false, false, ERROR); return false; }
 			shader.setIntArray(prop, values);
@@ -395,7 +395,7 @@ class ShaderFunctions
 
 		// setShaderFloat(obj, prop, value, ?shaderTag)
 		funk.addLocalCallback("setShaderFloat", function(obj:String, prop:String, value:Float, ?shaderTag:String) {
-			#if (!flash && MODS_ALLOWED && sys)
+			#if (!flash && ADDONS_ALLOWED && sys)
 			var shader = getShader(obj, shaderTag);
 			if (shader == null) { FunkinLua.luaTrace('setShaderFloat: shader not found in "$obj"!', false, false, ERROR); return false; }
 			shader.setFloat(prop, value);
@@ -408,7 +408,7 @@ class ShaderFunctions
 
 		// setShaderFloatArray(obj, prop, values, ?shaderTag)
 		funk.addLocalCallback("setShaderFloatArray", function(obj:String, prop:String, values:Dynamic, ?shaderTag:String) {
-			#if (!flash && MODS_ALLOWED && sys)
+			#if (!flash && ADDONS_ALLOWED && sys)
 			var shader = getShader(obj, shaderTag);
 			if (shader == null) { FunkinLua.luaTrace('setShaderFloatArray: shader not found in "$obj"!', false, false, ERROR); return false; }
 			shader.setFloatArray(prop, values);
@@ -421,7 +421,7 @@ class ShaderFunctions
 
 		// setShaderSampler2D(obj, prop, bitmapdataPath, ?shaderTag)
 		funk.addLocalCallback("setShaderSampler2D", function(obj:String, prop:String, bitmapdataPath:String, ?shaderTag:String) {
-			#if (!flash && MODS_ALLOWED && sys)
+			#if (!flash && ADDONS_ALLOWED && sys)
 			var shader = getShader(obj, shaderTag);
 			if (shader == null) { FunkinLua.luaTrace('setShaderSampler2D: shader not found in "$obj"!', false, false, ERROR); return false; }
 			var value = Paths.image(bitmapdataPath);
@@ -437,7 +437,7 @@ class ShaderFunctions
 		});
 
 		funk.addLocalCallback("setShaderValue", function(obj:String, prop:String, value:Dynamic, ?shaderTag:String) {
-			#if (!flash && MODS_ALLOWED && sys)
+			#if (!flash && ADDONS_ALLOWED && sys)
 			var shader = getShader(obj, shaderTag);
 			if (shader == null) { FunkinLua.luaTrace('setShaderValue: shader not found in "$obj"!', false, false, ERROR); return false; }
 			if (Std.isOfType(shader, shaders.CodenameRuntimeShader)) {

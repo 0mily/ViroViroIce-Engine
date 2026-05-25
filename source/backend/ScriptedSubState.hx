@@ -231,7 +231,7 @@ class ScriptedSubState extends MusicBeatSubstate {
 
 	function getModOnlyScriptPath(file:String):String
 	{
-		#if MODS_ALLOWED
+		#if ADDONS_ALLOWED
 		for (mod in Mods.getActiveModDirectories())
 		{
 			var modPath:String = Paths.mods(mod + '/' + file);
@@ -320,7 +320,7 @@ class ScriptedSubState extends MusicBeatSubstate {
 	 * @return 	Whether or not any scripts of that name were found and initialized.
 	*/
 	public function startLuasNamed(luaFile:String) {
-		#if MODS_ALLOWED
+		#if ADDONS_ALLOWED
 		var luaToLoad:String = Paths.modFolders(luaFile);
 		if(!FileSystem.exists(luaToLoad))
 			luaToLoad = Paths.getSharedPath(luaFile);
@@ -395,7 +395,7 @@ class ScriptedSubState extends MusicBeatSubstate {
 		return loaded;
 	}
 	public function startHScriptsNamed(scriptFile:String) {
-		#if MODS_ALLOWED
+		#if ADDONS_ALLOWED
 		var scriptToLoad:String = Paths.modFolders(scriptFile);
 		if(!FileSystem.exists(scriptToLoad))
 			scriptToLoad = Paths.getSharedPath(scriptFile);

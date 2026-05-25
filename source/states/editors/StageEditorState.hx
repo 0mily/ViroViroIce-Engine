@@ -1117,7 +1117,7 @@ class StageEditorState extends MusicBeatState implements PsychUIEventHandler.Psy
 		{
 			var characterPath:String = 'data/stages/$selected.json';
 			var path:String = Paths.getPath(characterPath, TEXT, null, true);
-			#if MODS_ALLOWED
+			#if ADDONS_ALLOWED
 			if (FileSystem.exists(path))
 			#else
 			if (Assets.exists(path))
@@ -1699,7 +1699,7 @@ class StageEditorState extends MusicBeatState implements PsychUIEventHandler.Psy
 			if(fullPath.startsWith(exePath))
 			{
 				fullPath = fullPath.substr(exePath.length);
-				if((fullPath.startsWith('assets/') #if MODS_ALLOWED || fullPath.startsWith('addons/') || fullPath.startsWith('contents/') #end) && fullPath.contains('/images/'))
+				if((fullPath.startsWith('assets/') #if ADDONS_ALLOWED || fullPath.startsWith('addons/') || fullPath.startsWith('contents/') #end) && fullPath.contains('/images/'))
 				{
 					loadSprite(fullPath.substring(fullPath.indexOf('/images/') + '/images/'.length, fullPath.lastIndexOf('.')));
 					//trace('Inside Psych Engine Folder');
@@ -1708,7 +1708,7 @@ class StageEditorState extends MusicBeatState implements PsychUIEventHandler.Psy
 			}
 
 			createPopup.visible = createPopup.active = false;
-			#if MODS_ALLOWED
+			#if ADDONS_ALLOWED
 			var modFolder:String = (Mods.currentModDirectory != null && Mods.currentModDirectory.length > 0) ? Paths.mods('${Mods.currentModDirectory}/images/') : Paths.mods('images/');
 			openSubState(new BasePrompt(480, 160, 'This file is not inside Psych Engine.', function(state:BasePrompt)
 			{

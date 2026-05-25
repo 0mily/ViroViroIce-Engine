@@ -25,14 +25,14 @@ class DiscordClient
 
 	public static function check()
 	{
-		#if MODS_ALLOWED syncClientID(); #end
+		#if ADDONS_ALLOWED syncClientID(); #end
 		if(ClientPrefs.data.discordRPC) initialize();
 		else if(isInitialized) shutdown();
 	}
 	
 	public static function prepare()
 	{
-		#if MODS_ALLOWED syncClientID(); #end
+		#if ADDONS_ALLOWED syncClientID(); #end
 		if (!isInitialized && ClientPrefs.data.discordRPC)
 			initialize();
 
@@ -110,7 +110,7 @@ class DiscordClient
 
 	public static function changePresence(details:String = 'In the Menus', ?state:String, ?smallImageKey:String, ?hasStartTimestamp:Bool, ?endTimestamp:Float, largeImageKey:String = 'icon')
 	{
-		#if MODS_ALLOWED syncClientID(); #end
+		#if ADDONS_ALLOWED syncClientID(); #end
 
 		var startTimestamp:Float = 0;
 		if (hasStartTimestamp) startTimestamp = Date.now().getTime();
@@ -137,7 +137,7 @@ class DiscordClient
 	
 	inline public static function resetClientID()
 	{
-		#if MODS_ALLOWED
+		#if ADDONS_ALLOWED
 		syncClientID();
 		#else
 		clientID = _defaultID;
@@ -158,7 +158,7 @@ class DiscordClient
 		return newID;
 	}
 
-	#if MODS_ALLOWED
+	#if ADDONS_ALLOWED
 	static function cleanClientID(id:String):String
 	{
 		if(id == null) return null;

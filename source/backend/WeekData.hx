@@ -82,7 +82,7 @@ class WeekData {
 	{
 		weeksList = [];
 		weeksLoaded.clear();
-		#if MODS_ALLOWED
+		#if ADDONS_ALLOWED
 		var directories:Array<String> = [];
 		if (Mods.rootAddonsAllowed())
 			directories.push(Paths.mods());
@@ -105,7 +105,7 @@ class WeekData {
 					if(week != null) {
 						var weekFile:WeekData = new WeekData(week, levelList[i]);
 
-						#if MODS_ALLOWED
+						#if ADDONS_ALLOWED
 						if(j >= originalLength) {
 							weekFile.folder = Mods.folderFromDirectoryPath(directories[j]);
 						}
@@ -120,7 +120,7 @@ class WeekData {
 			}
 		}
 
-		#if MODS_ALLOWED
+		#if ADDONS_ALLOWED
 		for (i in 0...directories.length) {
 			var directory:String = directories[i] + LEVELS_PATH;
 			if(FileSystem.exists(directory)) {
@@ -162,7 +162,7 @@ class WeekData {
 				}
 				else if(i >= originalLength)
 				{
-					#if MODS_ALLOWED
+					#if ADDONS_ALLOWED
 					weekFile.folder = Mods.folderFromDirectoryPath(directory);
 					#end
 				}
@@ -177,7 +177,7 @@ class WeekData {
 
 	public static function getWeekFile(path:String):WeekFile {
 		var raw:String = null;
-		#if MODS_ALLOWED
+		#if ADDONS_ALLOWED
 		if(FileSystem.exists(path)) {
 			raw = Paths.getTextFromFile(path);
 		}

@@ -283,7 +283,7 @@ class AlphaCharacter extends FlxSprite
 	public static function loadAlphabetData(request:String = 'alphabet')
 	{
 		var path:String = Paths.getPath('images/$request.json');
-		#if MODS_ALLOWED
+		#if ADDONS_ALLOWED
 		if(!FileSystem.exists(path))
 		#else
 		if(!Assets.exists(path, TEXT))
