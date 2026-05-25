@@ -45,6 +45,7 @@ import flixel.input.keyboard.FlxKey;
 import flixel.input.gamepad.FlxGamepadInputID;
 
 import haxe.Json;
+import tjson.TJSON;
 
 class FunkinLua {
 	public var lua:State = null;
@@ -725,23 +726,6 @@ class FunkinLua {
 			MusicBeatState.getVariables().set(tag, leBox);
 		});
 
-		registerFunction("addLuaBox", function(tag:String, ?inFront:Bool = false) {
-			var myBox:PsychUIBox = MusicBeatState.getVariables().get(tag);
-
-			if(myBox == null) return;
-
-			var instance = LuaUtils.getTargetInstance();
-			if(inFront)
-				instance.add(myBox);
-			else
-			{
-				if(PlayState.instance == null || !PlayState.instance.isDead)
-					instance.insert(instance.members.indexOf(LuaUtils.getLowestCharacterGroup()), myBox);
-				else
-					GameOverSubstate.instance.insert(GameOverSubstate.instance.members.indexOf(GameOverSubstate.instance.boyfriend), myBox);
-			}
-		});
-
 		registerFunction("addToBox", function(tag:String, box:String, tab:String) {
 			var myObj:FlxSprite = MusicBeatState.getVariables().get(tag);
 			var myBox:PsychUIBox = MusicBeatState.getVariables().get(box);
@@ -760,66 +744,11 @@ class FunkinLua {
 			MusicBeatState.getVariables().set(tag, leButton);
 		});
 
-		registerFunction("addLuaButton", function(tag:String, ?inFront:Bool = false) {
-			var myButton:PsychUIButton = MusicBeatState.getVariables().get(tag);
-
-			if(myButton == null) return;
-
-			var instance = LuaUtils.getTargetInstance();
-			if(inFront)
-				instance.add(myButton);
-			else
-			{
-				if(PlayState.instance == null || !PlayState.instance.isDead)
-					instance.insert(instance.members.indexOf(LuaUtils.getLowestCharacterGroup()), myButton);
-				else
-					GameOverSubstate.instance.insert(GameOverSubstate.instance.members.indexOf(GameOverSubstate.instance.boyfriend), myButton);
-			}
-		});
-
-		registerFunction("addButtonToBox", function(tag:String, box:String, tab:String) {
-			var myObj:PsychUIButton = MusicBeatState.getVariables().get(tag);
-			
-			var myBox:PsychUIBox = MusicBeatState.getVariables().get(box);
-
-			if(myObj == null) return;
-
-			var instance = myBox.getTab(tab).menu;
-			instance.add(myObj);
-		});
-
 		registerFunction("makeLuaInputText", function(tag:String, input:String = '', size:Int = 8, width:Int = 0, x:Float = 0, y:Float = 0) {
 			tag = tag.replace('.', '');
 			LuaUtils.destroyObject(tag);
 			var leInput = new PsychUIInputText(x, y, width, input, size);
 			MusicBeatState.getVariables().set(tag, leInput);
-		});
-
-		registerFunction("addLuaInputText", function(tag:String, ?inFront:Bool = false) {
-			var myInput:PsychUIInputText = MusicBeatState.getVariables().get(tag);
-
-			if(myInput == null) return;
-
-			var instance = LuaUtils.getTargetInstance();
-			if(inFront)
-				instance.add(myInput);
-			else
-			{	
-				if(PlayState.instance == null || !PlayState.instance.isDead)
-					instance.insert(instance.members.indexOf(LuaUtils.getLowestCharacterGroup()), myInput);
-				else
-					GameOverSubstate.instance.insert(GameOverSubstate.instance.members.indexOf(GameOverSubstate.instance.boyfriend), myInput);
-			}
-		});
-
-		registerFunction("addInputTextToBox", function(tag:String, box:String, tab:String) {
-			var myInput:PsychUIInputText = MusicBeatState.getVariables().get(tag);
-			var myBox:PsychUIBox = MusicBeatState.getVariables().get(box);
-
-			if(myInput == null) return;
-
-			var instance = myBox.getTab(tab).menu;
-			instance.add(myInput);
 		});
 
 		registerFunction("makeLuaSlider", function(tag:String, label:String = '', min:Float = 0.0, max:Float = 1.0, defValue:Float = 0.5, width:Int = 200, x:Float = 0, y:Float = 0) {
@@ -829,33 +758,6 @@ class FunkinLua {
 			var leSlider = new PsychUISlider(x, y, function(v:Float) st.callOnScripts('onSliderChanged', [originalTag, v], false, null, null), defValue, min, max, width);
 			leSlider.label = label;
 			MusicBeatState.getVariables().set(tag, leSlider);
-		});
-		
-		registerFunction("addLuaSlider", function(tag:String, ?inFront:Bool = false) {
-			var mySlider:PsychUISlider = MusicBeatState.getVariables().get(tag);
-
-			if(mySlider == null) return;
-
-			var instance = LuaUtils.getTargetInstance();
-			if(inFront)
-				instance.add(mySlider);
-			else
-			{
-				if(PlayState.instance == null || !PlayState.instance.isDead)
-					instance.insert(instance.members.indexOf(LuaUtils.getLowestCharacterGroup()), mySlider);
-				else
-					GameOverSubstate.instance.insert(GameOverSubstate.instance.members.indexOf(GameOverSubstate.instance.boyfriend), mySlider);
-			}
-		});
-
-		registerFunction("addSliderToBox", function(tag:String, box:String, tab:String) {
-			var mySlider:PsychUISlider = MusicBeatState.getVariables().get(tag);
-			var myBox:PsychUIBox = MusicBeatState.getVariables().get(box);
-
-			if(mySlider == null) return;
-
-			var instance = myBox.getTab(tab).menu;
-			instance.add(mySlider);
 		});
 
 		registerFunction("makeLuaCheckBox", function(tag:String, label:String = '', checked:Bool = false, hitbox:Int = 100, x:Float = 0, y:Float = 0) {
@@ -867,33 +769,6 @@ class FunkinLua {
 			MusicBeatState.getVariables().set(tag, leCheckBox);
 		});
 
-		registerFunction("addLuaCheckBox", function(tag:String, ?inFront:Bool = false) {
-			var myCheckBox:PsychUICheckBox = MusicBeatState.getVariables().get(tag);
-
-			if(myCheckBox == null) return;
-
-			var instance = LuaUtils.getTargetInstance();
-			if(inFront)
-				instance.add(myCheckBox);
-			else
-			{
-				if(PlayState.instance == null || !PlayState.instance.isDead)
-					instance.insert(instance.members.indexOf(LuaUtils.getLowestCharacterGroup()), myCheckBox);
-				else
-					GameOverSubstate.instance.insert(GameOverSubstate.instance.members.indexOf(GameOverSubstate.instance.boyfriend), myCheckBox);
-			}
-		});
-
-		registerFunction("addCheckBoxToBox", function(tag:String, box:String, tab:String) {
-			var myCheckBox:PsychUICheckBox = MusicBeatState.getVariables().get(tag);
-			var myBox:PsychUIBox = MusicBeatState.getVariables().get(box);
-
-			if(myCheckBox == null) return;
-
-			var instance = myBox.getTab(tab).menu;
-			instance.add(myCheckBox);
-		});
-
 		registerFunction("makeLuaNumericStepper", function(tag:String, step:Float = 1, decimals:Int = 0, min:Float = -999, max:Float = 999, defValue:Float = 0, ?wid:Int = 60, x:Float = 0, y:Float = 0, ?isPercent:Bool = false) {
 			tag = tag.replace('.', '');
 			LuaUtils.destroyObject(tag);
@@ -901,33 +776,6 @@ class FunkinLua {
 			var leNumStepper = new PsychUINumericStepper(x, y, step, defValue, min, max, decimals, wid, isPercent);
 			leNumStepper.onValueChange = function() {st.callOnScripts('onNumericStepperChange', [originalTag, MusicBeatState.getVariables().get(originalTag).value], false, null, null);}
 			MusicBeatState.getVariables().set(tag, leNumStepper);
-		});
-
-		registerFunction("addLuaNumericStepper", function(tag:String, ?inFront:Bool = false) {
-			var myNumStepper:PsychUINumericStepper = MusicBeatState.getVariables().get(tag);
-
-			if(myNumStepper == null) return;
-
-			var instance = LuaUtils.getTargetInstance();
-			if(inFront)
-				instance.add(myNumStepper);
-			else
-			{
-				if(PlayState.instance == null || !PlayState.instance.isDead)
-					instance.insert(instance.members.indexOf(LuaUtils.getLowestCharacterGroup()), myNumStepper);
-				else
-					GameOverSubstate.instance.insert(GameOverSubstate.instance.members.indexOf(GameOverSubstate.instance.boyfriend), myNumStepper);
-			}
-		});
-
-		registerFunction("addNumericStepperToBox", function(tag:String, box:String, tab:String) {
-			var myNumStepper:PsychUINumericStepper = MusicBeatState.getVariables().get(tag);
-			var myBox:PsychUIBox = MusicBeatState.getVariables().get(box);
-
-			if(myNumStepper == null) return;
-
-			var instance = myBox.getTab(tab).menu;
-			instance.add(myNumStepper);
 		});
 
 		registerFunction("getInputTextString", function(tag:String) {
@@ -941,14 +789,33 @@ class FunkinLua {
 		});
 
 		registerFunction("isInputTextOnFocus", function() {
-			if (PsychUIInputText.focusOn == null)
-			{
-				return false;
-			}
-			else
-			{
-				return true;
-			}
+			if (PsychUIInputText.focusOn == null) return false; else return true;
+		});
+
+		registerFunction("makeLuaRadio", function(tag:String, labels:Array<String>, x:Float = 0, y:Float = 0, ?isHorizontal:Bool = false, space:Float = 25, ?textWidth:Int = 100, maxItems:Int = 0) {
+			tag = tag.replace('.', '');
+			LuaUtils.destroyObject(tag);
+			var originalTag:String = tag;
+			var leRadio:PsychUIRadioGroup = new PsychUIRadioGroup(x, y, labels, space, maxItems, isHorizontal, textWidth);
+			leRadio.onClick = function() {game.callOnScripts('onRadioChecked', [originalTag, MusicBeatState.getVariables().get(originalTag).checked + 1], false, null, null);}
+			MusicBeatState.getVariables().set(tag, leRadio);
+		});
+
+		registerFunction("makeLuaDropdown", function(tag:String, list:Array<String>, defLabel:String, ?width:Float = 100, x:Float = 0, y:Float = 0) {
+			tag = tag.replace('.', '');
+			LuaUtils.destroyObject(tag);
+			var originalTag:String = tag;
+			var leDropdown:PsychUIDropDownMenu = new PsychUIDropDownMenu(x, y, list, function(index:Int, label:String) {game.callOnScripts('onDropdownLabelSelected', [originalTag, index, label], false, null, null);}, width);
+			leDropdown.selectedLabel = defLabel;
+			MusicBeatState.getVariables().set(tag, leDropdown);
+		});
+
+		registerFunction("parseJson", function(jsonStuff:String, ?getFromFile:Bool = true) {
+			// preciso fazer um handler de erro aqui ou seja lá qual é o nome... tô com preguiça no momento -Shiho
+			var funnyJson:String = getFromFile ? Paths.getTextFromFile(jsonStuff, false) : jsonStuff;
+			var funnyParse:Dynamic = TJSON.parse(funnyJson);
+
+			return funnyParse;
 		});
 		
 		registerFunction('debugPrint', function(?text:Dynamic, ?color:String) ScriptedState.debugPrint(text, color == null ? null : CoolUtil.colorFromString(color)));

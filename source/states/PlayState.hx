@@ -1045,9 +1045,10 @@ class PlayState extends ScriptedState
 		lua.set('pixelRender', ClientPrefs.data.weekpixel);
 		lua.set('allowMiku', ClientPrefs.data.mikudside);
 		lua.set('sustainAlpha', ClientPrefs.data.sustainAlpha);
-		//lua.set('customScore', ClientPrefs.data.customScore);
 		lua.set('extra', ClientPrefs.data.extra);
 		lua.set('stageUI', stageUI);
+		lua.set('opaqueStrums', ClientPrefs.data.opaqueSustains);
+		lua.set('allowNeat', ClientPrefs.data.neatRating);
 		
 		// deles
 		lua.set('downscroll', ClientPrefs.data.downScroll);

@@ -21,8 +21,7 @@ using StringTools;
 	public var neatRating:Bool = true;
 	public var neatWindow:Float = 22.0;
 	public var sustainAlpha:Float = 1;
-	public var opaqueSustains:Bool = false;
-	//public var customScore:Bool = false;
+	public var opaqueSustains:Bool = true; // isso não deveria ser strums ao invés de sustains?? -Shiho
 
 // deles
 
