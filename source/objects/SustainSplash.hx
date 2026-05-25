@@ -29,9 +29,7 @@ class SustainSplash extends FlxSprite
 
 		if (strumNote != null)
 		{
-			setPosition(strumNote.x, strumNote.y);
-			visible = strumNote.visible;
-			alpha = ClientPrefs.data.holdSplashAlpha - (1 - strumNote.alpha);
+			syncToStrumNote(); // much better
 
 			if (animation.curAnim?.name == "hold" && strumNote.animation.curAnim?.name == "static")
 			{
@@ -39,6 +37,21 @@ class SustainSplash extends FlxSprite
 				kill();
 			}
 		}
+	}
+
+	override function draw()
+	{
+		if (strumNote != null)
+			syncToStrumNote();
+
+		super.draw();
+	}
+
+	function syncToStrumNote():Void
+	{
+		setPosition(strumNote.x, strumNote.y);
+		visible = strumNote.visible;
+		alpha = ClientPrefs.data.holdSplashAlpha - (1 - strumNote.alpha);
 	}
 
 	public function setupSusSplash(strum:StrumNote, daNote:Note, ?playbackRate:Float = 1):Void
