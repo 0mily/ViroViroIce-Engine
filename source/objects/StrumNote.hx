@@ -197,9 +197,17 @@ class StrumNote extends FlxSprite
 			}
 			else
 			{
-				rgbShader.r = 0x87A3AD;
-				rgbShader.g = 0xFFFFFFFF;
-				rgbShader.b = 0x00000000;
+				if(!PlayState.isPixelStage){
+					rgbShader.r = 0x87A3AD;
+					rgbShader.g = 0xFFFFFFFF;
+					rgbShader.b = 0x00000000;
+				}
+				else
+				{
+					rgbShader.r = 0xA2BAC8;
+					rgbShader.g = 0xFFFFFFFF;
+					rgbShader.b = 0x555A63;
+				}
 			}
 		}
         super.update(elapsed);
