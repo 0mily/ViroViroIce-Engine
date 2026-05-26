@@ -1,8 +1,8 @@
 package;
 
-#if android
+/*#if android
 import android.content.Context;
-#end
+#end*/
 
 import debug.FPSCounter;
 import debug.ScriptTraceDisplay;
@@ -82,7 +82,7 @@ class Main extends Sprite
 		
 		// Credits to MAJigsaw77 (he's the og author for this code)
 		#if android
-		Sys.setCwd(Path.addTrailingSlash(Context.getExternalFilesDir()));
+		//Sys.setCwd(Path.addTrailingSlash(Context.getExternalFilesDir()));
 		#elseif ios
 		Sys.setCwd(lime.system.System.applicationStorageDirectory);
 		#end

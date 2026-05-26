@@ -2,10 +2,14 @@
 <project>
 	<!-- _________________________ Application Settings _________________________ -->
 
-	<app title="Friday Night Funkin': ViroViroIce" file="ViroViroIce" packageName="com.viroviro.ice" package="com.viroviro.ice" main="Main" version="0.1.0" company="BFMix2 Inc." />
+	<app unless="mobile" title="Friday Night Funkin': ViroViroIce" file="ViroViroIce" packageName="com.viroviro.ice" package="com.viroviro.ice" main="Main" version="0.1.0" company="BFMix2 Inc." />
+
+	<app if="mobile" title="ViroViroIce" file="ViroViroIce" packageName="com.viroviro.ice" package="com.viroviro.ice" main="Main" version="0.1.0" company="BFMix2 Inc." />
 	
 	<!--Switch Export with Unique ApplicationID and Icon-->
 	<set name="APP_ID" value="0x0100f6c013bbc000" />
+
+	<config type="android" gradle-version="8.10.2" gradle-plugin="8.8.0" ndkVersion="27.3" minimum-sdk-version="26" target-sdk-version="35" />
 
 	<!-- NOTE TO SELF: DISABLE THIS IF ISSUES ARE FOUND -->
 	<haxedef name="LINC_LUA_RELATIVE_DYNAMIC_LIB"/> <!-- stable luas PUT AFTER FIRST LINE WITH APP NAME AND ETC -->
@@ -22,7 +26,7 @@
 	<define name="HSCRIPT_ALLOWED" />
 	<define name="LUA_ALLOWED" if="cpp" />
 	<define name="ACHIEVEMENTS_ALLOWED" />
-	<define name="DISCORD_ALLOWED" if="cpp" />
+	<define name="DISCORD_ALLOWED" if="cpp" unless="mobile" />
 	<define name="TRANSLATIONS_ALLOWED" />
 	<define name="IRIS_DEBUG" />
 	<define name="EMIMOD"/>
@@ -49,7 +53,7 @@
 	<window if="desktop" orientation="landscape" fullscreen="false" resizable="true" vsync="false"/>
 
 	<!--Mobile-specific-->
-	<window if="mobile" orientation="landscape" fullscreen="true" width="0" height="0" resizable="false"/>
+	<window if="mobile" orientation="landscape" fullscreen="true" resizable="false" allow-shaders="true" require-shaders="true" />
 
 	<!--Switch-specific-->
 	<window if="switch" orientation="landscape" fullscreen="true" width="0" height="0" resizable="true" />
@@ -61,6 +65,7 @@
 	<set name="BUILD_DIR" value="export/32bit" if="32bits" />
 
 	<classpath name="source" />
+	<java if="android" path="source/external/android/java" />
 
 	<!-- __________________________ Game Assets & Etc. __________________________ -->
 	
@@ -120,6 +125,8 @@
 
 	<haxelib name="flixel" />
 	<haxelib name="flixel-addons" />
+	<haxelib name="extension-haptics" if="mobile" />
+	<haxelib name="extension-androidtools" if="android" />
 	<haxelib name="tjson" />
 
 	<!--Psych stuff needed-->
@@ -184,11 +191,17 @@
 	<define name="GLOBAL_SCRIPTS" if="HSCRIPT_ALLOWED" />
 
 	<!-- _________________________________ Custom _______________________________ -->
-
-	<assets path='art/icons/iconOG.png' rename='icon.png' if="linux || mac" />
 	
-	<icon path="art/icons/icon16.png" size='16'/>
-	<icon path="art/icons/icon32.png" size='32'/>
-	<icon path="art/icons/icon64.png" size='64'/>
-	<icon path="art/icons/iconOG.png" />
+	<section if="mobile">
+		<config type="android" viroviro-mono-icon="art/icons/mobile/iconMono.png" />
+		<icon path="art/icons/mobile/iconAdaptive.png" if="android" />
+		<icon path="art/icons/mobile/iconMobile.png" unless="android" />
+	</section>
+	<section unless="mobile">
+		<assets path='art/icons/desktop/iconOG.png' rename='icon.png' if="linux || mac" />
+		<icon path="art/icons/desktop/icon16.png" size='16' />
+		<icon path="art/icons/desktop/icon32.png" size='32' />
+		<icon path="art/icons/desktop/icon64.png" size='64' />
+		<icon path="art/icons/desktop/iconOG.png" />
+	</section>
 </project>
