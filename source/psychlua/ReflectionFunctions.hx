@@ -238,6 +238,9 @@ class ReflectionFunctions
 		}
 		funk.addLocalCallback('addLuaSprite', addInstance);
 		funk.addLocalCallback('addInstance', addInstance);
+		funk.addLocalCallback('addLuaAtlas', addInstance);
+		funk.addLocalCallback('addAtlas', addInstance);
+		funk.addLocalCallback('addLuaAtlasSprite', addInstance);
 		
 		funk.addLocalCallback('openSubstate', function(type:String, ?args:Array<Dynamic>) {
 			var cls:Class<Dynamic> = Type.resolveClass(type);

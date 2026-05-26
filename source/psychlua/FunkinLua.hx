@@ -467,6 +467,7 @@ class FunkinLua {
 		implement();
 		CustomState.implement();
 		TextFunctions.implement();
+		ClipFunctions.implement(); // o yea
 		ExtraFunctions.implement();
 		FreeplayLuaFunctions.implement();
 		CustomSubstate.implement();
@@ -1154,19 +1155,32 @@ class FunkinLua {
 			
 			if (spr != null) spr.makeGraphic(width, height, CoolUtil.colorFromString(color));
 		});
-		registerFunction('addAnimationByPrefix', function(obj:String, name:String, prefix:String, framerate:Float = 24, loop:Bool = true) {
+		var addAnimByPrefix = function(obj:String, name:String, prefix:String, framerate:Float = 24, loop:Bool = true) {
 			var obj:Dynamic = LuaUtils.getObjectDirectly(obj);
 			
 			if (obj != null) {
-				obj.animation.addByPrefix(name, prefix, framerate, loop);
-				if (obj.animation.curAnim == null) {
-					if (obj.playAnim != null) obj.playAnim(name, true);
-					else obj.animation.play(name, true);
+				if (obj.animation != null) {
+					obj.animation.addByPrefix(name, prefix, framerate, loop);
+					if (obj.animation.curAnim == null) {
+						if (obj.playAnim != null) obj.playAnim(name, true);
+						else obj.animation.play(name, true);
+					}
+					return true;
 				}
-				return true;
+
+				if (obj.anim != null) {
+					obj.anim.addByPrefix(name, prefix, framerate, loop);
+					if (obj.hasActiveAtlasAnimation == null || !obj.hasActiveAtlasAnimation()) {
+						if (obj.playAnim != null) obj.playAnim(name, true);
+						else obj.anim.play(name, true);
+					}
+					return true;
+				}
 			}
 			return false;
-		});
+		};
+		registerFunction('addAnimationByPrefix', addAnimByPrefix);
+		registerFunction('addAnim', addAnimByPrefix);
 
 		registerFunction('addAnimation', function(obj:String, name:String, frames:Any, framerate:Float = 24, loop:Bool = true) return LuaUtils.addAnimByIndices(obj, name, null, frames, framerate, loop));
 		registerFunction('addAnimationByIndices', function(obj:String, name:String, prefix:String, indices:Any, framerate:Float = 24, loop:Bool = false) return LuaUtils.addAnimByIndices(obj, name, prefix, indices, framerate, loop));

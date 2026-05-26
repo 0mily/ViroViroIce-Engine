@@ -5,27 +5,29 @@ import openfl.utils.Assets;
 #if (LUA_ALLOWED && flxanimate)
 class FlxAnimateFunctions {
 	public static function implement() {
-		FunkinLua.registerFunction("makeFlxAnimateSprite", function(tag:String, ?x:Float = 0, ?y:Float = 0, ?loadFolder:String = null) {
+		var makeAtlasSprite = function(tag:String, ?x:Float = 0, ?y:Float = 0, ?loadFolder:String = null) {
 			tag = tag.replace('.', '');
-			var lastSprite = MusicBeatState.getVariables().get(tag);
-			if(lastSprite != null) {
-				lastSprite.kill();
-				PlayState.instance.remove(lastSprite);
-				lastSprite.destroy();
-			}
+			LuaUtils.destroyObject(tag);
 
 			var mySprite:ModchartAnimateSprite = new ModchartAnimateSprite(x, y);
 			if(loadFolder != null) Paths.loadAnimateAtlas(mySprite, loadFolder);
 			MusicBeatState.getVariables().set(tag, mySprite);
 			mySprite.active = true;
-		});
+		};
+		FunkinLua.registerFunction("makeFlxAnimateSprite", makeAtlasSprite);
+		FunkinLua.registerFunction("makeLuaAtlasSprite", makeAtlasSprite);
+		FunkinLua.registerFunction("makeLuaAnimateSprite", makeAtlasSprite);
+		FunkinLua.registerFunction("makeAtlasSprite", makeAtlasSprite);
 
-		FunkinLua.registerFunction("loadAnimateAtlas", function(tag:String, folderOrImg:String, ?spriteJson:String = null, ?animationJson:String = null) {
+		var loadAtlas = function(tag:String, folderOrImg:String, ?spriteJson:String = null, ?animationJson:String = null) {
 			var spr:FlxAnimate = LuaUtils.getObjectDirectly(tag);
 			if (spr != null) Paths.loadAnimateAtlas(spr, folderOrImg, spriteJson, animationJson);
-		});
+		};
+		FunkinLua.registerFunction("loadAnimateAtlas", loadAtlas);
+		FunkinLua.registerFunction("loadLuaAtlas", loadAtlas);
+		FunkinLua.registerFunction("loadAtlas", loadAtlas);
 		
-		FunkinLua.registerFunction("addAnimationBySymbol", function(tag:String, name:String, symbol:String, ?framerate:Float = 24, ?loop:Bool = false, ?matX:Float = 0, ?matY:Float = 0) {
+		var addAtlasAnim = function(tag:String, name:String, symbol:String, ?framerate:Float = 24, ?loop:Bool = false, ?matX:Float = 0, ?matY:Float = 0) {
 			var obj:FlxAnimate = LuaUtils.getObjectDirectly(tag);
 			if (obj == null) return false;
 
@@ -36,9 +38,12 @@ class FlxAnimateFunctions {
 				else obj.anim.play(name, true);
 			}
 			return true;
-		});
+		};
+		FunkinLua.registerFunction("addAnimationBySymbol", addAtlasAnim);
+		FunkinLua.registerFunction("addAtlasAnim", addAtlasAnim);
+		FunkinLua.registerFunction("addLuaAtlasAnim", addAtlasAnim);
 
-		FunkinLua.registerFunction("addAnimationBySymbolIndices", function(tag:String, name:String, symbol:String, ?indices:Any = null, ?framerate:Float = 24, ?loop:Bool = false, ?matX:Float = 0, ?matY:Float = 0) {
+		var addAtlasAnimByIndices = function(tag:String, name:String, symbol:String, ?indices:Any = null, ?framerate:Float = 24, ?loop:Bool = false, ?matX:Float = 0, ?matY:Float = 0) {
 			var obj:FlxAnimate = LuaUtils.getObjectDirectly(tag);
 			if (obj == null) return false;
 
@@ -63,7 +68,10 @@ class FlxAnimateFunctions {
 				else obj.anim.play(name, true);
 			}
 			return true;
-		});
+		};
+		FunkinLua.registerFunction("addAnimationBySymbolIndices", addAtlasAnimByIndices);
+		FunkinLua.registerFunction("addAtlasAnimByIndices", addAtlasAnimByIndices);
+		FunkinLua.registerFunction("addLuaAtlasAnimByIndices", addAtlasAnimByIndices);
 	}
 }
 #end
