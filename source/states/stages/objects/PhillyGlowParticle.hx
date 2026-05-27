@@ -1,8 +1,8 @@
 package states.stages.objects;
 
-import objects.vvieSpriteHandler;
+import objects.VVIESpriteHandler;
 
-class PhillyGlowParticle extends vvieSpriteHandler
+class PhillyGlowParticle extends VVIESpriteHandler
 {
 	var lifeTime:Float = 0;
 	var decay:Float = 0;

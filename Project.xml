@@ -93,10 +93,10 @@
 	</section>
 	
 	<section if="ADDONS_ALLOWED">
-		<assets path='example_addons' rename='addons' embed='false' type='template' unless="mac"/>
-		<assets path='example_addons' rename='addons' embed='false' if="mac"/>
-		<assets path='example_contents' rename='contents' embed='false' type='template' unless="mac"/>
-		<assets path='example_contents' rename='contents' embed='false' if="mac"/>
+		<assets path='example_addons' rename='addons' embed='false' type='template' unless="mac || mobile"/>
+		<assets path='example_addons' rename='addons' embed='false' if="mac || mobile"/>
+		<assets path='example_contents' rename='contents' embed='false' type='template' unless="mac || mobile"/>
+		<assets path='example_contents' rename='contents' embed='false' if="mac || mobile"/>
 		<assets path='list.txt' rename='addonsList.txt' />
 	</section>
 
@@ -197,9 +197,9 @@
 	<!-- _________________________________ Custom _______________________________ -->
 	
 	<section if="mobile">
-		<config type="android" viroviro-mono-icon="art/icons/mobile/iconMono.png" />
-		<icon path="art/icons/mobile/iconAdaptive.png" if="android" />
-		<icon path="art/icons/mobile/iconMobile.png" unless="android" />
+		<config type="android" viroviro-mono-icon="art/icons/mobile/iconMono.png" /> <!-- espero arranjar um jeito de não precisar fazer um fork da porra do lime pra fazer isso funfar -->
+		<!-- <icon path="art/icons/mobile/iconAdaptive.png" if="android" /> focar nisso depois -->
+		<icon path="art/icons/mobile/iconMobile.png" if="android" />
 	</section>
 	<section unless="mobile">
 		<assets path='art/icons/desktop/iconOG.png' rename='icon.png' if="linux || mac" />

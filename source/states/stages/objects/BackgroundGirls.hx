@@ -1,8 +1,8 @@
 package states.stages.objects;
 
-import objects.vvieSpriteHandler;
+import objects.VVIESpriteHandler;
 
-class BackgroundGirls extends vvieSpriteHandler
+class BackgroundGirls extends VVIESpriteHandler
 {
 	var isPissed:Bool = true;
 	public function new(x:Float, y:Float)

@@ -12,7 +12,7 @@ import substates.PauseSubState;
 import cutscenes.CutsceneHandler;
 
 import flixel.FlxSubState;
-import objects.vvieSpriteHandler;
+import objects.VVIESpriteHandler;
 
 class PhillyStreetsErect extends BaseStage
     {
@@ -135,7 +135,7 @@ class PhillyStreetsErect extends BaseStage
     
             if (!ClientPrefs.data.lowQuality)
             {
-                picoFade = new vvieSpriteHandler();
+                picoFade = new VVIESpriteHandler();
                 picoFade.antialiasing = ClientPrefs.data.antialiasing;
                 picoFade.alpha = 0;
                 add(picoFade);

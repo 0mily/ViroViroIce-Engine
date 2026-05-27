@@ -2,7 +2,7 @@ package objects; // supostamente feito pra não bugar em músicas com mt zoom!!!
 
 import backend.PsychCamera;
 
-class vvieSpriteHandler extends flixel.FlxSprite
+class VVIESpriteHandler extends flixel.FlxSprite
 {
 	public var screenCullPadding:Float = PsychCamera.DEFAULT_ZOOM_CULL_PADDING;
 

@@ -1,6 +1,6 @@
 package objects;
 
-class BGSprite extends vvieSpriteHandler
+class BGSprite extends VVIESpriteHandler
 {
 	private var idleAnim:String;
 	public function new(image:String, x:Float = 0, y:Float = 0, ?scrollX:Float = 1, ?scrollY:Float = 1, ?animArray:Array<String> = null, ?loop:Bool = false) {

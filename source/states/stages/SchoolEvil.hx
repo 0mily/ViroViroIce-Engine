@@ -4,7 +4,7 @@ import flixel.addons.effects.FlxTrail;
 import states.stages.objects.*;
 import substates.GameOverSubstate;
 import cutscenes.DialogueBox;
-import objects.vvieSpriteHandler;
+import objects.VVIESpriteHandler;
 import openfl.utils.Assets as OpenFlAssets;
 
 class SchoolEvil extends BaseStage
@@ -115,11 +115,11 @@ class SchoolEvil extends BaseStage
 	function schoolIntro():Void
 	{
 		inCutscene = true;
-		var red:FlxSprite = new vvieSpriteHandler(-100, -100).makeGraphic(FlxG.width * 2, FlxG.height * 2, 0xFFff1b31);
+		var red:FlxSprite = new VVIESpriteHandler(-100, -100).makeGraphic(FlxG.width * 2, FlxG.height * 2, 0xFFff1b31);
 		red.scrollFactor.set();
 		add(red);
 
-		var senpaiEvil:FlxSprite = new vvieSpriteHandler();
+		var senpaiEvil:FlxSprite = new VVIESpriteHandler();
 		senpaiEvil.frames = Paths.getSparrowAtlas('weeb/senpaiCrazy');
 		senpaiEvil.animation.addByPrefix('idle', 'Senpai Pre Explosion', 24, false);
 		senpaiEvil.setGraphicSize(Std.int(senpaiEvil.width * 6));

@@ -1,9 +1,9 @@
 package states.stages.objects;
 
 import flixel.graphics.frames.FlxAtlasFrames;
-import objects.vvieSpriteHandler;
+import objects.VVIESpriteHandler;
 
-class TankmenBG extends vvieSpriteHandler
+class TankmenBG extends VVIESpriteHandler
 {
 	public static var animationNotes:Array<Dynamic> = [];
 	private var tankSpeed:Float;

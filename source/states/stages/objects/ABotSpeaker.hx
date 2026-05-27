@@ -3,7 +3,7 @@ package states.stages.objects;
 #if funkin.vis
 import funkin.vis.dsp.SpectralAnalyzer;
 #end
-import objects.vvieSpriteHandler;
+import objects.VVIESpriteHandler;
 
 class ABotSpeaker extends FlxSpriteGroup
 {
@@ -38,7 +38,7 @@ class ABotSpeaker extends FlxSpriteGroup
 
 		var antialias = ClientPrefs.data.antialiasing;
 
-		bg = new vvieSpriteHandler(90, 20).loadGraphic(Paths.image('abot/stereoBG'));
+		bg = new VVIESpriteHandler(90, 20).loadGraphic(Paths.image('abot/stereoBG'));
 		bg.antialiasing = antialias;
 		add(bg);
 
@@ -50,7 +50,7 @@ class ABotSpeaker extends FlxSpriteGroup
 			volumes.push(0.0);
 			vizX += VIZ_POS_X[i-1];
 			vizY += VIZ_POS_Y[i-1];
-			var viz:FlxSprite = new vvieSpriteHandler(vizX + 140, vizY + 74);
+			var viz:FlxSprite = new VVIESpriteHandler(vizX + 140, vizY + 74);
 			viz.frames = vizFrames;
 			viz.animation.addByPrefix('VIZ', 'viz$i', 0);
 			viz.animation.play('VIZ', true);
@@ -62,7 +62,7 @@ class ABotSpeaker extends FlxSpriteGroup
 			add(viz);
 		}
 
-		eyeBg = new vvieSpriteHandler(-30, 215).makeGraphic(1, 1, FlxColor.WHITE);
+		eyeBg = new VVIESpriteHandler(-30, 215).makeGraphic(1, 1, FlxColor.WHITE);
 		eyeBg.scale.set(160, 60);
 		eyeBg.updateHitbox();
 		add(eyeBg);

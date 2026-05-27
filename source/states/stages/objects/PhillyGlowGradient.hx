@@ -1,8 +1,8 @@
 package states.stages.objects;
 
-import objects.vvieSpriteHandler;
+import objects.VVIESpriteHandler;
 
-class PhillyGlowGradient extends vvieSpriteHandler
+class PhillyGlowGradient extends VVIESpriteHandler
 {
 	public var originalY:Float;
 	public var originalHeight:Int = 400;
