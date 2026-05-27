@@ -3,6 +3,7 @@ package states.stages;
 import states.stages.objects.*;
 import substates.GameOverSubstate;
 import cutscenes.DialogueBox;
+import objects.vvieSpriteHandler;
 
 import openfl.utils.Assets as OpenFlAssets;
 
@@ -40,7 +41,7 @@ class School extends BaseStage
 			fgTrees.antialiasing = false;
 		}
 
-		var bgTrees:FlxSprite = new FlxSprite(repositionShit - 380, -800);
+		var bgTrees:vvieSpriteHandler = new vvieSpriteHandler(repositionShit - 380, -800);
 		bgTrees.frames = Paths.getPackerAtlas('weeb/weebTrees');
 		bgTrees.animation.add('treeLoop', [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18], 12);
 		bgTrees.animation.play('treeLoop');
@@ -138,7 +139,7 @@ class School extends BaseStage
 	function schoolIntro():Void
 	{
 		inCutscene = true;
-		var black:FlxSprite = new FlxSprite(-100, -100).makeGraphic(FlxG.width * 2, FlxG.height * 2, FlxColor.BLACK);
+		var black:FlxSprite = new vvieSpriteHandler(-100, -100).makeGraphic(FlxG.width * 2, FlxG.height * 2, FlxColor.BLACK);
 		black.scrollFactor.set();
 		if(songName == 'senpai') add(black);
 

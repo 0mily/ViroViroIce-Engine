@@ -1,6 +1,7 @@
 package states;
 
 import flixel.math.FlxRect;
+import flixel.graphics.FlxGraphic;
 import flixel.util.FlxSpriteUtil;
 import flixel.util.FlxGradient;
 import openfl.display.BitmapData;
@@ -272,11 +273,8 @@ class ContentMenuState extends MusicBeatState
 	{
 		bannerFrame.color = entry.color;
 
-		var bitmap:BitmapData = null;
-		if (entry.thumbPath != null && FileSystem.exists(entry.thumbPath))
-			bitmap = BitmapData.fromFile(entry.thumbPath);
-
-		if (bitmap == null)
+		var graphic:FlxGraphic = entry.getThumbGraphic();
+		if (graphic == null)
 		{
 			banner.visible = false;
 			banner.clipRect = null;
@@ -284,7 +282,7 @@ class ContentMenuState extends MusicBeatState
 		}
 
 		banner.visible = true;
-		banner.loadGraphic(Paths.cacheBitmap(entry.thumbPath, bitmap));
+		banner.loadGraphic(graphic);
 		banner.antialiasing = ClientPrefs.data.antialiasing;
 		banner.setGraphicSize(BANNER_WIDTH, BANNER_HEIGHT);
 		banner.updateHitbox();
@@ -294,12 +292,10 @@ class ContentMenuState extends MusicBeatState
 
 	function loadIcon(entry:ContentEntry):Void
 	{
-		var bitmap:BitmapData = null;
-		if (entry.iconPath != null && FileSystem.exists(entry.iconPath))
-			bitmap = BitmapData.fromFile(entry.iconPath);
+		var graphic:FlxGraphic = entry.getIconGraphic();
 
-		if (bitmap != null)
-			icon.loadGraphic(Paths.cacheBitmap(entry.iconPath, bitmap), true, 150, 150);
+		if (graphic != null)
+			icon.loadGraphic(graphic, true, 150, 150);
 		else
 			icon.loadGraphic(Paths.image('unknownContent'), true, 150, 150);
 
@@ -508,6 +504,8 @@ class ContentEntry
 	public var author:String = '';
 	public var iconPath:String = null;
 	public var thumbPath:String = null;
+	public var iconGraphic:FlxGraphic = null;
+	public var thumbGraphic:FlxGraphic = null;
 	public var color:FlxColor = 0xFF2D7D73;
 	public var meta:String = 'Default content';
 	public var addonsAllowed:Bool = true;
@@ -583,11 +581,44 @@ class ContentEntry
 		entry.author = '';
 		entry.iconPath = null;
 		entry.thumbPath = null;
+		entry.iconGraphic = null;
+		entry.thumbGraphic = null;
 		entry.color = 0xFF2D7D73;
 		entry.meta = 'Default content';
 		entry.addonsAllowed = true;
 		entry.addonPrefix = '';
 		return entry;
+	}
+
+	public function getIconGraphic():FlxGraphic
+	{
+		if (iconGraphic == null && iconPath != null)
+			iconGraphic = graphicFromFile(iconPath);
+		return iconGraphic;
+	}
+
+	public function getThumbGraphic():FlxGraphic
+	{
+		if (thumbGraphic == null && thumbPath != null)
+			thumbGraphic = graphicFromFile(thumbPath);
+		return thumbGraphic;
+	}
+
+	static function graphicFromFile(path:String):FlxGraphic
+	{
+		if (path == null || path.length < 1)
+			return null;
+
+		if (Paths.currentTrackedAssets.exists(path))
+		{
+			Paths.localTrackedAssets.push(path);
+			return Paths.currentTrackedAssets.get(path);
+		}
+
+		if (!FileSystem.exists(path))
+			return null;
+
+		return Paths.cacheBitmap(path, null, BitmapData.fromFile(path));
 	}
 
 	function readAddonsData(data:Dynamic):Void
@@ -646,11 +677,9 @@ class ContentRow extends FlxSpriteGroup
 		add(meta);
 
 		rowIcon = new FlxSprite(266, 4);
-		var bitmap:BitmapData = null;
-		if (entry.iconPath != null && FileSystem.exists(entry.iconPath))
-			bitmap = BitmapData.fromFile(entry.iconPath);
-		if (bitmap != null)
-			rowIcon.loadGraphic(Paths.cacheBitmap(entry.iconPath, bitmap), true, 150, 150);
+		var graphic:FlxGraphic = entry.getIconGraphic();
+		if (graphic != null)
+			rowIcon.loadGraphic(graphic, true, 150, 150);
 		else
 			rowIcon.loadGraphic(Paths.image('unknownContent'), true, 150, 150);
 		rowIcon.setGraphicSize(64, 64);

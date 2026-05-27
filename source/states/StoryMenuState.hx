@@ -120,13 +120,9 @@ class StoryMenuState extends ScriptedState
 
 	override function create()
 	{	
-		if (stickerSubState != null)
-		{
-			openSubState(stickerSubState);
+		var playStickerTransition:Bool = stickerSubState != null;
+		if (playStickerTransition)
 			Mods.clearStoredWithoutStickers();
-			stickerSubState.degenStickers();
-			FlxG.sound.playMusic(Paths.music('freakyMenu'));
-		}
 		else
 			Paths.clearStoredMemory();
 		Paths.clearUnusedMemory();
@@ -279,6 +275,19 @@ class StoryMenuState extends ScriptedState
 
 		super.create();
 		refreshShitScript();
+		if (playStickerTransition)
+			startStickerTransition();
+	}
+
+	function startStickerTransition():Void
+	{
+		if (stickerSubState == null)
+			return;
+
+		openSubState(stickerSubState);
+		stickerSubState.degenStickers();
+		stickerSubState = null;
+		FlxG.sound.playMusic(Paths.music('freakyMenu'));
 	}
 
 	override function closeSubState() {

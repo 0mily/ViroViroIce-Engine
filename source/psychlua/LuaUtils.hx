@@ -513,6 +513,24 @@ class LuaUtils
 		}
 	}
 
+	public static function cancelTweensOf(target:Dynamic, values:Dynamic):Void
+	{
+		if(target == null || values == null)
+			return;
+
+		var fields:Array<String> = [];
+		for(field in Reflect.fields(values))
+		{
+			if(field != null && field.length > 0 && !fields.contains(field))
+				fields.push(field);
+		}
+
+		if(fields.length > 0)
+			FlxTween.cancelTweensOf(target, fields);
+		else
+			FlxTween.cancelTweensOf(target);
+	}
+
 	public static function cancelTimer(tag:String) {
 		if(!tag.startsWith('timer_')) tag = 'timer_' + LuaUtils.formatVariable(tag);
 		var variables = MusicBeatState.getVariables();

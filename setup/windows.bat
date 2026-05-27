@@ -15,6 +15,7 @@ haxelib install hxvlc --skip-dependencies
 haxelib install funkin-modchart
 haxelib install flixel-animate
 haxelib install moonchart
+haxelib install away3d 5.0.9
 haxelib git hscript-iris https://github.com/pisayesiwsi/hscript-iris.git dev
 haxelib git flxanimate https://github.com/Dot-Stuff/flxanimate.git dev
 haxelib git linc_luajit https://github.com/superpowers04/linc_luajit.git

@@ -6,6 +6,8 @@ import backend.Difficulty;
 import flixel.math.FlxMath;
 import flixel.util.FlxSort;
 
+using StringTools;
+
 // Chart
 typedef VSliceChart =
 {
@@ -91,118 +93,64 @@ class VSlice
 	public static function convertToPsych(chart:VSliceChart, metadata:VSliceMetadata):PsychPackage
 	{
 		var songDifficulties:Map<String, SwagSong> = [];
-		var timeChanges:Array<VSliceTimeChange> = cast metadata.timeChanges;
-		timeChanges.sort(sortByTime);
-		
-		var songBpm:Float = timeChanges[0].bpm;
-		timeChanges.shift();
-
-		var stage:String = metadata.playData.stage;
-		switch(stage) //Psych and VSlice use different names for some stages
-		{
-			case 'mainStage':
-				stage = 'stage';
-			case 'spookyMansion':
-				stage = 'spooky';
-			case 'phillyTrain':
-				stage = 'philly';
-			case 'limoRide':
-				stage = 'limo';
-			case 'mallXmas':
-				stage = 'mall';
-			case 'tankmanBattlefield':
-				stage = 'tank';
-		}
+		var timeChanges:Array<VSliceTimeChange> = normalizeTimeChanges(metadata.timeChanges);
+		var songBpm:Float = readFloat(timeChanges[0], ['bpm'], 100);
+		var stage:String = mapVSliceStage(readString(metadata.playData, ['stage'], 'stage'));
+		var difficulties:Array<String> = getDifficulties(chart, metadata);
 		var lastNoteTime:Float = 0;
-		var notesMap:Map<String, Dynamic> = [];
-		for (diff in metadata.playData.difficulties)
+		var notesMap:Map<String, Array<Dynamic>> = [];
+		for (diff in difficulties)
 		{
-			var notes:Array<VSliceNote> = cast Reflect.field(chart.notes, diff);
-			if(notes == null) notes = [];
+			var notes:Array<Dynamic> = getNotesForDifficulty(chart.notes, diff);
 			notes.sort(sortByTime);
 
 			notesMap.set(diff, notes);
 
-			var lastNote:Dynamic = notes[notes.length - 1];
-			if(notes.length > 0 && lastNote.t > lastNoteTime)
-				lastNoteTime = lastNote.t;
-		}
-
-		var sectionMustHits:Array<Bool> = [];
-
-		var focusCameraEvents:Array<Dynamic> = [];
-		var allEvents:Array<Dynamic> = chart.events;
-		if(allEvents != null && allEvents.length > 0)
-		{
-			var time:Float = 0;
-			allEvents.sort(sortByTime);
-
-			focusCameraEvents = allEvents.filter((event:Dynamic) -> event.e == 'FocusCamera' && (event.v == 0 || event.v == 1 || event.v.char != null));
-			if(focusCameraEvents.length > 0)
+			for (note in notes)
 			{
-				var focusEventNum:Int = 0;
-				var lastMustHit:Bool = false;
-				while(time < focusCameraEvents[focusCameraEvents.length - 1].t)
-				{
-					var bpm:Float = songBpm;
-					var sectionTime:Float = 0;
-					if(timeChanges.length > 0)
-					{
-						for (bpmChange in timeChanges)
-						{
-							if(time < bpmChange.t) break;
-							bpm = bpmChange.bpm;
-						}
-					}
-
-					for (i in focusEventNum...focusCameraEvents.length)
-					{
-						var focusEvent:VSliceEvent = focusCameraEvents[i];
-						if(time+1 < focusEvent.t)
-						{
-							focusEventNum = i;
-							break;
-						}
-						
-						var char:Dynamic = focusEvent.v.char;
-						if(char != null)
-							char = Std.string(char);
-						else
-							char = Std.string(focusEvent.v);
-
-						if(char == null) char = '1';
-						lastMustHit = (char == '0');
-					}
-					sectionMustHits.push(lastMustHit);
-					sectionTime = Conductor.calculateCrochet(bpm) * 4;
-					time += sectionTime;
-				}
+				var noteEnd:Float = readFloat(note, ['t', 'time'], 0) + Math.max(0, readFloat(note, ['l', 'length'], 0));
+				if(noteEnd > lastNoteTime)
+					lastNoteTime = noteEnd;
 			}
 		}
-		if(sectionMustHits.length < 1) sectionMustHits.push(false);
+
+		var focusCameraEvents:Array<Dynamic> = [];
+		var allEvents:Array<Dynamic> = chart.events != null ? chart.events.copy() : [];
+		allEvents.sort(sortByTime);
+		for (event in allEvents)
+		{
+			var eventTime:Float = readFloat(event, ['t', 'time'], 0);
+			if(eventTime > lastNoteTime)
+				lastNoteTime = eventTime;
+			if(isFocusCameraEvent(event))
+				focusCameraEvents.push(event);
+		}
 
 		var baseSections:Array<SwagSection> = [];
 		var sectionTimes:Array<Float> = [];
-		var bpm:Float = songBpm;
 		var lastBpm:Float = songBpm;
 		var time:Float = 0;
-		while (time < lastNoteTime)
+		var focusEventNum:Int = 0;
+		var lastFocusTarget:String = 'dad';
+		if(lastNoteTime <= 0)
+			lastNoteTime = sectionLength(songBpm);
+
+		while (time <= lastNoteTime + 0.001 || baseSections.length < 1)
 		{
-			var sectionTime:Float = 0;
-			if(timeChanges.length > 0)
+			var bpm:Float = getBpmAt(time, timeChanges, songBpm);
+			while(focusEventNum < focusCameraEvents.length && readFloat(focusCameraEvents[focusEventNum], ['t', 'time'], 0) <= time + 1)
 			{
-				for (bpmChange in timeChanges)
-				{
-					if(time < bpmChange.t) break;
-					bpm = bpmChange.bpm;
-				}
+				var focusTarget:String = focusEventTarget(focusCameraEvents[focusEventNum]);
+				if(focusTarget != null)
+					lastFocusTarget = focusTarget;
+				focusEventNum++;
 			}
-			sectionTime = Conductor.calculateCrochet(bpm) * 4;
+
 			sectionTimes.push(time);
-			time += sectionTime;
 
 			var sec:SwagSection = emptySection();
-			sec.mustHitSection = sectionMustHits[baseSections.length >= sectionMustHits.length ? sectionMustHits.length - 1 : baseSections.length];
+			sec.mustHitSection = lastFocusTarget == 'bf';
+			sec.gfSection = false;
 			if(lastBpm != bpm)
 			{
 				sec.changeBPM = true;
@@ -210,20 +158,22 @@ class VSlice
 				lastBpm = bpm;
 			}
 			baseSections.push(sec);
+			time += sectionLength(bpm);
 		}
 		//trace('sections: ${baseSections.length}, max time: $time, note: $lastNoteTime');
 
 		// create sections based on how much time there is until the last note
-		for (diff in metadata.playData.difficulties)
+		for (diff in difficulties)
 		{
-			var scrollSpeed:Float = Reflect.hasField(chart.scrollSpeed, diff) ? Reflect.field(chart.scrollSpeed, diff) : Reflect.field(chart.scrollSpeed, 'default');
-			var notes:Array<VSliceNote> = notesMap.get(diff);
+			var scrollSpeed:Float = getScrollSpeed(chart.scrollSpeed, diff);
+			var notes:Array<Dynamic> = notesMap.get(diff);
 
 			var sectionData:Array<SwagSection> = [];
 			for (section in baseSections) //clone sections
 			{
 				var sec:SwagSection = emptySection();
 				sec.mustHitSection = section.mustHitSection;
+				sec.gfSection = section.gfSection;
 				if(Reflect.hasField(section, 'changeBPM'))
 				{
 					sec.changeBPM = section.changeBPM;
@@ -236,11 +186,14 @@ class VSlice
 			var time:Float = 0;
 			for (note in notes)
 			{
-				while(noteSec + 1 < sectionTimes.length && sectionTimes[noteSec + 1] <= note.t)
+				var noteTime:Float = readFloat(note, ['t', 'time'], 0);
+				while(noteSec + 1 < sectionTimes.length && sectionTimes[noteSec + 1] <= noteTime)
 					noteSec++;
 
-				var psychNote:Array<Dynamic> = [note.t, (note.d + 4) % 8, (note.l != null ? note.l : 0)];
-				if(note.k != null && note.k.length > 0 && note.k != 'normal') psychNote.push(note.k);
+				var noteData:Int = readInt(note, ['d', 'data'], 0);
+				var psychNote:Array<Dynamic> = [noteTime, wrapLane(noteData), Math.max(0, readFloat(note, ['l', 'length'], 0))];
+				var noteKind:String = readString(note, ['k', 'kind'], '');
+				if(noteKind.length > 0 && noteKind != 'normal') psychNote.push(noteKind);
 
 				if(sectionData[noteSec] != null)
 					sectionData[noteSec].sectionNotes.push(psychNote);
@@ -255,9 +208,9 @@ class VSlice
 				speed: scrollSpeed,
 				offset: 0,
 			
-				player1: metadata.playData.characters.player,
-				player2: metadata.playData.characters.opponent,
-				gfVersion: metadata.playData.characters.girlfriend,
+				player1: readString(metadata.playData.characters, ['player'], 'bf'),
+				player2: readString(metadata.playData.characters, ['opponent'], 'dad'),
+				gfVersion: readString(metadata.playData.characters, ['girlfriend'], 'gf'),
 				stage: stage,
 				format: 'psych_v1_convert'
 			}
@@ -270,48 +223,378 @@ class VSlice
 		var pack:PsychPackage = {difficulties: songDifficulties, events: null};
 
 		var fileEvents:Array<Dynamic> = [];
-		var remainingEvents:Array<Dynamic> = allEvents.filter((event:Dynamic) -> !focusCameraEvents.contains(event));
-		if(remainingEvents.length > 0)
+		if(allEvents.length > 0)
 		{
-			for (num => event in remainingEvents)
+			for (num => event in allEvents)
 			{
-				var fields:Array<Dynamic> = [];
-				if(event.v != null)
-				{
-					switch(Type.typeof(event.v))
-					{
-						case TObject:
-							for (field in Reflect.fields(event.v))
-							{
-								fields.push(Std.string(Reflect.field(event.v, field)));
-								if(fields.length == 2) break;
-							}
-						case TClass(String):
-							fields.push(event.v);
-						case TClass(Array):
-							var arr:Array<Dynamic> = cast event.v;
-							if(arr != null && arr.length > 0)
-							{
-								for (value in arr)
-								{
-									fields.push(Std.string(value));
-
-									if(fields.length == 2) break;
-								}
-							}
-						default:
-							fields.push(Std.string(event.v));
-					}
-				}
-				while(fields.length < 2) fields.push('');
-
-				fields.insert(0, event.e);
-				fileEvents.push([event.t, [fields]]);
+				var fields:Array<Dynamic> = convertVSliceEvent(event);
+				if(fields != null && fields.length > 0)
+					fileEvents.push([readFloat(event, ['t', 'time'], 0), [fields]]);
 			}
 			fileEvents.sort(sortByTime);
 			pack.events = {events: fileEvents, format: 'psych_v1_convert'};
 		}
 		return pack;
+	}
+
+	static function normalizeTimeChanges(timeChanges:Array<VSliceTimeChange>):Array<VSliceTimeChange>
+	{
+		var list:Array<VSliceTimeChange> = timeChanges != null ? timeChanges.copy() : [];
+		if(list.length < 1)
+			list.push({t: 0, bpm: 100});
+		list.sort(sortByTime);
+		if(Math.isNaN(readFloat(list[0], ['bpm'], Math.NaN)))
+			list[0].bpm = 100;
+		return list;
+	}
+
+	static function getDifficulties(chart:VSliceChart, metadata:VSliceMetadata):Array<String>
+	{
+		var diffs:Array<String> = [];
+		if(metadata.playData != null && metadata.playData.difficulties != null)
+			for(diff in metadata.playData.difficulties)
+				pushDifficulty(diffs, diff);
+
+		for(diff in getDynamicKeys(chart.notes))
+			pushDifficulty(diffs, diff);
+
+		if(diffs.length < 1)
+			diffs.push(Paths.formatToSongPath(Difficulty.getDefault()));
+		return diffs;
+	}
+
+	static function pushDifficulty(diffs:Array<String>, diff:String):Void
+	{
+		if(diff == null)
+			return;
+		diff = Paths.formatToSongPath(diff);
+		if(diff.length > 0 && !diffs.contains(diff))
+			diffs.push(diff);
+	}
+
+	static function getNotesForDifficulty(notesData:Dynamic, diff:String):Array<Dynamic>
+	{
+		var raw:Dynamic = getFieldLoose(notesData, diff);
+		if(raw == null && diff != 'normal')
+			raw = getFieldLoose(notesData, 'normal');
+		if(raw == null || !Std.isOfType(raw, Array))
+			return [];
+		return cast raw;
+	}
+
+	static function getScrollSpeed(scrollSpeedData:Dynamic, diff:String):Float
+	{
+		var value:Dynamic = getFieldLoose(scrollSpeedData, diff);
+		if(value == null)
+			value = getFieldLoose(scrollSpeedData, 'default');
+		var speed:Float = parseFloat(value, 1);
+		return Math.isNaN(speed) || speed <= 0 ? 1 : speed;
+	}
+
+	static function getBpmAt(time:Float, timeChanges:Array<VSliceTimeChange>, fallback:Float):Float
+	{
+		var bpm:Float = fallback;
+		for(change in timeChanges)
+		{
+			if(readFloat(change, ['t', 'time'], 0) > time)
+				break;
+			bpm = readFloat(change, ['bpm'], bpm);
+		}
+		return Math.isNaN(bpm) || bpm <= 0 ? fallback : bpm;
+	}
+
+	static function sectionLength(bpm:Float):Float
+	{
+		if(Math.isNaN(bpm) || bpm <= 0)
+			bpm = 100;
+		return Conductor.calculateCrochet(bpm) * 4;
+	}
+
+	static function isFocusCameraEvent(event:Dynamic):Bool
+		return readString(event, ['e', 'eventKind'], '').toLowerCase() == 'focuscamera';
+
+	static function focusEventTarget(event:Dynamic):String
+	{
+		var value:Dynamic = Reflect.field(event, 'v');
+		return focusTargetFromValue(value);
+	}
+
+	static function focusTargetFromValue(value:Dynamic):String
+	{
+		var charValue:Dynamic = getFieldLoose(value, 'char');
+		if(charValue == null)
+			charValue = value;
+
+		switch(Std.string(charValue ?? '').toLowerCase().trim())
+		{
+			case '0' | 'bf' | 'boyfriend' | 'player':
+				return 'bf';
+			case '1' | 'dad' | 'opponent':
+				return 'dad';
+			case '2' | 'gf' | 'girlfriend':
+				return 'gf';
+			case '-1' | 'position' | 'pos':
+				return 'position';
+		}
+		return null;
+	}
+
+	static function convertVSliceEvent(event:Dynamic):Array<Dynamic>
+	{
+		var eventName:String = readString(event, ['e', 'eventKind'], '').trim();
+		var value:Dynamic = Reflect.field(event, 'v');
+		var compact:String = eventName.toLowerCase().replace(' ', '');
+
+		switch(compact)
+		{
+			case 'focuscamera':
+				var target:String = focusTargetFromValue(value);
+				if(target == null) target = 'bf';
+				var x:String = eventFloatString(value, ['x'], 0);
+				var y:String = eventFloatString(value, ['y'], 0);
+				var duration:String = eventFloatString(value, ['duration'], 4);
+				var ease:String = normalizeVSliceEase(readString(value, ['ease'], 'CLASSIC'), readString(value, ['easeDir'], ''));
+				return ['Focus Camera', '$target, $x, $y', '$ease, $duration'];
+
+			case 'zoomcamera':
+				var zoom:String = eventFloatString(value, ['zoom'], 1);
+				var duration:String = eventFloatString(value, ['duration'], 4);
+				var ease:String = normalizeVSliceEase(readString(value, ['ease'], 'linear'), readString(value, ['easeDir'], 'InOut'));
+				var mode:String = readString(value, ['mode'], 'direct').toLowerCase().trim();
+				var psychMode:String = switch(mode)
+				{
+					case 'relative' | 'add' | 'mr': 'mr';
+					case 'subtract' | 'sub' | 'lss': 'lss';
+					default: 'nll';
+				}
+				return ['Camera Zoom', '$zoom, $duration', '$ease, $psychMode'];
+
+			case 'setcamerabop':
+				return [
+					'Set Camera Bop',
+					eventFloatString(value, ['intensity'], 1),
+					eventFloatString(value, ['rate'], 4),
+					eventFloatString(value, ['offset'], 0)
+				];
+
+			case 'playanimation':
+				return [
+					'Play Animation',
+					readString(value, ['anim', 'animation'], 'idle'),
+					readString(value, ['target'], 'boyfriend'),
+					readString(value, ['force'], 'false')
+				];
+
+			case 'sethealthicon':
+				return [
+					'Set Health Icon',
+					readString(value, ['char', 'target'], '0'),
+					readString(value, ['id', 'icon'], ''),
+					eventFloatString(value, ['scale'], 1),
+					readString(value, ['flipX'], 'false'),
+					readString(value, ['isPixel'], 'false'),
+					eventFloatString(value, ['offsetX'], 0),
+					eventFloatString(value, ['offsetY'], 0)
+				];
+		}
+
+		var fields:Array<Dynamic> = eventValueFields(value);
+		while(fields.length < 2) fields.push('');
+		fields.insert(0, eventName);
+		return fields;
+	}
+
+	static function eventFloatString(value:Dynamic, fields:Array<String>, fallback:Float):String
+	{
+		var raw:Dynamic = getFirstField(value, fields);
+		if(raw == null && isScalar(value))
+			raw = value;
+
+		var parsed:Float = parseFloat(raw, fallback);
+		if(Math.isNaN(parsed))
+			parsed = fallback;
+		return Std.string(parsed);
+	}
+
+	static function isScalar(value:Dynamic):Bool
+	{
+		return switch(Type.typeof(value))
+		{
+			case TObject:
+				false;
+			case TClass(Array):
+				false;
+			default:
+				value != null;
+		}
+	}
+
+	static function normalizeVSliceEase(ease:String, easeDir:String):String
+	{
+		if(ease == null || ease.trim().length < 1)
+			return 'linear';
+
+		var trimmed:String = ease.trim();
+		var lower:String = trimmed.toLowerCase();
+		switch(lower)
+		{
+			case 'classic':
+				return 'classic';
+			case 'instant':
+				return 'instant';
+			case 'linear':
+				return 'linear';
+		}
+
+		var dir:String = easeDir == null ? '' : easeDir.trim();
+		if(dir.length < 1 || lower.endsWith('in') || lower.endsWith('out') || lower.endsWith('inout'))
+			return trimmed;
+		return trimmed + dir;
+	}
+
+	static function wrapLane(lane:Int):Int
+	{
+		lane %= 8;
+		if(lane < 0) lane += 8;
+		return lane;
+	}
+
+	static function eventValueFields(value:Dynamic):Array<Dynamic>
+	{
+		var fields:Array<Dynamic> = [];
+		if(value == null)
+			return fields;
+
+		switch(Type.typeof(value))
+		{
+			case TObject:
+				for (field in Reflect.fields(value))
+				{
+					fields.push(Std.string(Reflect.field(value, field)));
+					if(fields.length == 2) break;
+				}
+			case TClass(String):
+				fields.push(value);
+			case TClass(Array):
+				var arr:Array<Dynamic> = cast value;
+				for (item in arr)
+				{
+					fields.push(Std.string(item));
+					if(fields.length == 2) break;
+				}
+			default:
+				fields.push(Std.string(value));
+		}
+		return fields;
+	}
+
+	static function mapVSliceStage(stage:String):String
+	{
+		return switch(stage)
+		{
+			case 'mainStage': 'stage';
+			case 'spookyMansion': 'spooky';
+			case 'phillyTrain': 'philly';
+			case 'limoRide': 'limo';
+			case 'mallXmas': 'mall';
+			case 'tankmanBattlefield': 'tank';
+			default: stage;
+		}
+	}
+
+	static function readFloat(source:Dynamic, fields:Array<String>, fallback:Float):Float
+		return parseFloat(getFirstField(source, fields), fallback);
+
+	static function readInt(source:Dynamic, fields:Array<String>, fallback:Int):Int
+	{
+		var parsed:Int = Std.parseInt(Std.string(getFirstField(source, fields) ?? ''));
+		return Math.isNaN(parsed) ? fallback : parsed;
+	}
+
+	static function readString(source:Dynamic, fields:Array<String>, fallback:String):String
+	{
+		var value:Dynamic = getFirstField(source, fields);
+		return value == null ? fallback : Std.string(value);
+	}
+
+	static function parseFloat(value:Dynamic, fallback:Float):Float
+	{
+		var parsed:Float = Std.parseFloat(Std.string(value ?? ''));
+		return Math.isNaN(parsed) ? fallback : parsed;
+	}
+
+	static function getFirstField(source:Dynamic, fields:Array<String>):Dynamic
+	{
+		for(field in fields)
+		{
+			var value:Dynamic = getFieldLoose(source, field);
+			if(value != null)
+				return value;
+		}
+		return null;
+	}
+
+	static function getFieldLoose(source:Dynamic, field:String):Dynamic
+	{
+		if(source == null || field == null)
+			return null;
+
+		switch(Type.typeof(source))
+		{
+			case TObject:
+			case TClass(_):
+			default:
+				return null;
+		}
+
+		if(Reflect.hasField(source, field))
+			return Reflect.field(source, field);
+
+		var getter:Dynamic = Reflect.field(source, 'get');
+		if(getter != null)
+		{
+			try
+			{
+				var value:Dynamic = Reflect.callMethod(source, getter, [field]);
+				if(value != null)
+					return value;
+			}
+			catch(e:Dynamic) {}
+		}
+
+		var formatted:String = Paths.formatToSongPath(field);
+		for(key in Reflect.fields(source))
+			if(Paths.formatToSongPath(key) == formatted)
+				return Reflect.field(source, key);
+		return null;
+	}
+
+	static function getDynamicKeys(source:Dynamic):Array<String>
+	{
+		var keys:Array<String> = [];
+		if(source == null)
+			return keys;
+
+		var keysMethod:Dynamic = Reflect.field(source, 'keys');
+		if(keysMethod != null)
+		{
+			try
+			{
+				var iterator:Dynamic = Reflect.callMethod(source, keysMethod, []);
+				while(iterator != null && iterator.hasNext())
+				{
+					var key:String = Std.string(iterator.next());
+					if(!keys.contains(key))
+						keys.push(key);
+				}
+			}
+			catch(e:Dynamic) {}
+		}
+
+		for(key in Reflect.fields(source))
+			if(!keys.contains(key))
+				keys.push(key);
+		return keys;
 	}
 
 	public static function export(songData:SwagSong, ?difficultyName:String = null):VSlicePackage
@@ -335,7 +618,7 @@ class VSlice
 		var time:Float = 0;
 		var bpm:Float = songData.bpm;
 		timeChanges.push({t: 0, bpm: bpm}); //so there was first bpm issue (if the song has multiplier bpm) 
-		var lastMustHit:Bool = false;
+		var lastFocusChar:Int = 1;
 		if(songData.notes != null)
 		{
 			for (section in songData.notes)
@@ -346,7 +629,7 @@ class VSlice
 					for (note in section.sectionNotes)
 					{
 						var lane:Int = Std.int(note[1] ?? 0);
-						var vsliceNote:VSliceNote = {t: note[0], d: (lane + 4) % 8};
+						var vsliceNote:VSliceNote = {t: note[0], d: wrapLane(lane)};
 						if(note[2] > 0)
 							vsliceNote.l = note[2];
 						if(note[3] != null && note[3].length > 0)
@@ -365,10 +648,11 @@ class VSlice
 					timeChanges.push({t: time, bpm: bpm});
 				}
 
-				if(lastMustHit != section.mustHitSection)
+				var focusChar:Int = section.gfSection == true ? 2 : (section.mustHitSection ? 0 : 1);
+				if(lastFocusChar != focusChar)
 				{
-					events.push({t: time, e: 'FocusCamera', v: {char: section.mustHitSection ? 0 : 1}});
-					lastMustHit = section.mustHitSection;
+					events.push({t: time, e: 'FocusCamera', v: {char: focusChar}});
+					lastFocusChar = focusChar;
 				}
 
 				var rowRound:Int = Math.round(4 * section.sectionBeats);
@@ -465,9 +749,10 @@ class VSlice
 			sectionNotes: [],
 			sectionBeats: 4,
 			mustHitSection: true,
+			gfSection: false,
 		};
 	}
 
 	static function sortByTime(Obj1:Dynamic, Obj2:Dynamic):Int
-		return FlxSort.byValues(FlxSort.ASCENDING, Obj1.t, Obj2.t);
+		return FlxSort.byValues(FlxSort.ASCENDING, readFloat(Obj1, ['t', 'time'], 0), readFloat(Obj2, ['t', 'time'], 0));
 }

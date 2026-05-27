@@ -331,6 +331,9 @@ class PlayState extends ScriptedState
 	 * Disables the default section camera bop while a scripted camera bop event is active.
 	*/
 	public var scriptedCameraBopActive:Bool = false;
+	public var scriptedCameraBopRate:Float = 4;
+	public var scriptedCameraBopOffset:Float = 0;
+	public var scriptedCameraBopIntensity:Float = 1;
 
 	/**
 	 * How frequently the speakers (middle) character should bop every beat.
@@ -444,6 +447,7 @@ class PlayState extends ScriptedState
 	public var cameraMoveOffset:Float = 30;
 	@:dox(hide) var cameraFocusTween:FlxTween;
 	@:dox(hide) var cameraMoveTween:FlxTween;
+	@:dox(hide) var cameraZoomTween:FlxTween;
 	var cameraAngleTweens:Map<FlxCamera, FlxTween> = [];
 	var cameraFocusBaseX:Float = 0;
 	var cameraFocusBaseY:Float = 0;
@@ -3218,6 +3222,27 @@ class PlayState extends ScriptedState
 	}
 
 
+	function cancelSongSpeedTween():Void
+	{
+		if(songSpeedTween != null)
+		{
+			songSpeedTween.cancel();
+			songSpeedTween = null;
+		}
+		FlxTween.cancelTweensOf(this, ['songSpeed']);
+	}
+
+	function cancelCameraZoomTween():Void
+	{
+		if(cameraZoomTween != null)
+		{
+			cameraZoomTween.cancel();
+			cameraZoomTween = null;
+		}
+		if(FlxG.camera != null)
+			FlxTween.cancelTweensOf(FlxG.camera, ['zoom']);
+	}
+
 		function getCameraZoomEase(ease:String):Float->Float
 			{
 				switch (ease.toLowerCase())
@@ -3378,10 +3403,20 @@ class PlayState extends ScriptedState
 				}
 
 			case 'Camera Module Bop':
-				scriptedCameraBopActive = value2 != null && value2.trim().length > 0;
+				applySetCameraBopEvent(value1, value2, values);
 
-			case 'Play Animation':
+			case 'Set Camera Bop' | 'SetCameraBop':
+				applySetCameraBopEvent(value1, value2, values);
+
+			case 'Play Animation' | 'PlayAnimation':
 				//trace('Anim to play: ' + value1);
+				if(eventName == 'PlayAnimation')
+				{
+					var targetName:String = value1;
+					value1 = value2;
+					value2 = targetName;
+				}
+				var forceAnim:Bool = values == null || values.length < 3 ? true : parseNullableEventBool(values[2]) != false;
 				var char:Character = switch((value2 ?? '').toLowerCase().trim()) {
 					case '1': boyfriend;
 					case '2': gf;
@@ -3393,7 +3428,7 @@ class PlayState extends ScriptedState
 
 				if (char != null)
 				{
-					char.playAnim(value1, true);
+					char.playAnim(value1, forceAnim);
 					char.specialAnim = true;
 				}
 
@@ -3419,7 +3454,7 @@ class PlayState extends ScriptedState
 					}
 				}
 
-			case 'Change Focus' | 'ChangeFocus':
+			case 'Focus Camera' | 'FocusCamera' | 'Change Focus' | 'ChangeFocus':
 				var focus:Array<String> = parseCameraFocusEvent(value1, value2);
 				changeFocus(focus[0], Std.parseFloat(focus[1]), Std.parseFloat(focus[2]), focus[3], Std.parseFloat(focus[4]));
 
@@ -3533,6 +3568,9 @@ class PlayState extends ScriptedState
 				}
 				reloadHealthBarColors();
 
+			case 'Set Health Icon' | 'SetHealthIcon':
+				applySetHealthIconEvent(value1, value2, values);
+
 			case 'Change Scroll Speed':
 				if (songSpeedType != "constant")
 				{
@@ -3540,13 +3578,15 @@ class PlayState extends ScriptedState
 					if(flValue2 == null) flValue2 = 0;
 
 					var newValue:Float = SONG.speed * ClientPrefs.getGameplaySetting('scrollspeed') * flValue1;
+					cancelSongSpeedTween();
 					if(flValue2 <= 0)
 						songSpeed = newValue;
 					else
 						songSpeedTween = FlxTween.tween(this, {songSpeed: newValue}, flValue2 / playbackRate, {ease: FlxEase.linear, onComplete:
 							function (twn:FlxTween)
 							{
-								songSpeedTween = null;
+								if(songSpeedTween == twn)
+									songSpeedTween = null;
 							}
 						});
 				}
@@ -3559,6 +3599,7 @@ class PlayState extends ScriptedState
 
 						var newValue:Float = flValue1;
 
+						cancelSongSpeedTween();
 						if(flValue2 <= 0)
 						{
 							songSpeed = newValue;
@@ -3569,7 +3610,8 @@ class PlayState extends ScriptedState
 								ease: FlxEase.linear,
 								onComplete: function (twn:FlxTween)
 								{
-									songSpeedTween = null;
+									if(songSpeedTween == twn)
+										songSpeedTween = null;
 								}
 							});
 						}
@@ -3615,6 +3657,7 @@ class PlayState extends ScriptedState
 						}
 
 						var zoomMode:String = ease.toLowerCase().trim();
+						cancelCameraZoomTween();
 
 						switch (zoomMode)
 						{
@@ -3635,11 +3678,13 @@ class PlayState extends ScriptedState
 								{
 									var time:Float = (steps * Conductor.stepCrochet / 1000) / playbackRate;
 
-									FlxTween.tween(FlxG.camera, {zoom: targetZoom}, time, {
+									cameraZoomTween = FlxTween.tween(FlxG.camera, {zoom: targetZoom}, time, {
 										ease: getCameraZoomEase(ease),
 										onComplete: function(twn:FlxTween)
 										{
 											defaultCamZoom = targetZoom;
+											if(cameraZoomTween == twn)
+												cameraZoomTween = null;
 										}
 									});
 								}
@@ -3693,6 +3738,71 @@ class PlayState extends ScriptedState
 
 		stagesFunc(function(stage:BaseStage) stage.eventCalled(eventName, value1, value2, flValue1, flValue2, strumTime));
 		callOnScripts('onEvent', buildEventCallbackArgs(eventName, value1, value2, strumTime, values));
+	}
+
+	function applySetCameraBopEvent(value1:String, value2:String, ?values:Array<String>):Void
+	{
+		var hasValues:Bool = false;
+		if(values != null)
+		{
+			for(value in values)
+			{
+				if(value != null && value.trim().length > 0)
+				{
+					hasValues = true;
+					break;
+				}
+			}
+		}
+		else
+			hasValues = (value1 != null && value1.trim().length > 0) || (value2 != null && value2.trim().length > 0);
+
+		if(!hasValues)
+		{
+			scriptedCameraBopActive = false;
+			scriptedCameraBopRate = 4;
+			scriptedCameraBopOffset = 0;
+			scriptedCameraBopIntensity = 1;
+			return;
+		}
+
+		scriptedCameraBopIntensity = parseEventFloat(values, 0, value1, 1);
+		scriptedCameraBopRate = parseEventFloat(values, 1, value2, 4);
+		scriptedCameraBopOffset = parseEventFloat(values, 2, null, 0);
+		if(Math.isNaN(scriptedCameraBopIntensity)) scriptedCameraBopIntensity = 1;
+		if(Math.isNaN(scriptedCameraBopRate) || scriptedCameraBopRate < 0) scriptedCameraBopRate = 0;
+		if(Math.isNaN(scriptedCameraBopOffset)) scriptedCameraBopOffset = 0;
+		scriptedCameraBopActive = scriptedCameraBopRate > 0 && scriptedCameraBopIntensity != 0;
+	}
+
+	function applySetHealthIconEvent(value1:String, value2:String, ?values:Array<String>):Void
+	{
+		var target:String = getEventValue(values, 0, value1);
+		var icon:String = getEventValue(values, 1, value2);
+		if(icon == null || icon.trim().length < 1)
+			return;
+
+		switch((target ?? '0').toLowerCase().trim())
+		{
+			case '0' | 'bf' | 'boyfriend' | 'player':
+				iconP1?.changeIcon(icon);
+			case '1' | 'dad' | 'opponent':
+				iconP2?.changeIcon(icon);
+		}
+	}
+
+	function getEventValue(?values:Array<String>, index:Int = 0, fallback:String = null):String
+	{
+		if(values != null && index >= 0 && index < values.length && values[index] != null)
+			return values[index];
+		return fallback;
+	}
+
+	function parseEventFloat(?values:Array<String>, index:Int = 0, fallbackValue:String = null, fallback:Float = 0):Float
+	{
+		var raw:String = getEventValue(values, index, fallbackValue);
+		var parsed:Float = Std.parseFloat(raw ?? '');
+		return Math.isNaN(parsed) ? fallback : parsed;
 	}
 
 	function buildEventCallbackArgs(eventName:String, value1:String, value2:String, strumTime:Float, ?values:Array<String>):Array<Dynamic>
@@ -3922,6 +4032,8 @@ class PlayState extends ScriptedState
 		var normalized:String = normalizeCharacterTarget(target);
 		return switch(normalized)
 		{
+			case '-1' | 'position' | 'pos':
+				'position';
 			case 'boyfriend':
 				'boyfriend';
 			case 'gf':
@@ -3952,6 +4064,9 @@ class PlayState extends ScriptedState
 
 		switch(character)
 		{
+			case 'position':
+				point.set(0, 0);
+
 			case 'gf':
 				if(gf == null)
 				{
@@ -5055,10 +5170,26 @@ class PlayState extends ScriptedState
 		iconP1.updateHitbox();
 		iconP2.updateHitbox();
 		
+		applyScriptedCameraBop(beat);
 		characterBopper(beat);
 		
 		super.beatHit(beat);
 		lastBeatHit = beat;
+	}
+
+	function applyScriptedCameraBop(beat:Int):Void
+	{
+		if(!scriptedCameraBopActive || !camZooming || !ClientPrefs.data.camZooms || scriptedCameraBopRate <= 0)
+			return;
+		if(FlxG.camera.zoom >= defaultCamZoom + 0.35)
+			return;
+
+		var beatRatio:Float = (beat - scriptedCameraBopOffset) / scriptedCameraBopRate;
+		if(Math.abs(beatRatio - Math.round(beatRatio)) > 0.001)
+			return;
+
+		FlxG.camera.zoom += 0.015 * camZoomingMult * scriptedCameraBopIntensity;
+		camHUD.zoom += 0.03 * camZoomingMult * scriptedCameraBopIntensity;
 	}
 
 	/**

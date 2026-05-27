@@ -1,5 +1,7 @@
 package states.stages;
 
+import objects.vvieSpriteHandler;
+
 class Spooky extends BaseStage
 {
 	var halloweenBG:BGSprite;
@@ -107,7 +109,7 @@ class Spooky extends BaseStage
 		boyfriend.playAnim('scared', true);
 
 		// white flash
-		var whiteScreen:FlxSprite = new FlxSprite().makeGraphic(Std.int(FlxG.width * 2), Std.int(FlxG.height * 2), FlxColor.WHITE);
+		var whiteScreen:FlxSprite = new vvieSpriteHandler().makeGraphic(Std.int(FlxG.width * 2), Std.int(FlxG.height * 2), FlxColor.WHITE);
 		whiteScreen.scrollFactor.set();
 		whiteScreen.blend = ADD;
 		add(whiteScreen);

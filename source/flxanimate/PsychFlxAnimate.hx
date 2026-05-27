@@ -4,6 +4,7 @@ import animate.FlxAnimate as OriginalFlxAnimate;
 import animate.FlxAnimateFrames;
 import animate.FlxAnimateFrames.SpritemapInput;
 import backend.Paths;
+import flixel.FlxCamera;
 import flixel.FlxG;
 import flixel.graphics.FlxGraphic;
 import flixel.graphics.frames.FlxAtlasFrames;
@@ -19,6 +20,7 @@ class PsychFlxAnimate extends OriginalFlxAnimate
 {
 	public var showPivot:Bool = false;
 	public var cullLimbs:Bool = false;
+	public var forceRenderTexture:Bool = false;
 
 	public function loadAtlasFolder(path:String)
 	{
@@ -352,6 +354,9 @@ class PsychFlxAnimate extends OriginalFlxAnimate
 		if(isAnimate && !hasActiveAtlasAnimation()) return;
 		super.draw();
 	}
+
+	override function checkRenderTexture():Bool
+		return (isAnimate && (!cullLimbs || (useRenderTexture && forceRenderTexture))) || super.checkRenderTexture();
 
 	override public function isOnScreen(?camera:FlxCamera):Bool
 	{

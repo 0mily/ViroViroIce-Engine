@@ -293,6 +293,7 @@ class FunkinLua {
 		var target:Dynamic = LuaUtils.tweenPrepare(tag, vars);
 		var variables = MusicBeatState.getVariables();
 		if(target != null) {
+			LuaUtils.cancelTweensOf(target, tweenValue);
 			if (tag != null) {
 				var originalTag:String = tag;
 				tag = LuaUtils.formatVariable('tween_$tag');
@@ -315,6 +316,7 @@ class FunkinLua {
 		var strumNote:StrumNote = PlayState.instance.strumLineNotes.members[note % PlayState.instance.strumLineNotes.length];
 		if(strumNote == null) return null;
 
+		LuaUtils.cancelTweensOf(strumNote, data);
 		if(tag != null)
 		{
 			var originalTag:String = tag;
@@ -921,6 +923,7 @@ class FunkinLua {
 			var penisExam:Dynamic = LuaUtils.tweenPrepare(tag, vars);
 			if (penisExam != null) {
 				if (values != null) {
+					LuaUtils.cancelTweensOf(penisExam, values);
 					var myOptions:LuaTweenOptions = LuaUtils.getLuaTween(options);
 					if (tag != null) {
 						var originalTag:String = tag;
@@ -968,6 +971,7 @@ class FunkinLua {
 		registerFunction('doTweenColor', function(tag:String, vars:String, targetColor:String, duration:Float, ?ease:String = 'linear') {
 			var penisExam:Dynamic = LuaUtils.tweenPrepare(tag, vars);
 			if (penisExam != null) {
+				FlxTween.cancelTweensOf(penisExam, ['color', 'alpha']);
 				var curColor:FlxColor = penisExam.color;
 				curColor.alphaFloat = penisExam.alpha;
 				

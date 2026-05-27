@@ -52,7 +52,10 @@ class Mods
 	static public var currentPackageDirectory:String = '';
 	public static inline var PACKAGE_MOD_FOLDER:String = 'packageMod';
 	static var contentDirectoriesCache:Array<String> = null;
+	static var contentModDirectoriesCache:Map<String, Array<String>> = new Map();
 	static var contentDataCache:Map<String, ContentData> = new Map();
+	static var activeModDirectoriesCacheKey:String = null;
+	static var activeModDirectoriesCache:Array<String> = null;
 	public static final PACKAGE_MOD_FOLDERS:Array<String> = ['packageMod', 'packageMods'];
 	public static final ignoreModFolders:Array<String> = [
 		'characters',
@@ -98,7 +101,10 @@ class Mods
 	public static function clearContentCaches():Void
 	{
 		contentDirectoriesCache = null;
+		contentModDirectoriesCache = new Map();
 		contentDataCache = new Map();
+		activeModDirectoriesCacheKey = null;
+		activeModDirectoriesCache = null;
 	}
 
 	public static function resolveModPath(key:String = ''):String
@@ -240,6 +246,8 @@ class Mods
 	{
 		globalMods = [];
 		globalPackageMods = [];
+		activeModDirectoriesCacheKey = null;
+		activeModDirectoriesCache = null;
 		var contentMods:Array<String> = getContentModDirectories();
 		var primaryContentMod:String = contentMods.length > 0 ? contentMods[0] : '';
 
@@ -369,23 +377,29 @@ class Mods
 		content = normalizeFolderKey(content ?? getSelectedContentDirectory());
 		if (content.length < 1 || !directoryIsContent(content))
 			return list;
+		if (contentModDirectoriesCache.exists(content))
+			return contentModDirectoriesCache.get(content).copy();
 
 		var rootRelative:String = contentRootDirectory(content);
 		var rootAbsolute:String = Paths.mods(rootRelative);
-		for (folder in FileSystem.readDirectory(rootAbsolute))
+		if (FileSystem.exists(rootAbsolute) && FileSystem.isDirectory(rootAbsolute))
 		{
-			var relative:String = contentModDirectory(content, folder);
-			var absolute:String = Paths.mods(relative);
-			if (!FileSystem.exists(absolute) || !FileSystem.isDirectory(absolute))
-				continue;
+			for (folder in FileSystem.readDirectory(rootAbsolute))
+			{
+				var relative:String = contentModDirectory(content, folder);
+				var absolute:String = Paths.mods(relative);
+				if (!FileSystem.exists(absolute) || !FileSystem.isDirectory(absolute))
+					continue;
 
-			if (directoryIsMod(relative) && !list.contains(relative))
-				list.push(relative);
+				if (directoryIsMod(relative) && !list.contains(relative))
+					list.push(relative);
+			}
 		}
 		list.sort(Reflect.compare);
 
 		if (list.length < 1 && directoryIsMod(rootRelative))
 			list.push(rootRelative);
+		contentModDirectoriesCache.set(content, list.copy());
 		#end
 
 		return list;
@@ -395,10 +409,17 @@ class Mods
 	{
 		list ??= parseList();
 		var enabled:Array<String> = [];
+		var available:Map<String, Bool> = new Map();
+		var added:Map<String, Bool> = new Map();
+		for (mod in list.available)
+			available.set(mod, true);
 
 		for (mod in list.enabled)
-			if (list.available.contains(mod) && addonAllowedForCurrentContent(mod) && !enabled.contains(mod))
+			if (available.exists(mod) && addonAllowedForCurrentContent(mod) && !added.exists(mod))
+			{
 				enabled.push(mod);
+				added.set(mod, true);
+			}
 		return enabled;
 	}
 
@@ -425,6 +446,11 @@ class Mods
 
 	public static function getActiveModDirectories():Array<String>
 	{
+		var selectedContent:String = getSelectedContentDirectory();
+		var cacheKey:String = selectedContent + '|' + (currentModDirectory ?? '') + '|' + globalMods.join('|');
+		if(activeModDirectoriesCacheKey == cacheKey && activeModDirectoriesCache != null)
+			return activeModDirectoriesCache.copy();
+
 		var directories:Array<String> = [];
 		function addDirectory(directory:String):Void
 		{
@@ -434,14 +460,16 @@ class Mods
 
 		addDirectory(currentModDirectory);
 
-		if (hasSelectedContent())
+		if (selectedContent.length > 0)
 		{
-			for (mod in getContentModDirectories())
+			for (mod in getContentModDirectories(selectedContent))
 				addDirectory(mod);
 		}
 
 		for (mod in getGlobalMods())
 			addDirectory(mod);
+		activeModDirectoriesCacheKey = cacheKey;
+		activeModDirectoriesCache = directories.copy();
 		return directories;
 	}
 
@@ -956,6 +984,9 @@ class Mods
 
 	public static function updateModList(?list:ModsList) {
 		#if ADDONS_ALLOWED
+		contentModDirectoriesCache = new Map();
+		activeModDirectoriesCacheKey = null;
+		activeModDirectoriesCache = null;
 		var list:ModsList = (list ?? parseList());
 
 		for (folder in getModDirectories()) {

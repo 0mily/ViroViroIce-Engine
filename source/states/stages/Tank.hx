@@ -4,6 +4,7 @@ import states.stages.objects.*;
 import cutscenes.CutsceneHandler;
 import substates.GameOverSubstate;
 import objects.Character;
+import objects.vvieSpriteHandler;
 
 class Tank extends BaseStage
 {
@@ -337,7 +338,7 @@ class Tank extends BaseStage
 		}
 		pico.anim.onFinish.add(picoStressCycle);
 
-		boyfriendCutscene = new FlxSprite(boyfriend.x + 5, boyfriend.y + 20);
+		boyfriendCutscene = new vvieSpriteHandler(boyfriend.x + 5, boyfriend.y + 20);
 		boyfriendCutscene.antialiasing = ClientPrefs.data.antialiasing;
 		boyfriendCutscene.frames = Paths.getSparrowAtlas('characters/BOYFRIEND');
 		boyfriendCutscene.animation.addByPrefix('idle', 'BF idle dance', 24, false);

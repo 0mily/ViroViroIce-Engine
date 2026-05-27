@@ -11,6 +11,7 @@ import substates.GameOverSubstate;
 import states.stages.objects.*;
 
 import objects.Note;
+import objects.vvieSpriteHandler;
 
 import cutscenes.CutsceneHandler;
 
@@ -125,7 +126,7 @@ class PhillyStreets extends BaseStage
 		
 		if(!ClientPrefs.data.lowQuality)
 		{
-			picoFade = new FlxSprite();
+			picoFade = new vvieSpriteHandler();
 			picoFade.antialiasing = ClientPrefs.data.antialiasing;
 			picoFade.alpha = 0;
 			add(picoFade);
@@ -816,7 +817,7 @@ class PhillyStreets extends BaseStage
 	{
 		if(ClientPrefs.data.lowQuality) return;
 
-		var casing:FlxSprite = new FlxSprite(boyfriend.x + 250, boyfriend.y + 100);
+		var casing:FlxSprite = new vvieSpriteHandler(boyfriend.x + 250, boyfriend.y + 100);
 		casing.frames = casingFrames;
 		casing.animation.addByPrefix('pop', 'Pop0', 24, false);
 		casing.animation.addByPrefix('idle', 'Bullet0', 24, true);

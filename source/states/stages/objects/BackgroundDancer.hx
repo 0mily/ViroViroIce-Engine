@@ -1,8 +1,9 @@
 package states.stages.objects;
 
 import flixel.graphics.frames.FlxAtlasFrames;
+import objects.vvieSpriteHandler;
 
-class BackgroundDancer extends FlxSprite
+class BackgroundDancer extends vvieSpriteHandler
 {
 	public function new(x:Float, y:Float)
 	{

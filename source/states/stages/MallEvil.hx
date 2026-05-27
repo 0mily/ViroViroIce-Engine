@@ -1,6 +1,7 @@
 package states.stages;
 
 import states.stages.objects.*;
+import objects.vvieSpriteHandler;
 
 class MallEvil extends BaseStage
 {
@@ -39,7 +40,7 @@ class MallEvil extends BaseStage
 		backend.CameraResizeFix.focarEm(FlxG.camera, new FlxPoint(400, -2050));
 
 		// blackout at the start
-		var blackScreen:FlxSprite = new FlxSprite().makeGraphic(Std.int(FlxG.width * 2), Std.int(FlxG.height * 2), FlxColor.BLACK);
+		var blackScreen:FlxSprite = new vvieSpriteHandler().makeGraphic(Std.int(FlxG.width * 2), Std.int(FlxG.height * 2), FlxColor.BLACK);
 		blackScreen.scrollFactor.set();
 		add(blackScreen);
 

@@ -1,5 +1,7 @@
 package states.stages.objects;
 
+import objects.vvieSpriteHandler;
+
 enum SpraycanState
 {
 	WAITING;
@@ -28,7 +30,7 @@ class SpraycanAtlasSprite extends FlxSpriteGroup
 		canAtlas.antialiasing = ClientPrefs.data.antialiasing;
 		add(canAtlas);
 
-		explosion = new FlxSprite(x - 25, y - 450);
+		explosion = new vvieSpriteHandler(x - 25, y - 450);
 		explosion.frames = Paths.getSparrowAtlas('spraypaintExplosionEZ');
 		explosion.animation.addByPrefix('idle', 'explosion round 1 short0', 24, false);
 		explosion.animation.onFinish.add((name:String) -> explosion.visible = explosion.active = false);

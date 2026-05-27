@@ -79,15 +79,9 @@ class FreeplayState extends ScriptedState
 	override function create()
 	{
 		preCreate();
+		var playStickerTransition:Bool = stickerSubState != null;
 		//Paths.clearStoredMemory();
 		//Paths.clearUnusedMemory();
-
-		if (stickerSubState != null)
-		{
-			openSubState(stickerSubState);
-			stickerSubState.degenStickers();
-			FlxG.sound.playMusic(Paths.music('freakyMenu'));
-		}
 		
 		persistentUpdate = true;
 		PlayState.isStoryMode = false;
@@ -220,6 +214,19 @@ class FreeplayState extends ScriptedState
 		updateTexts();
 		super.create();
 		refreshShitScript();
+		if (playStickerTransition)
+			startStickerTransition();
+	}
+
+	function startStickerTransition():Void
+	{
+		if (stickerSubState == null)
+			return;
+
+		openSubState(stickerSubState);
+		stickerSubState.degenStickers();
+		stickerSubState = null;
+		FlxG.sound.playMusic(Paths.music('freakyMenu'));
 	}
 
 	override function closeSubState()

@@ -52,6 +52,8 @@ typedef CharacterDataCacheEntry = {
 
 class Character extends FlxSprite
 {
+	static inline final CULL_PADDING:Float = 512;
+
 	/**
 	 * In case a character is missing, it will use this on its place
 	**/
@@ -790,6 +792,7 @@ class Character extends FlxSprite
 		{
 			atlas = new FlxAnimate();
 			atlas.showPivot = false;
+			setupCharacterAtlas();
 			try
 			{
 				Paths.loadAnimateAtlas(atlas, json.image);
@@ -1300,6 +1303,30 @@ class Character extends FlxSprite
 	public var isAnimateAtlas(default, null):Bool = false;
 	#if flxanimate
 	public var atlas:FlxAnimate;
+
+	public function setupCharacterAtlas():Void
+	{
+		if(atlas == null) return;
+		atlas.cullLimbs = false;
+		atlas.useRenderTexture = true;
+		atlas.forceRenderTexture = true;
+	}
+
+	override public function isOnScreen(?camera:FlxCamera):Bool
+	{
+		if(camera == null)
+			camera = getDefaultCamera();
+
+		var bounds = getScreenBounds(_rect, camera);
+		var padding:Float = CULL_PADDING * Math.max(1, camera.zoom);
+		var contained:Bool = (bounds.right > camera.viewMarginLeft - padding)
+			&& (bounds.x < camera.viewMarginRight + padding)
+			&& (bounds.bottom > camera.viewMarginTop - padding)
+			&& (bounds.y < camera.viewMarginBottom + padding);
+		bounds.putWeak();
+		return contained;
+	}
+
 	public override function draw()
 	{
 		var lastAlpha:Float = alpha;
@@ -1344,6 +1371,7 @@ class Character extends FlxSprite
 
 	public function copyAtlasValues()
 	{
+		setupCharacterAtlas();
 		@:privateAccess
 		{
 			atlas.cameras = cameras;

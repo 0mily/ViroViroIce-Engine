@@ -9,6 +9,7 @@ import flixel.addons.display.FlxTiledSprite;
 import substates.GameOverSubstate;
 import states.stages.objects.*;
 import objects.Note;
+import objects.vvieSpriteHandler;
 
 class PhillyBlazin extends BaseStage
 {
@@ -66,7 +67,7 @@ class PhillyBlazin extends BaseStage
 			foregroundMultiply.visible = false;
 			add(foregroundMultiply);
 			
-			additionalLighten = new FlxSprite(-600, -175).makeGraphic(1, 1, FlxColor.WHITE);
+			additionalLighten = new vvieSpriteHandler(-600, -175).makeGraphic(1, 1, FlxColor.WHITE);
 			additionalLighten.scrollFactor.set();
 			additionalLighten.scale.set(2500, 2500);
 			additionalLighten.updateHitbox();

@@ -49,6 +49,9 @@ class ModsMenuState extends MusicBeatState
 
 	var _lastControllerMode:Bool = false;
 	var startMod:String = null;
+	var displayedIconGraphic:FlxGraphic = null;
+	var displayedIconFrames:Int = -1;
+	var displayedIconFps:Int = -1;
 	public function new(startMod:String = null)
 	{
 		this.startMod = startMod;
@@ -296,32 +299,54 @@ class ModsMenuState extends MusicBeatState
 	{
 		var addonAllowed = getContentAddonFilter();
 		var visible:Array<String> = [];
+		var visibleSet:Map<String, Bool> = new Map();
 		for (mod in list.available)
-			if (addonAllowed(mod) && !visible.contains(mod))
+			if (addonAllowed(mod) && !visibleSet.exists(mod))
+			{
 				visible.push(mod);
+				visibleSet.set(mod, true);
+			}
 
 		var enabled:Array<String> = [];
+		var enabledSet:Map<String, Bool> = new Map();
 		for (mod in list.enabled)
-			if (visible.contains(mod) && !enabled.contains(mod))
+			if (visibleSet.exists(mod) && !enabledSet.exists(mod))
+			{
 				enabled.push(mod);
+				enabledSet.set(mod, true);
+			}
 
 		var disabled:Array<String> = [];
+		var disabledSet:Map<String, Bool> = new Map();
 		for (mod in list.disabled)
-			if (visible.contains(mod) && !disabled.contains(mod))
+			if (visibleSet.exists(mod) && !disabledSet.exists(mod))
+			{
 				disabled.push(mod);
+				disabledSet.set(mod, true);
+			}
 
 		for (mod in visible)
-			if (!enabled.contains(mod) && !disabled.contains(mod))
+			if (!enabledSet.exists(mod) && !disabledSet.exists(mod))
+			{
 				disabled.push(mod);
+				disabledSet.set(mod, true);
+			}
 
 		var all:Array<String> = [];
+		var allSet:Map<String, Bool> = new Map();
 		for (mod in list.all)
-			if (addonAllowed(mod) && !all.contains(mod))
+			if (addonAllowed(mod) && !allSet.exists(mod))
+			{
 				all.push(mod);
+				allSet.set(mod, true);
+			}
 
 		for (mod in visible)
-			if (!all.contains(mod))
+			if (!allSet.exists(mod))
+			{
 				all.push(mod);
+				allSet.set(mod, true);
+			}
 
 		return {enabled: enabled, disabled: disabled, all: all, available: visible};
 	}
@@ -726,14 +751,28 @@ class ModsMenuState extends MusicBeatState
 		centerMod = Std.int(Math.max(2, Math.min(curSelectedMod, modsGroup.length - 1 - 2)));
 		updateItemPositions();
 
-		icon.loadGraphic(curMod.icon.graphic, true, 150, 150);
+		var curGraphic:FlxGraphic = curMod.icon.graphic;
+		if(displayedIconGraphic != curGraphic || displayedIconFrames != curMod.totalFrames || displayedIconFps != curMod.iconFps)
+		{
+			displayedIconGraphic = curGraphic;
+			displayedIconFrames = curMod.totalFrames;
+			displayedIconFps = curMod.iconFps;
+			icon.animation.destroyAnimations();
+			icon.loadGraphic(curGraphic, true, 150, 150);
+			if(curMod.totalFrames > 0)
+			{
+				icon.animation.add("icon", curMod.frameIndexes, curMod.iconFps);
+				icon.animation.play("icon");
+			}
+		}
 		icon.antialiasing = curMod.icon.antialiasing;
 
 		if(curMod.totalFrames > 0)
 		{
-			icon.animation.add("icon", [for (i in 0...curMod.totalFrames) i], curMod.iconFps);
-			icon.animation.play("icon");
-			icon.animation.curAnim.curFrame = curMod.icon.animation.curAnim.curFrame;
+			if(icon.animation.curAnim == null)
+				icon.animation.play("icon");
+			if(icon.animation.curAnim != null && curMod.icon.animation.curAnim != null)
+				icon.animation.curAnim.curFrame = curMod.icon.animation.curAnim.curFrame;
 		}
 
 		if(modName.scaleX != 0.8) modName.setScale(0.8);
@@ -882,6 +921,7 @@ class ModItem extends FlxSpriteGroup
 	public var icon:FlxSprite;
 	public var text:FlxText;
 	public var totalFrames:Int = 0;
+	public var frameIndexes:Array<Int> = null;
 
 	// options
 	public var name:String = 'Unknown Addon';
@@ -943,12 +983,25 @@ class ModItem extends FlxSpriteGroup
 		}
 		
 		var bmp:BitmapData = null;
-		if (FileSystem.exists(file)) bmp = BitmapData.fromFile(file);
+		var graphic:FlxGraphic = null;
+		if (FileSystem.exists(file))
+		{
+			if (Paths.currentTrackedAssets.exists(file))
+			{
+				Paths.localTrackedAssets.push(file);
+				graphic = Paths.currentTrackedAssets.get(file);
+			}
+			else
+			{
+				bmp = BitmapData.fromFile(file);
+				graphic = Paths.cacheBitmap(file, null, bmp);
+			}
+		}
 		else isPixel = false;
 
-		if(FileSystem.exists(file))
+		if(graphic != null)
 		{
-			icon.loadGraphic(Paths.cacheBitmap(file, bmp), true, 150, 150);
+			icon.loadGraphic(graphic, true, 150, 150);
 			if(isPixel) icon.antialiasing = false;
 		}
 		else icon.loadGraphic(Paths.image('unknownMod'), true, 150, 150);
@@ -971,10 +1024,11 @@ class ModItem extends FlxSpriteGroup
 		}
 		text.text = this.name;
 
-		if(bmp != null)
+		if(graphic != null)
 		{
-			totalFrames = Math.floor(bmp.width / 150) * Math.floor(bmp.height / 150);
-			icon.animation.add("icon", [for (i in 0...totalFrames) i], iconFps);
+			totalFrames = Math.floor(graphic.width / 150) * Math.floor(graphic.height / 150);
+			frameIndexes = [for (i in 0...totalFrames) i];
+			icon.animation.add("icon", frameIndexes, iconFps);
 			icon.animation.play("icon");
 		}
 		selectBg.scale.set(width + 5, height + 5);

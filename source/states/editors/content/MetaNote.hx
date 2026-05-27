@@ -142,8 +142,11 @@ class MetaNote extends Note
 			if (sustainSprite.shader != shader) sustainSprite.shader = shader;
 			sustainSprite.setColorTransform();
 			sustainSprite.colorTransform.concat(colorTransform);
-			sustainSprite.scale.copyFrom(this.scale);
-			sustainSprite.updateHitbox();
+			if(sustainSprite.scale.x != scale.x || sustainSprite.scale.y != scale.y)
+			{
+				sustainSprite.scale.copyFrom(this.scale);
+				sustainSprite.updateHitbox();
+			}
 			sustainSprite.y = this.y + this.height / 2 - (downScroll ? sustainSprite.sustainHeight : 0);
 			sustainSprite.x = this.x + (this.width - sustainSprite.width) / 2;
 			sustainSprite.downScroll = downScroll;
@@ -179,6 +182,9 @@ class EditorSustain extends Note {
 	public var downScroll:Bool = false;
 	public var sustainHeight:Float = 0;
 	public var useBlandSustains:Bool = false;
+	var _lastBasicSustainHeight:Float = Math.NaN;
+	var _lastTileScaleX:Float = Math.NaN;
+	var _lastTileScaleY:Float = Math.NaN;
 	
 	public function new(data:Int) {
 		basicSustainTile = new FlxSprite().makeGraphic(1, 1, FlxColor.WHITE);
@@ -199,13 +205,17 @@ class EditorSustain extends Note {
 		super.update(elapsed);
 	}
 	override function draw() {
-		if (!visible) return;
+		if (!visible || sustainHeight <= 0) return;
 		
 		if (useBlandSustains) {
 			basicSustainTile.setColorTransform();
 			basicSustainTile.colorTransform.concat(colorTransform);
-			basicSustainTile.scale.set(8, sustainHeight);
-			basicSustainTile.updateHitbox();
+			if(_lastBasicSustainHeight != sustainHeight)
+			{
+				_lastBasicSustainHeight = sustainHeight;
+				basicSustainTile.scale.set(8, sustainHeight);
+				basicSustainTile.updateHitbox();
+			}
 			basicSustainTile.alpha = alpha;
 			basicSustainTile.setPosition(x + (width - basicSustainTile.width) * .5, y);
 			basicSustainTile.draw();
@@ -216,8 +226,13 @@ class EditorSustain extends Note {
 			if (sustainTile.shader != shader) sustainTile.shader = shader;
 			sustainTile.setColorTransform();
 			sustainTile.colorTransform.concat(colorTransform);
-			sustainTile.scale.copyFrom(scale);
-			sustainTile.updateHitbox();
+			if(_lastTileScaleX != scale.x || _lastTileScaleY != scale.y)
+			{
+				_lastTileScaleX = scale.x;
+				_lastTileScaleY = scale.y;
+				sustainTile.scale.copyFrom(scale);
+				sustainTile.updateHitbox();
+			}
 			sustainTile.alpha = alpha;
 			
 			if (scale.y <= 0) return;
@@ -287,6 +302,8 @@ class EditorSustain extends Note {
 		sustainTile.animation.copyFrom(animation);
 		sustainTile.animation.play(Note.colArray[this.noteData % Note.colArray.length] + 'hold');
 		sustainTile.clipRect = new flixel.math.FlxRect(0, 1, sustainTile.frameWidth, 1);
+		_lastTileScaleX = Math.NaN;
+		_lastTileScaleY = Math.NaN;
 	}
 	public function changeNoteData(v:Int) {
 		this.noteData = v;

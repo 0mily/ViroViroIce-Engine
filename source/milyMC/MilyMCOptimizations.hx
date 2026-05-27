@@ -10,6 +10,8 @@ import states.PlayState;
 class MilyMCOptimizations
 {
 	#if LUA_ALLOWED
+	static var noteInfoCache:Array<Array<Dynamic>> = [];
+
 	public static function registerLuaCallbacks():Void
 	{
 		FunkinLua.registerFunction('_milyMCGetNoteCount', getNoteCount);
@@ -35,18 +37,21 @@ class MilyMCOptimizations
 		var noteSpeed:Float = (game.songSpeed * note.multSpeed) / Math.max(0.001, game.playbackRate);
 		var sustainPixels:Float = Math.abs(0.45 * note.sustainLength * noteSpeed);
 
-		return [
-			note.noteData,
-			note.mustPress,
-			note.isSustainNote,
-			note.offsetX,
-			note.offsetY,
-			note.distance,
-			noteSpeed,
-			sustainPixels,
-			note.multAlpha,
-			note.isSustainEnd
-		];
+		var info:Array<Dynamic> = noteInfoCache[index];
+		if (info == null)
+			info = noteInfoCache[index] = [];
+
+		info[0] = note.noteData;
+		info[1] = note.mustPress;
+		info[2] = note.isSustainNote;
+		info[3] = note.offsetX;
+		info[4] = note.offsetY;
+		info[5] = note.distance;
+		info[6] = noteSpeed;
+		info[7] = sustainPixels;
+		info[8] = note.multAlpha;
+		info[9] = note.isSustainEnd;
+		return info;
 	}
 
 	static function applyStrumState(index:Int, x:Float, y:Float, angle:Float, scaleX:Float, scaleY:Float, alpha:Float, brightness:Float):Void
@@ -56,12 +61,12 @@ class MilyMCOptimizations
 		if (strum == null)
 			return;
 
-		strum.x = x;
-		strum.y = y;
-		strum.angle = angle;
-		strum.scale.x = scaleX;
-		strum.scale.y = scaleY;
-		strum.alpha = alpha;
+		if (strum.x != x) strum.x = x;
+		if (strum.y != y) strum.y = y;
+		if (strum.angle != angle) strum.angle = angle;
+		if (strum.scale.x != scaleX) strum.scale.x = scaleX;
+		if (strum.scale.y != scaleY) strum.scale.y = scaleY;
+		if (strum.alpha != alpha) strum.alpha = alpha;
 		applyBrightness(strum, brightness);
 	}
 
@@ -72,16 +77,16 @@ class MilyMCOptimizations
 		if (note == null)
 			return;
 
-		note.scale.x = scaleX;
-		note.alpha = alpha;
+		if (note.scale.x != scaleX) note.scale.x = scaleX;
+		if (note.alpha != alpha) note.alpha = alpha;
 		applyBrightness(note, brightness);
 
 		if (!isSustainNote)
 		{
-			note.x = x;
-			note.y = y;
-			note.angle = angle;
-			note.scale.y = scaleY;
+			if (note.x != x) note.x = x;
+			if (note.y != y) note.y = y;
+			if (note.angle != angle) note.angle = angle;
+			if (note.scale.y != scaleY) note.scale.y = scaleY;
 			return;
 		}
 
@@ -89,16 +94,25 @@ class MilyMCOptimizations
 		var strumWidth:Float = strum?.width ?? 112;
 		var strumHeight:Float = strum?.height ?? 112;
 
-		note.origin.set(note.frameWidth * 0.5, 0);
-		note.offset.set();
-		note.flipX = flipX;
-		note.flipY = false;
-		note.angle = tangentAngle;
-		note.x = x + ((strumWidth - note.frameWidth) * 0.5);
-		note.y = y + (strumHeight * 0.5);
+		var originX:Float = note.frameWidth * 0.5;
+		if (note.origin.x != originX || note.origin.y != 0)
+			note.origin.set(originX, 0);
+		if (note.offset.x != 0 || note.offset.y != 0)
+			note.offset.set();
+		if (note.flipX != flipX) note.flipX = flipX;
+		if (note.flipY) note.flipY = false;
+		if (note.angle != tangentAngle) note.angle = tangentAngle;
+
+		var finalX:Float = x + ((strumWidth - note.frameWidth) * 0.5);
+		var finalY:Float = y + (strumHeight * 0.5);
+		if (note.x != finalX) note.x = finalX;
+		if (note.y != finalY) note.y = finalY;
 
 		if (!note.isSustainEnd && drawLength > 1 && note.frameHeight > 0)
-			note.scale.y = Math.max(0.001, drawLength / Math.max(1, note.frameHeight - 1));
+		{
+			var scaleY:Float = Math.max(0.001, drawLength / Math.max(1, note.frameHeight));
+			if (note.scale.y != scaleY) note.scale.y = scaleY;
+		}
 	}
 
 	static function getNote(index:Int):Note

@@ -38,7 +38,10 @@ class HealthIcon extends FlxSprite
 
 		var scaledKey:String = 'pixel-health-icon:$key';
 		if(Paths.currentTrackedAssets.exists(scaledKey))
+		{
+			Paths.localTrackedAssets.push(scaledKey);
 			return Paths.currentTrackedAssets.get(scaledKey);
+		}
 
 		var bitmap:BitmapData = new BitmapData(Std.int(ICON_SIZE * 2), Std.int(ICON_SIZE), true, 0x00000000);
 		var matrix:Matrix = new Matrix(bitmap.width / graphic.bitmap.width, 0, 0, bitmap.height / graphic.bitmap.height);

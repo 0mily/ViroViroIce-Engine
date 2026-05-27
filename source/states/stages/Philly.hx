@@ -2,6 +2,7 @@ package states.stages;
 
 import states.stages.objects.*;
 import objects.Character;
+import objects.vvieSpriteHandler;
 
 class Philly extends BaseStage
 {
@@ -53,7 +54,7 @@ class Philly extends BaseStage
 		switch(event.event)
 		{
 			case "Philly Glow":
-				blammedLightsBlack = new FlxSprite(FlxG.width * -0.5, FlxG.height * -0.5).makeGraphic(Std.int(FlxG.width * 2), Std.int(FlxG.height * 2), FlxColor.BLACK);
+				blammedLightsBlack = new vvieSpriteHandler(FlxG.width * -0.5, FlxG.height * -0.5).makeGraphic(Std.int(FlxG.width * 2), Std.int(FlxG.height * 2), FlxColor.BLACK);
 				blammedLightsBlack.visible = false;
 				insert(members.indexOf(phillyStreet), blammedLightsBlack);
 

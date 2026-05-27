@@ -1510,6 +1510,7 @@ class CharacterEditorState extends ScriptedState implements PsychUIEventHandler.
 		{
 			character.atlas = new FlxAnimate();
 			character.atlas.showPivot = false;
+			character.setupCharacterAtlas();
 			try
 			{
 				Paths.loadAnimateAtlas(character.atlas, character.imageFile);

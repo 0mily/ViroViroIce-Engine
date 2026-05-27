@@ -10,8 +10,12 @@ import moonchart.backend.FormatDetector;
 import moonchart.formats.BasicFormat.DynamicFormat;
 import moonchart.formats.fnf.FNFCodename;
 import moonchart.formats.fnf.legacy.FNFPsych;
+import states.editors.content.VSlice.PsychPackage;
+import states.editors.content.VSlice.VSliceChart;
+import states.editors.content.VSlice.VSliceMetadata;
 
 #if sys
+import sys.FileSystem;
 import sys.io.File;
 #end
 
@@ -125,6 +129,9 @@ class MoonchartConverters
 		ensureInit();
 
 		var diff = cleanDifficulty(difficulty);
+		if(sourceFormat == Format.FNF_VSLICE)
+			return convertVSliceFileToEngine(chartPath, metadataPath, outputFolder, diff);
+
 		var source:DynamicFormat = loadSourceFormat(sourceFormat, chartPath, metadataPath, diff);
 
 		var psych = new FNFPsych();
@@ -139,6 +146,58 @@ class MoonchartConverters
 	public static function convertNightmareVisionToEngine(chartPath:String, outputFolder:String, difficulty:String):MoonchartConversionResult
 	{
 		return convertFileToEngine(ENGINE_FORMAT, chartPath, null, outputFolder, difficulty);
+	}
+
+	static function convertVSliceFileToEngine(chartPath:String, ?metadataPath:String, outputFolder:String, difficulty:String):MoonchartConversionResult
+	{
+		#if sys
+		if(metadataPath == null || metadataPath.length < 1)
+			throw 'FNF V-Slice charts need the matching metadata JSON.';
+
+		var chart:VSliceChart = cast Json.parse(File.getContent(normalizePath(chartPath)));
+		var metadata:VSliceMetadata = cast Json.parse(File.getContent(normalizePath(metadataPath)));
+		var pack:PsychPackage = VSlice.convertToPsych(chart, metadata);
+		var songData:SwagSong = pack.difficulties.get(difficulty);
+
+		if(songData == null && difficulty != 'normal')
+			songData = pack.difficulties.get('normal');
+		if(songData == null)
+		{
+			for (_ => data in pack.difficulties)
+			{
+				songData = data;
+				break;
+			}
+		}
+		if(songData == null)
+			throw 'V-Slice conversion did not produce any chart data.';
+
+		Song.normalizeChart(songData);
+
+		var outputPath:String = normalizePath(outputFolder);
+		if(!FileSystem.exists(outputPath))
+			FileSystem.createDirectory(outputPath);
+		var defaultDiff:String = Paths.formatToSongPath(Difficulty.getDefault());
+		var diffPostfix:String = difficulty != defaultDiff ? '-$difficulty' : '';
+		var dataPath:String = normalizePath('$outputPath/${Paths.formatToSongPath(songData.song)}$diffPostfix.json');
+		File.saveContent(dataPath, PsychJsonPrinter.print(songData, ['sectionNotes', 'events']));
+
+		if(pack.events != null)
+		{
+			var eventsFolder:String = normalizePath('$outputPath/events');
+			if(!FileSystem.exists(eventsFolder))
+				FileSystem.createDirectory(eventsFolder);
+			File.saveContent('$eventsFolder/events.json', PsychJsonPrinter.print(pack.events, ['events']));
+		}
+
+		return {
+			formatName: getFormatName(Format.FNF_VSLICE),
+			dataPath: dataPath,
+			metaPath: null
+		}
+		#else
+		throw 'FNF V-Slice conversion needs sys file access on this target.';
+		#end
 	}
 
 	static function loadSourceFormat(sourceFormat:Format, chartPath:String, ?metadataPath:String, difficulty:String):DynamicFormat

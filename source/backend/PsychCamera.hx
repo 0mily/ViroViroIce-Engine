@@ -19,6 +19,8 @@ using flixel.util.FlxColorTransformUtil;
 
 class PsychCamera extends FlxCamera
 {
+	public static inline final DEFAULT_ZOOM_CULL_PADDING:Float = 512;
+
 	public var logicalWidth:Float = 0;
 	public var logicalHeight:Float = 0;
 	public var rotateSprite(default, set):Bool = false;
@@ -82,6 +84,29 @@ class PsychCamera extends FlxCamera
 
 	inline function logicalViewBottom():Float
 		return scroll.y + followHeight() - logicalMarginY();
+
+	public static function zoomCullPadding(camera:FlxCamera, padding:Float = DEFAULT_ZOOM_CULL_PADDING):Float
+	{
+		if(camera == null || padding <= 0) return 0;
+		return padding * Math.max(1, Math.max(camera.zoom, Math.max(camera.scaleX, camera.scaleY)));
+	}
+
+	public static function containsRectWithPadding(camera:FlxCamera, rect:FlxRect, padding:Float = DEFAULT_ZOOM_CULL_PADDING):Bool
+	{
+		if(camera == null || rect == null)
+		{
+			if(rect != null) rect.putWeak();
+			return false;
+		}
+
+		var cullPadding:Float = zoomCullPadding(camera, padding);
+		var contained:Bool = (rect.right > camera.viewMarginLeft - cullPadding)
+			&& (rect.x < camera.viewMarginRight + cullPadding)
+			&& (rect.bottom > camera.viewMarginTop - cullPadding)
+			&& (rect.y < camera.viewMarginBottom + cullPadding);
+		rect.putWeak();
+		return contained;
+	}
 
 	override public function follow(target:FlxObject, style = LOCKON, lerp = 1.0):Void
 	{

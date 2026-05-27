@@ -607,6 +607,16 @@ function updateNoteMath(objID, strumE, strumID, songPos, beat, noteInfo)
         finalAlpha = finalAlpha * ((noteInfo and noteInfo[MILYMC_NOTE_MULT_ALPHA]) or getPropertyFromGroup(group, objID, 'multAlpha') or 0.6)
     end
 
+    if not strumE and not state.isSustainNote then
+        local isPlayer = (strumID > 3)
+        local receptorScrollVal = clamp(getMod('receptorScroll', isPlayer, strumID), 0, 1)
+        if receptorScrollVal ~= 0 then
+            local drunkPressure = math.abs(getMod('drunk', isPlayer, strumID))
+            local receptorAlpha = drunkPressure > 0 and 0.28 or 0.4
+            finalAlpha = finalAlpha * lerp(1, receptorAlpha, receptorScrollVal)
+        end
+    end
+
     if not state.isSustainNote then
         if _milyMCApplyNoteState then
             _milyMCApplyNoteState(objID, strumID, state.x, state.y, state.angle, state.scaleX, state.scaleY, finalAlpha, state.brightness or 0, false, false, state.angle, 1)
@@ -624,10 +634,6 @@ function updateNoteMath(objID, strumE, strumID, songPos, beat, noteInfo)
     end
 
     local isUpscroll = state.scrollBlend >= 0.5
-    local strumWidth = getPropertyFromGroup('strumLineNotes', strumID, 'width') or 112
-    local strumHeight = getPropertyFromGroup('strumLineNotes', strumID, 'height') or 112
-    local frameWidth = getPropertyFromGroup(group, objID, 'frameWidth') or getPropertyFromGroup(group, objID, 'width') or strumWidth
-    local frameHeight = getPropertyFromGroup(group, objID, 'frameHeight') or getPropertyFromGroup(group, objID, 'height') or 44
     local sustainPixels = (noteInfo and noteInfo[MILYMC_NOTE_SUSTAIN_PIXELS])
     if sustainPixels == nil then
         local sustainLength = getPropertyFromGroup(group, objID, 'sustainLength') or (stepCrochet or 0)
@@ -669,25 +675,35 @@ function updateNoteMath(objID, strumE, strumID, songPos, beat, noteInfo)
     end
 
     local drunkPressure = math.abs(getMod('drunk', isPlayer, strumID))
-    local overlap = lerp(2, 5, receptorScrollVal)
-    if drunkPressure > 0 and receptorScrollVal > 0 then
-        overlap = overlap + clamp(drunkPressure * 1.5, 0, 4)
+    local receptorAlpha = drunkPressure > 0 and 0.28 or 0.4
+    if receptorScrollVal ~= 0 then
+        finalAlpha = finalAlpha * lerp(1, receptorAlpha, receptorScrollVal)
+    end
+
+    local canHideOverlap = finalAlpha >= 0.999
+    local overlap = 0
+    if canHideOverlap then
+        overlap = lerp(1, 3, receptorScrollVal)
+        if drunkPressure > 0 and receptorScrollVal > 0 then
+            overlap = overlap + clamp(drunkPressure * 1.5, 0, 4)
+        end
     end
 
     local drawLength = math.max(1, tangentLength + overlap)
     local angleDelta = math.abs(((tangentAngle - chordAngle + 180) % 360) - 180)
-    if angleDelta > 1 then
+    if canHideOverlap and angleDelta > 1 then
         drawLength = drawLength + (clamp(angleDelta / 60, 0, 1) * 3)
-    end
-    local receptorAlpha = drunkPressure > 0 and 0.28 or 0.4
-    if receptorScrollVal ~= 0 then
-        finalAlpha = finalAlpha * lerp(1, receptorAlpha, receptorScrollVal)
     end
 
     if _milyMCApplyNoteState then
         _milyMCApplyNoteState(objID, strumID, state.x, state.y, state.angle, state.scaleX, state.scaleY, finalAlpha, state.brightness or 0, true, not isUpscroll, tangentAngle, drawLength)
         return
     end
+
+    local strumWidth = getPropertyFromGroup('strumLineNotes', strumID, 'width') or 112
+    local strumHeight = getPropertyFromGroup('strumLineNotes', strumID, 'height') or 112
+    local frameWidth = getPropertyFromGroup(group, objID, 'frameWidth') or getPropertyFromGroup(group, objID, 'width') or strumWidth
+    local frameHeight = getPropertyFromGroup(group, objID, 'frameHeight') or getPropertyFromGroup(group, objID, 'height') or 44
 
     setPropertyFromGroup(group, objID, 'x', state.x)
     setPropertyFromGroup(group, objID, 'y', state.y)
@@ -707,7 +723,7 @@ function updateNoteMath(objID, strumE, strumID, songPos, beat, noteInfo)
 
     local isSustainEnd = (noteInfo and noteInfo[MILYMC_NOTE_IS_SUSTAIN_END]) or getPropertyFromGroup(group, objID, 'isSustainEnd')
     if not isSustainEnd and drawLength > 1 and frameHeight > 0 then
-        local scaleY = drawLength / math.max(1, frameHeight - 1)
+        local scaleY = drawLength / math.max(1, frameHeight)
         setPropertyFromGroup(group, objID, 'scale.y', math.max(0.001, scaleY))
     end
 end

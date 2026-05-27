@@ -12,6 +12,7 @@ import substates.PauseSubState;
 import cutscenes.CutsceneHandler;
 
 import flixel.FlxSubState;
+import objects.vvieSpriteHandler;
 
 class PhillyStreetsErect extends BaseStage
     {
@@ -134,7 +135,7 @@ class PhillyStreetsErect extends BaseStage
     
             if (!ClientPrefs.data.lowQuality)
             {
-                picoFade = new FlxSprite();
+                picoFade = new vvieSpriteHandler();
                 picoFade.antialiasing = ClientPrefs.data.antialiasing;
                 picoFade.alpha = 0;
                 add(picoFade);
@@ -207,7 +208,6 @@ class PhillyStreetsErect extends BaseStage
 		// mist5.y = -450 + (Math.sin(_timer*0.2)*1xxx50);
 		//trace(mist1.y);
     }
-    
         override function createPost()
         {
             super.createPost();
@@ -560,4 +560,3 @@ class PhillyStreetsErect extends BaseStage
                 carSndAmbience.stop();
         }
     }
-    

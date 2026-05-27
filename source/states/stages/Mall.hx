@@ -1,6 +1,7 @@
 package states.stages;
 
 import states.stages.objects.*;
+import objects.vvieSpriteHandler;
 
 class Mall extends BaseStage
 {
@@ -84,7 +85,7 @@ class Mall extends BaseStage
 		{
 			FlxG.sound.play(Paths.sound('Lights_Shut_off'));
 
-			var blackShit:FlxSprite = new FlxSprite(-FlxG.width * FlxG.camera.zoom,
+			var blackShit:FlxSprite = new vvieSpriteHandler(-FlxG.width * FlxG.camera.zoom,
 				-FlxG.height * FlxG.camera.zoom).makeGraphic(FlxG.width * 3, FlxG.height * 3, FlxColor.BLACK);
 			blackShit.scrollFactor.set();
 			add(blackShit);

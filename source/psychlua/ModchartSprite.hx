@@ -1,6 +1,8 @@
 package psychlua;
 
-class ModchartSprite extends FlxSprite
+import objects.vvieSpriteHandler;
+
+class ModchartSprite extends vvieSpriteHandler
 {
 	public var animOffsets:Map<String, Array<Float>> = new Map<String, Array<Float>>();
 	public function new(?x:Float = 0, ?y:Float = 0)
