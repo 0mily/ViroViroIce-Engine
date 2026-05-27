@@ -190,6 +190,10 @@
 	<haxedef name="hscriptPos" if="HSCRIPT_ALLOWED" />
 	<define name="GLOBAL_SCRIPTS" if="HSCRIPT_ALLOWED" />
 
+	<section if="android">
+		<certificate path="key.keystore" password="viroviroice" alias="viroviroice" alias-password="viroviroice" if="android" unless="debug" />
+	</section>
+
 	<!-- _________________________________ Custom _______________________________ -->
 	
 	<section if="mobile">
