@@ -206,7 +206,7 @@ class StrumNote extends FlxSprite
 				{
 					rgbShader.r = 0xA2BAC8;
 					rgbShader.g = 0xFFFFFFFF;
-					rgbShader.b = 0x555A63;
+					rgbShader.b = 0x404047;
 				}
 			}
 		}
