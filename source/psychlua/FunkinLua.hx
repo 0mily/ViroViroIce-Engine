@@ -683,16 +683,16 @@ class FunkinLua {
 			// oi shihooooo
 			// oi milyyyyyy
 
-		registerFunction("lightenColor", function(color:String, value:Float) {
-            if (color != null && value > 0) return FlxColor.fromString('#$color').getLightened(value);
+		registerFunction("setColorBrightness", function(color:String, value:Float = 0) {
+            if (color != null) {
+				if (value < 0) {
+					return FlxColor.fromString('#$color').getDarkened(value*-1);
+				} else {
+					return FlxColor.fromString('#$color').getLightened(value);
+				}
+			}
 			return FlxColor.fromString('#FFFFFF');
-			luaTrace("lightenColor: fudeu algo", false, false, ERROR);
-        });
-
-		registerFunction("darkenColor", function(color:String, value:Float) {
-            if (color != null && value > 0) return FlxColor.fromString('#$color').getDarkened(value);
-			return FlxColor.fromString('#FFFFFF');
-			luaTrace("darkenColor: fudeu algo", false, false, ERROR);
+			luaTrace("setColorBrightness: Insert a color silly", false, false, ERROR);
         });
 
 		registerFunction("changeTransStickers", function(stickerSet:String = null, stickerPack:String = null) {
