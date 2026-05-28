@@ -57,13 +57,14 @@ class DropShadowEditor extends ScriptedState implements PsychUIEventHandler.Psyc
     var camGame:FlxCamera;
     var camUI:FlxCamera;
     var mainBox:PsychUIBox;
+    var upperBox:PsychUIBox;
     var curStage:String = 'stage';
 
     var boyfriendGroup:FlxSpriteGroup;
     var dadGroup:FlxSpriteGroup;
     var gfGroup:FlxSpriteGroup;
 
-    var gf:Character;
+    var girlfriend:Character;
     var dad:Character;
     var boyfriend:Character;
 
@@ -79,6 +80,11 @@ class DropShadowEditor extends ScriptedState implements PsychUIEventHandler.Psyc
 	var DAD_Y:Float = 100;
 	var GF_X:Float = 400;
 	var GF_Y:Float = 130;
+
+    var outputTxt:FlxText;
+	var outputAlpha:Float = 0;
+
+    
     override function create()
     {
         /**
@@ -124,11 +130,11 @@ class DropShadowEditor extends ScriptedState implements PsychUIEventHandler.Psyc
 
         if (!stageData.hide_girlfriend) {
 			if(PlayState.SONG.gfVersion == null || PlayState.SONG.gfVersion.length < 1) PlayState.SONG.gfVersion = 'gf'; //Fix for the Chart Editor
-			gf = new Character(0, 0, PlayState.SONG.gfVersion);
-            startCharacterPos(gf);
+			girlfriend = new Character(0, 0, PlayState.SONG.gfVersion);
+            startCharacterPos(girlfriend);
 			gfGroup.scrollFactor.set(0.95, 0.95);
-			gfGroup.add(gf);
-            characters.push(gf);
+			gfGroup.add(girlfriend);
+            characters.push(girlfriend);
 		}
 
         dad = new Character(0, 0, PlayState.SONG.player2);
@@ -169,6 +175,23 @@ class DropShadowEditor extends ScriptedState implements PsychUIEventHandler.Psyc
 		mainBox.cameras = [camUI];
 		add(mainBox);
 
+        upperBox = new PsychUIBox(0, 0, 465, 300, ['File']);
+		upperBox.scrollFactor.set();
+		upperBox.isMinimized = true;
+		upperBox.minimizeOnFocusLost = true;
+		upperBox.canMove = false;
+		upperBox.cameras = [camUI];
+		upperBox.bg.visible = false;
+		add(upperBox);
+
+        outputTxt = new FlxText(25, FlxG.height - 50, FlxG.width - 50, '', 20);
+		outputTxt.borderSize = 2;
+		outputTxt.borderStyle = OUTLINE_FAST;
+		outputTxt.scrollFactor.set();
+		outputTxt.cameras = [camUI];
+		outputTxt.alpha = 0;
+		add(outputTxt);
+
         //songName = Paths.formatToSongPath(PlayState.SONG.song);
 		//if(PlayState.SONG.stage == null || PlayState.SONG.stage.length < 1)
 			//PlayState.SONG.stage = StageData.vanillaSongStage(Paths.formatToSongPath(Song.loadedSongName));
@@ -176,10 +199,73 @@ class DropShadowEditor extends ScriptedState implements PsychUIEventHandler.Psyc
 		//curStage = PlayState.SONG.stage;
 
 		
-
+        addFileTab();
         addShaderTab();
         addDadTab();
+        addGirlfriendTab();
+        addBoyfriendTab();
     }
+
+    function addFileTab()
+    {
+        var tab = upperBox.getTab('File');
+		var tab_group = tab.menu;
+		var btnX = tab.x - upperBox.x;
+		var btnY = 1;
+		var btnWid = Std.int(tab.width);
+
+        btnY += 20;
+		var btn:PsychUIButton = new PsychUIButton(btnX, btnY, #if sys '  Save as...' #else '  Download' #end, function()
+		{
+			if(!fileDialog.completed) return;
+			upperBox.isMinimized = true;
+			upperBox.bg.visible = false;
+
+			saveDropshadow();
+		},btnWid);
+		btn.text.alignment = LEFT;
+		tab_group.add(btn);
+    }
+
+    var fileDialog:FileDialogHandler = new FileDialogHandler();
+
+    function saveDropshadow()
+    {
+        var fileName:String = '${PlayState.curStage}-dropshadow.json';
+        var fileData:String = PsychJsonPrinter.print(dropShadowData.setDataToFile());
+        //if(Song.chartPath != null) chartName = Song.chartPath.substr(Song.chartPath.lastIndexOf('/')).trim();
+        fileDialog.save(fileName, fileData,
+            function()
+            {
+                #if sys
+                var newPath:String = fileDialog.path;
+                
+                showOutput('Chart saved successfully to: $newPath');
+                #else
+                showOutput('Chart downloaded successfully');
+                #end
+
+            }, null, function() showOutput('Error on saving chart!', true)
+        );
+    }
+
+    function showOutput(message:String, isError:Bool = false)
+	{
+		trace(message);
+		outputTxt.text = message;
+		outputTxt.y = FlxG.height - outputTxt.height - 30;
+		outputAlpha = 4;
+		if(isError)
+		{
+			FlxG.sound.play(Paths.sound('cancelMenu'), 0.6);
+			outputTxt.color = FlxColor.RED;
+		}
+		else
+		{
+			FlxG.sound.play(Paths.sound('scrollMenu'), 0.6);
+			outputTxt.color = FlxColor.WHITE;
+		}
+	}
 
     function startCharacterPos(char:Character, ?gfCheck:Bool = false)
     {
@@ -398,6 +484,7 @@ class DropShadowEditor extends ScriptedState implements PsychUIEventHandler.Psyc
 
         reloadDadAltMaskButton = new PsychUIButton(objX + 140, objY, 'Reload Alt Mask', function()
         {
+            dropShadowData.dad.altMaskPath= dadAltMaskImageInput.text;
             var useAltMask:Bool = dad.dropShadow.useAltMask;
             if(useAltMask) dad.dropShadow.loadAltMask(dadAltMaskImageInput.text);
         });
@@ -405,9 +492,135 @@ class DropShadowEditor extends ScriptedState implements PsychUIEventHandler.Psyc
 
     }
 
+    var girlfriendEnabledCheckbox:PsychUICheckBox;
+    var girlfriendUseAltMaskCheckbox:PsychUICheckBox;
+    var girlfriendAngleStepper:PsychUINumericStepper;
+    var girlfriendMaskThresholdStepper:PsychUINumericStepper;
+    var girlfriendAltMaskImageInput:PsychUIInputText;
+    var reloadGirlfriendAltMaskButton:PsychUIButton;
+    function addGirlfriendTab()
+    {
+        var tab_group = mainBox.getTab('Girlfriend').menu;
+		var objX:Int = 10;
+		var objY:Int = 20;
+        var addY:Int = 40;
+
+        girlfriendEnabledCheckbox = new PsychUICheckBox(objX, objY, 'Enabled', function()
+        {
+            girlfriend.dropShadow.enabled = girlfriendEnabledCheckbox.checked;
+            dropShadowData.girlfriend.enabled = girlfriendEnabledCheckbox.checked;
+        });
+        tab_group.add(girlfriendEnabledCheckbox);
+
+        objY += addY;
+        girlfriendUseAltMaskCheckbox = new PsychUICheckBox(objX + 150, objY, 'Use Alt Mask', function()
+        {
+            girlfriend.dropShadow.useAltMask = girlfriendUseAltMaskCheckbox.checked;
+            dropShadowData.girlfriend.useAltMask = girlfriendUseAltMaskCheckbox.checked;
+        });
+        tab_group.add(girlfriendUseAltMaskCheckbox);
+
+
+        objY += addY;
+        girlfriendAngleStepper = new PsychUINumericStepper(objX, objY, 1, 0, 0, 270, 0);
+        girlfriendAngleStepper.onValueChange = function()
+        {
+            girlfriend.dropShadow.angle = girlfriendAngleStepper.value;
+            dropShadowData.girlfriend.angle = girlfriendAngleStepper.value;
+        };
+        tab_group.add(girlfriendAngleStepper);
+        tab_group.add(new FlxText(girlfriendAngleStepper.x, girlfriendAngleStepper.y - 15, 80, 'Angle:'));
+
+        objY += addY;
+        girlfriendMaskThresholdStepper = new PsychUINumericStepper(objX, objY, 0.05, 0, -9999, 9999, 2);
+        girlfriendMaskThresholdStepper.onValueChange = function()
+        {
+            girlfriend.dropShadow.maskThreshold = girlfriendMaskThresholdStepper.value;
+            dropShadowData.girlfriend.maskThreshold = girlfriendMaskThresholdStepper.value;
+        };
+        tab_group.add(girlfriendMaskThresholdStepper);
+        tab_group.add(new FlxText(girlfriendMaskThresholdStepper.x, girlfriendMaskThresholdStepper.y - 15, 120, 'Mask Threshold:'));
+
+        objY += addY;
+        girlfriendAltMaskImageInput = new PsychUIInputText(objX, objY, 120, '');
+        tab_group.add(girlfriendAltMaskImageInput);
+
+        reloadGirlfriendAltMaskButton = new PsychUIButton(objX + 140, objY, 'Reload Alt Mask', function()
+        {
+            dropShadowData.girlfriend.altMaskPath = girlfriendAltMaskImageInput.text;
+            var useAltMask:Bool = girlfriend.dropShadow.useAltMask;
+            if(useAltMask) girlfriend.dropShadow.loadAltMask(girlfriendAltMaskImageInput.text);
+        });
+        tab_group.add(reloadGirlfriendAltMaskButton);
+    }
+
+    var boyfriendEnabledCheckbox:PsychUICheckBox;
+    var boyfriendUseAltMaskCheckbox:PsychUICheckBox;
+    var boyfriendAngleStepper:PsychUINumericStepper;
+    var boyfriendMaskThresholdStepper:PsychUINumericStepper;
+    var boyfriendAltMaskImageInput:PsychUIInputText;
+    var reloadBoyfriendAltMaskButton:PsychUIButton;
+    function addBoyfriendTab()
+    {
+        var tab_group = mainBox.getTab('Boyfriend').menu;
+		var objX:Int = 10;
+		var objY:Int = 20;
+        var addY:Int = 40;
+
+        boyfriendEnabledCheckbox = new PsychUICheckBox(objX, objY, 'Enabled', function()
+        {
+            boyfriend.dropShadow.enabled = boyfriendEnabledCheckbox.checked;
+            dropShadowData.boyfriend.enabled = boyfriendEnabledCheckbox.checked;
+        });
+        tab_group.add(boyfriendEnabledCheckbox);
+
+        objY += addY;
+        boyfriendUseAltMaskCheckbox = new PsychUICheckBox(objX + 150, objY, 'Use Alt Mask', function()
+        {
+            boyfriend.dropShadow.useAltMask = boyfriendUseAltMaskCheckbox.checked;
+            dropShadowData.boyfriend.useAltMask = boyfriendUseAltMaskCheckbox.checked;
+        });
+        tab_group.add(boyfriendUseAltMaskCheckbox);
+
+
+        objY += addY;
+        boyfriendAngleStepper = new PsychUINumericStepper(objX, objY, 1, 0, 0, 270, 0);
+        boyfriendAngleStepper.onValueChange = function()
+        {
+            boyfriend.dropShadow.angle = boyfriendAngleStepper.value;
+            dropShadowData.boyfriend.angle = boyfriendAngleStepper.value;
+        };
+        tab_group.add(boyfriendAngleStepper);
+        tab_group.add(new FlxText(boyfriendAngleStepper.x, boyfriendAngleStepper.y - 15, 80, 'Angle:'));
+
+        objY += addY;
+        boyfriendMaskThresholdStepper = new PsychUINumericStepper(objX, objY, 0.05, 0, -9999, 9999, 2);
+        boyfriendMaskThresholdStepper.onValueChange = function()
+        {
+            boyfriend.dropShadow.maskThreshold = boyfriendMaskThresholdStepper.value;
+            dropShadowData.boyfriend.maskThreshold = boyfriendMaskThresholdStepper.value;
+        };
+        tab_group.add(boyfriendMaskThresholdStepper);
+        tab_group.add(new FlxText(boyfriendMaskThresholdStepper.x, boyfriendMaskThresholdStepper.y - 15, 120, 'Mask Threshold:'));
+
+        objY += addY;
+        boyfriendAltMaskImageInput = new PsychUIInputText(objX, objY, 120, '');
+        tab_group.add(boyfriendAltMaskImageInput);
+
+        reloadBoyfriendAltMaskButton = new PsychUIButton(objX + 140, objY, 'Reload Alt Mask', function()
+        {
+            dropShadowData.boyfriend.altMaskPath = boyfriendAltMaskImageInput.text;
+            var useAltMask:Bool = boyfriend.dropShadow.useAltMask;
+            if(useAltMask) boyfriend.dropShadow.loadAltMask(boyfriendAltMaskImageInput.text);
+        });
+        tab_group.add(reloadBoyfriendAltMaskButton);
+    }
+
     override function update(elapsed:Float)
     {
         super.update(elapsed);
+
+        outputAlpha = Math.max(0, outputAlpha - elapsed);
 
         if(FlxG.keys.justPressed.ESCAPE)
         {

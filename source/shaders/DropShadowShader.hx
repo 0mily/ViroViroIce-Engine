@@ -203,6 +203,10 @@ class DropShadowShader extends FlxShader
     attachedSprite = spr;
     updateFrameInfo(attachedSprite.frame);
 
+    attachedSprite.animation.callback = function(name, frameNumber, frameIndex) {
+        onAttachedFrame(name, frameNumber, frameIndex);
+    };
+
     return spr;
   }
 

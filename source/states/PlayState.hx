@@ -47,6 +47,8 @@ import psychlua.LuaUtils;
 import psychlua.HScript;
 #end
 
+import backend.DropShadowData;
+
 /*here's some useful tips if you are making a mod in source:
 
 If you want to add your stage to the game, copy states/stages/Template.hx,
@@ -772,6 +774,13 @@ class PlayState extends ScriptedState
 		startCharacterScripts(boyfriend.curCharacter);
 		#end
 
+        // Dropshadow 
+        dropshadowData = DropShadowData.getDropshadowFile(curStage);
+        setDropshadow();
+
+
+        
+
 		uiGroup = new FlxSpriteGroup();
 		comboGroup = new FlxSpriteGroup();
 		noteGroup = new FlxTypedGroup<FlxBasic>();
@@ -960,6 +969,67 @@ class PlayState extends ScriptedState
 		
 		if(eventNotes.length < 1) checkEventNote();
 	}
+
+    var dropshadowData:DropShadowFile;
+    function setDropshadow()
+    {
+        for(i in 0...dadGroup.length)
+        {
+            var character:Character = cast dadGroup.members[i];
+            character.dropShadow.enabled = dropshadowData.dad.enabled;
+            character.dropShadow.color = cast FlxColor.fromString(dropshadowData.color);
+            character.dropShadow.distance = dropshadowData.distance;
+            character.dropShadow.strength = dropshadowData.strength;
+            character.dropShadow.antialiasAmt = dropshadowData.antialiasAmt;
+            character.dropShadow.baseHue = dropshadowData.hue;
+            character.dropShadow.baseBrightness = dropshadowData.brightness;
+            character.dropShadow.baseContrast = dropshadowData.contrast;
+            character.dropShadow.baseSaturation  = dropshadowData.saturation;
+            character.dropShadow.threshold = dropshadowData.threshold;
+
+            if(dropshadowData.dad.useAltMask) character.dropShadow.loadAltMask(dropshadowData.dad.altMaskImage);
+            character.dropShadow.angle = dropshadowData.dad.angle;
+            character.dropShadow.maskThreshold = dropshadowData.dad.maskThreshold;
+        }
+
+        for(i in 0...gfGroup.length)
+        {
+            var character:Character = cast gfGroup.members[i];
+            character.dropShadow.enabled = dropshadowData.girlfriend.enabled;
+            character.dropShadow.color = cast FlxColor.fromString(dropshadowData.color);
+            character.dropShadow.distance = dropshadowData.distance;
+            character.dropShadow.strength = dropshadowData.strength;
+            character.dropShadow.antialiasAmt = dropshadowData.antialiasAmt;
+            character.dropShadow.baseHue = dropshadowData.hue;
+            character.dropShadow.baseBrightness = dropshadowData.brightness;
+            character.dropShadow.baseContrast = dropshadowData.contrast;
+            character.dropShadow.baseSaturation  = dropshadowData.saturation;
+            character.dropShadow.threshold = dropshadowData.threshold;
+
+            if(dropshadowData.girlfriend.useAltMask)character.dropShadow.loadAltMask(dropshadowData.girlfriend.altMaskImage);
+            character.dropShadow.angle = dropshadowData.girlfriend.angle;
+            character.dropShadow.maskThreshold = dropshadowData.girlfriend.maskThreshold;
+        }
+
+        for(i in 0...bfGroup.length)
+        {
+            var character:Character = cast bfGroup.members[i];
+            character.dropShadow.enabled = dropshadowData.boyfriend.enabled;
+            character.dropShadow.color = cast FlxColor.fromString(dropshadowData.color);
+            character.dropShadow.distance = dropshadowData.distance;
+            character.dropShadow.strength = dropshadowData.strength;
+            character.dropShadow.antialiasAmt = dropshadowData.antialiasAmt;
+            character.dropShadow.baseHue = dropshadowData.hue;
+            character.dropShadow.baseBrightness = dropshadowData.brightness;
+            character.dropShadow.baseContrast = dropshadowData.contrast;
+            character.dropShadow.baseSaturation  = dropshadowData.saturation;
+            character.dropShadow.threshold = dropshadowData.threshold;
+
+            if(dropshadowData.boyfriend.useAltMask) character.dropShadow.loadAltMask(dropshadowData.boyfriend.altMaskImage);
+            character.dropShadow.angle = dropshadowData.boyfriend.angle;
+            character.dropShadow.maskThreshold = dropshadowData.boyfriend.maskThreshold;
+        }
+    }
 	
 	#if LUA_ALLOWED
 	public override function implementLua(lua:FunkinLua):Void {

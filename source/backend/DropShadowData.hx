@@ -21,10 +21,7 @@ typedef DropShadowFile =
     var distance:Null<Float>;
     var strength:Null<Float>;
     var threshold:Null<Float>;
-    var useAltMask:Null<Bool>;
     var antialiasAmt:Null<Float>;
-    var altMaskImage:Null<String>;
-    var maskThreshold:Null<Float>;
     var hue:Null<Float>;
     var saturation:Null<Float>;
     var brightness:Null<Float>;
@@ -38,6 +35,7 @@ typedef CharacterSpecificData =
     var enabled:Null<Bool>;
     var angle:Null<Float>;
     var altMaskImage:Null<BitmapData>;
+    var altMaskPath:Null<String>;
     var useAltMask:Null<Bool>;
     var maskThreshold:Null<Float>;
 
@@ -49,7 +47,6 @@ class DropShadowData
     public var distance:Float = 0;
     public var strength:Float = 0;
     public var threshold:Float = 0;
-    public var useAltMask:Bool = false;
     public var antialiasAmt:Float = 2;
     public var hue:Float = 0;
     public var saturation:Float = 0;
@@ -61,6 +58,7 @@ class DropShadowData
         enabled: false,
         angle: 0,
         altMaskImage: null,
+        altMaskPath: '',
         useAltMask: false,
         maskThreshold: 0
     };
@@ -69,6 +67,7 @@ class DropShadowData
         enabled: false,
         angle: 0,
         altMaskImage: null,
+        altMaskPath: '',
         useAltMask: false,
         maskThreshold: 0
     };
@@ -77,6 +76,7 @@ class DropShadowData
         enabled: false,
         angle: 0,
         altMaskImage: null,
+        altMaskPath: '',
         useAltMask: false,
         maskThreshold: 0
     };
@@ -88,10 +88,7 @@ class DropShadowData
         distance: 0,
         strength: 0,
         threshold: 0,
-        useAltMask: false,
         antialiasAmt: 2,
-        altMaskImage: null,
-        maskThreshold: 0,
         hue: 0,
         saturation: 0,
         brightness: 0,
@@ -121,14 +118,116 @@ class DropShadowData
             maskThreshold: 0
         },
     };
+
+    public var dropshadowFile:DropShadowFile;
+
+    public static function getDropshadowFile(stage:String):DropShadowFile {
+		try
+		{
+			var path:String = Paths.getPath('stages/$stage-dropshadow.json', TEXT, null, true);
+			#if MODS_ALLOWED
+			if(FileSystem.exists(path))
+				return cast tjson.TJSON.parse(Paths.getTextFromFile(path));
+			#else
+			if(Assets.exists(path))
+				return cast tjson.TJSON.parse(Assets.getText(path));
+			#end
+		}
+		return dummy();
+
+	}
+
+    public function setDataToFile():DropShadowFile
+    {
+        var data:DropShadowFile = 
+        {
+            enabled: enabled,
+            color: color.toWebString(),
+            distance: distance,
+            strength: strength,
+            threshold: threshold,
+            antialiasAmt: antialiasAmt,
+            hue: hue,
+            saturation: saturation,
+            brightness: brightness,
+            contrast: contrast,
+            girlfriend:
+            {
+                enabled: girlfriend.enabled,
+                angle: girlfriend.angle,
+                altMaskImage: girlfriend.altMaskPath,
+                useAltMask: girlfriend.useAltMask,
+                maskThreshold: girlfriend.maskThreshold
+            },
+            boyfriend:
+            {
+                enabled: boyfriend.enabled,
+                angle: boyfriend.angle,
+                altMaskImage: boyfriend.altMaskPath,
+                useAltMask: boyfriend.useAltMask,
+                maskThreshold: boyfriend.maskThreshold
+            },
+            dad:
+            {
+                enabled: dad.enabled,
+                angle: dad.angle,
+                altMaskImage: dad.altMaskPath,
+                useAltMask: dad.useAltMask,
+                maskThreshold: dad.maskThreshold
+            }
+        };
+        dropshadowFile = data;
+        return data;
+    }
+
+    public static function dummy():DropShadowFile
+	{
+        return {
+            enabled: false,
+            color: 'FFFFFF',
+            distance: 0,
+            strength: 0,
+            threshold: 0,
+            antialiasAmt: 2,
+            hue: 0,
+            saturation: 0,
+            brightness: 0,
+            contrast: 0,
+            boyfriend: 
+            {
+                enabled: false,
+                angle: 0,
+                altMaskImage: '',
+                useAltMask: false,
+                maskThreshold: 0
+            },
+            girlfriend: 
+            {
+                enabled: false,
+                angle: 0,
+                altMaskImage: '',
+                useAltMask: false,
+                maskThreshold: 0
+            },
+            dad: 
+            {
+                enabled: false,
+                angle: 0,
+                altMaskImage: '',
+                useAltMask: false,
+                maskThreshold: 0
+            },
+        };
+	}
+
 	public function new()
     {
         if(PlayState.SONG != null)
         {
             if(PlayState.SONG.stage != null)
             {
-                var stageData = StageData.getStageFile(PlayState.curStage);
-                var dataToUse:DropShadowFile = stageData.dropshadow;
+                var stageData = getDropshadowFile(PlayState.curStage);
+                var dataToUse:DropShadowFile = stageData;
                 if(dataToUse == null)
                     dataToUse = defaultDropShadow;
                 var data:DropShadowFile = fixNullValues(dataToUse);
@@ -148,7 +247,8 @@ class DropShadowData
                     enabled: data.girlfriend.enabled,
                     angle: data.girlfriend.angle,
                     useAltMask: data.girlfriend.useAltMask,
-                    altMaskImage: useAltMask ? BitmapData.fromFile(Paths.getPath('images/' + data.girlfriend.altMaskImage, IMAGE)) : null,
+                    altMaskImage: data.girlfriend.useAltMask ? BitmapData.fromFile(Paths.getPath('images/' + data.girlfriend.altMaskImage, IMAGE)) : null,
+                    altMaskPath: data.girlfriend.altMaskImage,
                     maskThreshold: data.girlfriend.maskThreshold
                 };
                 dad = 
@@ -156,7 +256,8 @@ class DropShadowData
                     enabled: data.dad.enabled,
                     angle: data.dad.angle,
                     useAltMask: data.dad.useAltMask,
-                    altMaskImage: useAltMask ? BitmapData.fromFile(Paths.getPath('images/' + data.dad.altMaskImage, IMAGE)) : null,
+                    altMaskImage: data.dad.useAltMask ? BitmapData.fromFile(Paths.getPath('images/' + data.dad.altMaskImage, IMAGE)) : null,
+                    altMaskPath: data.dad.altMaskImage,
                     maskThreshold: data.dad.maskThreshold
                 };
                 boyfriend = 
@@ -164,9 +265,11 @@ class DropShadowData
                     enabled: data.boyfriend.enabled,
                     angle: data.boyfriend.angle,
                     useAltMask: data.boyfriend.useAltMask,
-                    altMaskImage: useAltMask ? BitmapData.fromFile(Paths.getPath('images/' + data.boyfriend.altMaskImage, IMAGE)) : null,
+                    altMaskImage: data.boyfriend.useAltMask ? BitmapData.fromFile(Paths.getPath('images/' + data.boyfriend.altMaskImage, IMAGE)) : null,
+                    altMaskPath: data.boyfriend.altMaskImage,
                     maskThreshold: data.boyfriend.maskThreshold
                 };
+                dropshadowFile = data;
             }
         } 
     }
@@ -183,12 +286,8 @@ class DropShadowData
             data.strength = 0;
         if(data.threshold == null)
             data.threshold = 0;
-        if(data.useAltMask == null)
-            data.useAltMask = false;
         if(data.antialiasAmt == null)
             data.antialiasAmt = 2;
-        if(data.maskThreshold == null)
-            data.maskThreshold = 0;
         if(data.hue == null)
             data.hue = 0;
         if(data.saturation == null)

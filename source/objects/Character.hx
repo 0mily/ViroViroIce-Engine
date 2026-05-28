@@ -102,11 +102,13 @@ class Character extends FlxSprite
 	public var comboNoteCounts:Array<Int> = [];
 	public var dropNoteCounts:Array<Int> = [];
 
-    public var dropShadow:DropShadowShader;
+    public var dropShadow:DropShadowShader = new DropShadowShader();
 
 	public function new(x:Float, y:Float, ?character:String = 'bf', ?isPlayer:Bool = false)
 	{
 		super(x, y);
+
+        shader = dropShadow;
 
 		animation = new PsychAnimationController(this);
 
