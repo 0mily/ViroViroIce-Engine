@@ -7,7 +7,7 @@ class CoolUtil
 {
 	public static function checkForUpdates(url:String = null):String {
 		if (url == null || url.length == 0)
-			url = "https://raw.githubusercontent.com/xdshiho/ViroViroIce/mod/gitVersion.txt";
+			url = "https://raw.githubusercontent.com/0mily/ViroViroIce-Engine/refs/heads/main/gitVersion.txt";
 		var version:String = states.MainMenuState.modVersion.trim();
 		if(ClientPrefs.data.checkForUpdates) {
 			trace('checking for updates...');
@@ -179,5 +179,14 @@ class CoolUtil
 			default:
 				text.borderStyle = NONE;
 		}
+	}
+
+	public static function showPopUp(message:String, title:String):Void
+	{
+		#if android
+		AndroidTools.showAlertDialog(title, message, {name: "OK", func: null}, null);
+		#else
+		FlxG.stage.window.alert(message, title);
+		#end
 	}
 }

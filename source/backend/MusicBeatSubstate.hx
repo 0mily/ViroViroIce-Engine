@@ -13,6 +13,7 @@ using StringTools;
  * It automatically handles rhythm events (step/beat/measure hits) and some scripting features.
 */
 class MusicBeatSubstate extends flixel.FlxSubState {
+	public static var instance:MusicBeatSubstate;
 	static var editorFpsHideDepth:Int = 0;
 	var stepsToDo:Int = 0;
 	var _hidingFpsForEditor:Bool = false;
@@ -71,6 +72,7 @@ class MusicBeatSubstate extends flixel.FlxSubState {
 	public var parent:flixel.FlxState = null;
 	
 	public function new() {
+		instance = this;
 		super();
 	}
 	
@@ -88,15 +90,8 @@ class MusicBeatSubstate extends flixel.FlxSubState {
 		postCreate();
 	}
 
-	override function destroy():Void
-	{
-		verFPSsla(false);
-		super.destroy();
-	}
-
 	function verFPSsla(created:Bool):Void
 	{
-		#if !mobile
 		var stateClass = Type.getClass(this);
 		var className:String = stateClass == null ? '' : Type.getClassName(stateClass);
 		var isEditor:Bool = className != null && className.startsWith('states.editors.');
@@ -117,7 +112,6 @@ class MusicBeatSubstate extends flixel.FlxSubState {
 
 		if(Main.fpsVar != null)
 			Main.fpsVar.visible = editorFpsHideDepth <= 0 && ClientPrefs.data.showFPS;
-		#end
 	}
 	/**
 	 * Called in a state before finishing creation.
@@ -156,6 +150,87 @@ class MusicBeatSubstate extends flixel.FlxSubState {
 	public var controls(get, never):Controls;
 	function get_controls():Controls {
 		return Controls.instance;
+	}
+
+	#if TOUCH_CONTROLS_ALLOWED
+	public var touchPad:TouchPad;
+	public var hitbox:Hitbox;
+	public var camControls:FlxCamera;
+	public var tpadCam:FlxCamera;
+
+	public function addTouchPad(DPad:String, Action:String)
+	{
+		touchPad = new TouchPad(DPad, Action);
+		add(touchPad);
+	}
+
+	public function removeTouchPad()
+	{
+		if (touchPad != null)
+		{
+			remove(touchPad);
+			touchPad = FlxDestroyUtil.destroy(touchPad);
+		}
+
+		if(tpadCam != null)
+		{
+			FlxG.cameras.remove(tpadCam);
+			tpadCam = FlxDestroyUtil.destroy(tpadCam);
+		}
+	}
+
+	public function addHitbox(defaultDrawTarget:Bool = false):Void
+	{
+		var extraMode = MobileData.extraActions.get(ClientPrefs.data.extraHints);
+
+		hitbox = new Hitbox(extraMode,MobileData.getButtonsColors());
+
+		camControls = new FlxCamera();
+		camControls.bgColor.alpha = 0;
+		FlxG.cameras.add(camControls, defaultDrawTarget);
+
+		hitbox.cameras = [camControls];
+		hitbox.visible = false;
+		add(hitbox);
+	}
+
+	public function removeHitbox()
+	{
+		if (hitbox != null)
+		{
+			remove(hitbox);
+			hitbox = FlxDestroyUtil.destroy(hitbox);
+			hitbox = null;
+		}
+
+		if(camControls != null)
+		{
+			FlxG.cameras.remove(camControls);
+			camControls = FlxDestroyUtil.destroy(camControls);
+		}
+	}
+
+	public function addTouchPadCamera(defaultDrawTarget:Bool = false):Void
+	{
+		if (touchPad != null)
+		{
+			tpadCam = new FlxCamera();
+			tpadCam.bgColor.alpha = 0;
+			FlxG.cameras.add(tpadCam, defaultDrawTarget);
+			touchPad.cameras = [tpadCam];
+		}
+	}
+	#end
+
+	override function destroy():Void
+	{
+		#if TOUCH_CONTROLS_ALLOWED
+		removeTouchPad();
+		removeHitbox();
+		#end
+		
+		verFPSsla(false);
+		super.destroy();
 	}
 	
 	/**

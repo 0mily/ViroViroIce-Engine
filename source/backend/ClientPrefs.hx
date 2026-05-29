@@ -11,7 +11,7 @@ using StringTools;
 // Add a variable here and it will get automatically saved
 @:structInit class SaveVariables {
 
-// nosso
+// ViroViroIce
 
 	public var mechanics:Bool = true;
 	public var modchart:Bool = true;
@@ -23,7 +23,23 @@ using StringTools;
 	public var sustainAlpha:Float = 1;
 	public var opaqueSustains:Bool = true; // isso não deveria ser strums ao invés de sustains?? -Shiho
 
-// deles
+// Mobile
+
+	public var vsliceControls:Bool = true;
+	public var extraHints:String = "NONE";
+	public var hitbox2:Bool = true;
+	public var dynamicColors:Bool = true;
+	public var controlsAlpha:Float = 0.6;
+	public var screensaver:Bool = false;
+	public var wideScreen:Bool = true;
+	#if android
+	public var storageType:String = "EXTERNAL";
+	#end
+	public var hitboxType:String = "Gradient";
+	public var popUpRating:Bool = true;
+	public var vibrating:Bool = false;
+
+// Psych
 
 	public var downScroll:Bool = false;
 	public var middleScroll:Bool = false;
@@ -145,6 +161,28 @@ class ClientPrefs {
 		'pause'			=> [START],
 		'reset'			=> [BACK]
 	];
+	public static var mobileBinds:Map<String, Array<MobileInputID>> = [
+		'note_up'		=> [HITBOX_UP],
+		'note_left'		=> [HITBOX_LEFT],
+		'note_down'		=> [HITBOX_DOWN],
+		'note_right'	=> [HITBOX_RIGHT],
+
+		'ui_up'			=> [UP],
+		'ui_left'		=> [LEFT],
+		'ui_down'		=> [DOWN],
+		'ui_right'		=> [RIGHT],
+
+		'favorite'		=> [F],
+		'bar_left'		=> [NONE],
+		'bar_right'		=> [NONE],
+
+		'accept'		=> [A],
+		'back'			=> [B],
+		'pause'			=> [P],
+		'screenshot'    => [NONE],
+		'reset'			=> [NONE]
+	];
+	public static var defaultMobileBinds:Map<String, Array<MobileInputID>> = null;
 	public static var defaultKeys:Map<String, Array<FlxKey>> = null;
 	public static var defaultButtons:Map<String, Array<FlxGamepadInputID>> = null;
 	
@@ -173,8 +211,10 @@ class ClientPrefs {
 	{
 		var keyBind:Array<FlxKey> = keyBinds.get(key);
 		var gamepadBind:Array<FlxGamepadInputID> = gamepadBinds.get(key);
+		var mobileBind:Array<MobileInputID> = mobileBinds.get(key);
 		while(keyBind != null && keyBind.contains(NONE)) keyBind.remove(NONE);
 		while(gamepadBind != null && gamepadBind.contains(NONE)) gamepadBind.remove(NONE);
+		while(mobileBind != null && mobileBind.contains(NONE)) mobileBind.remove(NONE);
 	}
 
 	public static function saveSettings() {
@@ -187,6 +227,7 @@ class ClientPrefs {
 		
 		controlsSave.data.keyboard = keyBinds;
 		controlsSave.data.gamepad = gamepadBinds;
+		controlsSave.data.mobile = mobileBinds;
 		controlsSave.flush();
 		
 		ensureModsSave();
@@ -290,6 +331,7 @@ class ClientPrefs {
 		
 		var loadedKeyboard:Map<String, Array<FlxKey>> = controlsSave.data.keyboard;
 		var loadedGamepad:Map<String, Array<FlxGamepadInputID>> = controlsSave.data.gamepad;
+		var loadedMobile:Map<String, Array<MobileInputID>> = controlsSave.data.mobile;
 		var loadedMods:Map<String, Bool> = modsSave.data.modsEnabled;
 		
 		if (loadedKeyboard != null) {
@@ -300,6 +342,10 @@ class ClientPrefs {
 			for (control => keys in loadedGamepad)
 				if (gamepadBinds.exists(control)) gamepadBinds.set(control, keys);
 		}
+		if(loadedMobile != null) {
+				for (control => keys in loadedMobile)
+					if(mobileBinds.exists(control)) mobileBinds.set(control, keys);
+			}
 		if (loadedMods != null) {
 			for (mod => enabled in loadedMods)
 				modsEnabled.set(mod, enabled);
@@ -329,8 +375,8 @@ class ClientPrefs {
 	public static function toggleVolumeKeys(?turnOn:Bool = true)
 	{
 		final emptyArray = [];
-		FlxG.sound.muteKeys = turnOn ? TitleState.muteKeys : emptyArray;
-		FlxG.sound.volumeDownKeys = turnOn ? TitleState.volumeDownKeys : emptyArray;
-		FlxG.sound.volumeUpKeys = turnOn ? TitleState.volumeUpKeys : emptyArray;
+		FlxG.sound.muteKeys = (!Controls.instance.mobileC && turnOn) ? TitleState.muteKeys : emptyArray;
+		FlxG.sound.volumeDownKeys = (!Controls.instance.mobileC && turnOn) ? TitleState.volumeDownKeys : emptyArray;
+		FlxG.sound.volumeUpKeys = (!Controls.instance.mobileC && turnOn) ? TitleState.volumeUpKeys : emptyArray;
 	}
 }
