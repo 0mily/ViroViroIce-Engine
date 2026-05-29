@@ -1,9 +1,5 @@
 package;
 
-/*#if android
-import android.content.Context;
-#end*/
-
 import debug.FPSCounter;
 import debug.ScriptTraceDisplay;
 
@@ -23,6 +19,8 @@ import psychlua.HScript;
 
 import openfl.events.KeyboardEvent;
 import openfl.ui.Keyboard;
+
+import mobile.backend.MobileScaleMode;
 
 #if (linux || mac)
 import lime.graphics.Image;
@@ -63,6 +61,8 @@ class Main extends Sprite
 	
 	public static var fpsVar:FPSCounter;
 	public static var traces:ScriptTraceDisplay;
+
+	public static final platform:String = #if mobile "Phones" #else "PCs" #end;
 	
 	// You can pretty much ignore everything from here on - your code should go in your states.
 	
@@ -78,13 +78,6 @@ class Main extends Sprite
 		
 		#if (cpp && windows)
 		backend.Native.fixScaling();
-		#end
-		
-		// Credits to MAJigsaw77 (he's the og author for this code)
-		#if android
-		//Sys.setCwd(Path.addTrailingSlash(Context.getExternalFilesDir()));
-		#elseif ios
-		Sys.setCwd(lime.system.System.applicationStorageDirectory);
 		#end
 		
 		#if hxvlc
@@ -120,7 +113,6 @@ class Main extends Sprite
 		traces = new ScriptTraceDisplay();
 		addChild(traces);
 		
-		#if !mobile
 		fpsVar = new FPSCounter(12, 4, 0xffffff);
 		addChild(fpsVar);
 		Lib.current.stage.align = "tl";
@@ -128,11 +120,20 @@ class Main extends Sprite
 		if(fpsVar != null) {
 			fpsVar.visible = ClientPrefs.data.showFPS;
 		}
-		#end
 		
 		#if (linux || mac) // fix the app icon not showing up on the Linux Panel / Mac Dock
 		var icon = Image.fromFile("icon.png");
 		Lib.current.stage.window.setIcon(icon);
+		#end
+
+		// This requests file access on android (otherwise we will crash later)
+		#if android
+		StorageUtil.requestPermissions();
+		Sys.setCwd(StorageUtil.getStorageDirectory());
+		#end
+
+		#if mobile
+		extension.haptics.Haptic.initialize();
 		#end
 		
 		#if html5
@@ -140,11 +141,16 @@ class Main extends Sprite
 		FlxG.mouse.visible = false;
 		#end
 		
-		FlxG.game.focusLostFramerate = 60;
+		FlxG.game.focusLostFramerate = #if mobile 30 #else 60 #end;
 		FlxG.keys.preventDefaultKeys = [TAB];
 		
 		#if DISCORD_ALLOWED
 		DiscordClient.prepare();
+		#end
+
+		#if mobile
+		#if android FlxG.android.preventDefaultKeys = [BACK]; #end
+		lime.system.System.allowScreenTimeout = ClientPrefs.data.screensaver;
 		#end
 		
 		// shader coords fix
@@ -174,7 +180,7 @@ class Main extends Sprite
 	#if CRASH_HANDLER
 	function onCrash(e:UncaughtErrorEvent):Void
 	{
-		var gh:String = 'https://github.com/inky03/FNF-PsychEngineMint'; // change this link to your actual repository if you're modding !
+		var gh:String = 'https://github.com/0mily/ViroViroIce-Engine'; // change this link to your actual repository if you're modding !
 		var dateNow:String = Date.now().toString().replace(' ', '_').replace(':', "'"); // yayyyy
 		
 		var errMsg:String = 'UNCAUGHT EXCEPTION: ${e.error}\n\nSTACK TRACEBACK:';

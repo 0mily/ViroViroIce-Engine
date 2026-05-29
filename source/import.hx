@@ -1,4 +1,7 @@
 #if !macro
+
+import haxe.Exception;
+
 //Discord API
 #if DISCORD_ALLOWED
 import backend.Discord;
@@ -14,6 +17,20 @@ import llua.Lua;
 import backend.Achievements;
 #end
 
+// Mobile Controls
+import mobile.input.MobileInputID;
+import mobile.backend.SwipeUtil;
+import mobile.backend.TouchUtil;
+#if TOUCH_CONTROLS_ALLOWED
+import mobile.objects.Hitbox;
+import mobile.objects.TouchPad;
+import mobile.objects.TouchButton;
+import mobile.backend.MobileData;
+import mobile.input.MobileInputManager;
+import mobile.objects.TouchZone;
+import mobile.objects.ScrollableObject;
+#end
+// Android
 #if android
 import extension.androidtools.content.Context as AndroidContext;
 import extension.androidtools.widget.Toast as AndroidToast;
@@ -33,6 +50,10 @@ import js.html.*;
 import backend.JSFileSystem as FileSystem;
 #end
 
+import backend.NativeFileSystem as NativeFileSystem;
+import backend.ArrayTools;
+import backend.MathUtil;
+import backend.Constants;
 import backend.Paths;
 import backend.Controls;
 import backend.CoolUtil;
@@ -47,6 +68,10 @@ import backend.BaseStage;
 import backend.Difficulty;
 import backend.Mods;
 import backend.Language;
+
+#if !js
+import mobile.backend.StorageUtil;
+#end
 
 import backend.ui.*; //Psych-UI
 
@@ -70,6 +95,7 @@ import flixel.FlxBasic;
 import flixel.FlxObject;
 import flixel.FlxSprite;
 import flixel.FlxCamera;
+import flixel.util.FlxDestroyUtil;
 import flixel.math.FlxMath;
 import flixel.math.FlxPoint;
 import flixel.util.FlxColor;

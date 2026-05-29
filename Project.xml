@@ -37,6 +37,16 @@
 	<define name="SHOW_LOADING_SCREEN" />
 	<define name="PSYCH_WATERMARKS"/> <!-- DELETE THIS TO REMOVE THE PSYCH LOGO FROM LOADING SCREEN -->
 
+	<section unless="debug">
+		<!-- Adds the ability to use OpenFL asset lookup (defaults to sys if disabled)  -->
+		<define name="OPENFL_LOOKUP" />
+
+		<!-- Adds the ability to use NativeFileSystem on the computer to acsess files  -->
+		<define name="NATIVE_LOOKUP" if="ADDONS_ALLOWED" />
+	</section>
+
+	<define name="TOUCH_CONTROLS_ALLOWED" if="mobile || debug" />
+
 	<!-- define name="UNHOLYWANDERER04" -->
 	<!-- define name="BASE_GAME_FILES" -->
 	<define name="VIDEOS_ALLOWED" unless="32bits"/> <!-- IF YOU WANT TO USE VIDEOS ON YOUR SOURCE MOD, GET THIS LINE OUTSIDE OF THE SECTION -->
