@@ -108,7 +108,7 @@ class Character extends FlxSprite
 	{
 		super(x, y);
 
-        shader = dropShadow;
+        //shader = dropShadow;
 
 		animation = new PsychAnimationController(this);
 
