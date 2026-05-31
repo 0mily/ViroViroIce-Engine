@@ -180,6 +180,8 @@ setting_gpu_caching: "Caching na GPU"
 description_gpu_caching: "Se marcado, permite que a GPU seja usada para armazenar texturas, reduzindo uso da memória RAM.\nNão ligue isso se sua Placa de Vídeo é fraca."
 setting_framerate: "Taxa de Atualização"
 description_framerate: "Altera quantos quadros o jogo pode exibir por segundo."
+setting_unlocked_fps: "FPS Destravado"
+description_unlocked_fps: "Se marcado, remove o limite de FPS do jogo."
 
 // Visuals Settings
 setting_note_skins: "Estilo de Notas"

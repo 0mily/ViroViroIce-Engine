@@ -5,9 +5,25 @@ import openfl.utils.Assets;
 #if (LUA_ALLOWED && flxanimate)
 class FlxAnimateFunctions {
 	public static function implement() {
-		var makeAtlasSprite = function(tag:String, ?x:Float = 0, ?y:Float = 0, ?loadFolder:String = null) {
+		var makeAtlasSprite = function(tag:String, ?first:Dynamic = 0, ?second:Dynamic = 0, ?third:Dynamic = null) {
 			tag = tag.replace('.', '');
 			LuaUtils.destroyObject(tag);
+
+			var x:Float = 0;
+			var y:Float = 0;
+			var loadFolder:String = null;
+			if(Std.isOfType(first, String))
+			{
+				loadFolder = Std.string(first);
+				x = atlasFloat(second, 0);
+				y = atlasFloat(third, 0);
+			}
+			else
+			{
+				x = atlasFloat(first, 0);
+				y = atlasFloat(second, 0);
+				if(third != null) loadFolder = Std.string(third);
+			}
 
 			var mySprite:ModchartAnimateSprite = new ModchartAnimateSprite(x, y);
 			if(loadFolder != null) Paths.loadAnimateAtlas(mySprite, loadFolder);
@@ -72,6 +88,18 @@ class FlxAnimateFunctions {
 		FunkinLua.registerFunction("addAnimationBySymbolIndices", addAtlasAnimByIndices);
 		FunkinLua.registerFunction("addAtlasAnimByIndices", addAtlasAnimByIndices);
 		FunkinLua.registerFunction("addLuaAtlasAnimByIndices", addAtlasAnimByIndices);
+	}
+
+	static function atlasFloat(value:Dynamic, fallback:Float = 0):Float
+	{
+		if(value == null)
+			return fallback;
+
+		if(Std.isOfType(value, Float) || Std.isOfType(value, Int))
+			return cast value;
+
+		var parsed:Float = Std.parseFloat(Std.string(value));
+		return Math.isNaN(parsed) ? fallback : parsed;
 	}
 }
 #end

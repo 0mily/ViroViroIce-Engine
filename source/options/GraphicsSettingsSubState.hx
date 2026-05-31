@@ -78,6 +78,14 @@ class GraphicsSettingsSubState extends BaseOptionsMenu
 		option.defaultValue = Std.int(FlxMath.bound(refreshRate, option.minValue, option.maxValue));
 		option.displayFormat = '%v FPS';
 		option.onChange = onChangeFramerate;
+		option.visible = function() return !ClientPrefs.data.unlockedFPS;
+
+		var option:Option = new Option('Unlocked FPS',
+			'If checked, removes the game framerate cap.',
+			'unlockedFPS',
+			BOOL);
+		option.onChange = onChangeUnlockedFPS;
+		addOption(option);
 		#end
 		
 		insert(1, boyfriend);
@@ -102,16 +110,13 @@ class GraphicsSettingsSubState extends BaseOptionsMenu
 
 	function onChangeFramerate(?_, ?_)
 	{
-		if(ClientPrefs.data.framerate > FlxG.drawFramerate)
-		{
-			FlxG.updateFramerate = ClientPrefs.data.framerate;
-			FlxG.drawFramerate = ClientPrefs.data.framerate;
-		}
-		else
-		{
-			FlxG.drawFramerate = ClientPrefs.data.framerate;
-			FlxG.updateFramerate = ClientPrefs.data.framerate;
-		}
+		ClientPrefs.applyFramerate(ClientPrefs.data.framerate);
+	}
+
+	function onChangeUnlockedFPS(?_, ?_)
+	{
+		ClientPrefs.applyFramerate(ClientPrefs.data.framerate);
+		refreshVisibleOptions();
 	}
 
 	override function changeSelection(change:Int = 0)

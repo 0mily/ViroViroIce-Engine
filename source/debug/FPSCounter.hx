@@ -75,7 +75,7 @@ class FPSCounter extends Sprite
 			return;
 		}
 
-		currentFPS = times.length < FlxG.updateFramerate ? times.length : FlxG.updateFramerate;
+		currentFPS = (FlxG.updateFramerate <= 0 || times.length < FlxG.updateFramerate) ? times.length : FlxG.updateFramerate;
 		updateText();
 		deltaTimeout = 0.0;
 	}
@@ -87,7 +87,7 @@ class FPSCounter extends Sprite
 		var memStr:String  = flixel.util.FlxStringUtil.formatBytes(mem);
 		var peakStr:String = flixel.util.FlxStringUtil.formatBytes(peakMemory);
 
-		var fpsColor:Int = (currentFPS < FlxG.drawFramerate * 0.5) ? 0xFFFF4444 : 0xFFFFFFFF;
+		var fpsColor:Int = (!ClientPrefs.data.unlockedFPS && currentFPS < FlxG.drawFramerate * 0.5) ? 0xFFFF4444 : 0xFFFFFFFF;
 
 		final fpsStr:String    = '$currentFPS';
 		final sufStr:String    = ' FPS\n';

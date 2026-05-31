@@ -240,14 +240,35 @@ class PsychFlxAnimate extends OriginalFlxAnimate
 
 		var exact:Bool = symbol.endsWith('\\');
 		var symbolName:String = exact ? symbol.substr(0, symbol.length - 1) : symbol;
-		if(library.existsSymbol(symbolName)) return symbolName;
+		var names:Array<String> = getAtlasSymbolNames();
+		if(hasAtlasSymbolDirectly(symbolName)) return symbolName;
+		if(names.contains(symbolName)) return symbolName;
+		if(symbolName.contains('/'))
+		{
+			var shortcut:String = symbolName.split('/').pop();
+			if(hasAtlasSymbolDirectly(shortcut)) return shortcut;
+			if(names.contains(shortcut)) return shortcut;
+		}
 		if(exact) return null;
 
-		for(name in getAtlasSymbolNames())
+		for(name in names)
 			if(name.startsWith(symbolName))
 				return name;
 
 		return null;
+	}
+
+	function hasAtlasSymbolDirectly(symbol:String):Bool
+	{
+		if(symbol == null || library == null) return false;
+
+		try
+		{
+			return library.getSymbol(symbol) != null;
+		}
+		catch(e:Dynamic) {}
+
+		return false;
 	}
 
 	function getAtlasSymbolNames():Array<String>
@@ -260,7 +281,50 @@ class PsychFlxAnimate extends OriginalFlxAnimate
 			var dictionary:Map<String, Dynamic> = cast Reflect.field(library, 'dictionary');
 			if(dictionary != null)
 				for(name in dictionary.keys())
-					names.push(name);
+					if(!names.contains(name))
+						names.push(name);
+		}
+		catch(e:Dynamic) {}
+
+		try
+		{
+			var symbolDictionary:Array<Dynamic> = cast Reflect.field(library, '_symbolDictionary');
+			if(symbolDictionary != null)
+			{
+				for(symbolData in symbolDictionary)
+				{
+					var name:String = Reflect.field(symbolData, 'SN');
+					if(name != null && !names.contains(name))
+						names.push(name);
+				}
+			}
+		}
+		catch(e:Dynamic) {}
+
+		try
+		{
+			var libraryList:Array<String> = cast Reflect.field(library, '_libraryList');
+			if(libraryList != null)
+				for(name in libraryList)
+					if(name != null && !names.contains(name))
+						names.push(name);
+		}
+		catch(e:Dynamic) {}
+
+		try
+		{
+			var addedCollections:Array<Dynamic> = cast Reflect.field(library, 'addedCollections');
+			if(addedCollections != null)
+			{
+				for(collection in addedCollections)
+				{
+					var dictionary:Map<String, Dynamic> = cast Reflect.field(collection, 'dictionary');
+					if(dictionary != null)
+						for(name in dictionary.keys())
+							if(!names.contains(name))
+								names.push(name);
+				}
+			}
 		}
 		catch(e:Dynamic) {}
 

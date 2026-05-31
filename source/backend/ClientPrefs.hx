@@ -57,6 +57,7 @@ using StringTools;
 	public var shaders:Bool = true;
 	public var cacheOnGPU:Bool = #if !switch false #else true #end; // GPU Caching made by Raltyro
 	public var framerate:Int = 60;
+	public var unlockedFPS:Bool = false;
 	public var camZooms:Bool = true;
 	public var hideHud:Bool = false;
 	public var noteOffset:Int = 0;
@@ -117,6 +118,8 @@ using StringTools;
 }
 
 class ClientPrefs {
+	public static inline final UNLOCKED_FPS_CAP:Int = 1000;
+
 	public static var data:SaveVariables = {};
 	public static var defaultData:SaveVariables = {};
 
@@ -296,16 +299,7 @@ class ClientPrefs {
 		}
 		#end
 
-		if(data.framerate > FlxG.drawFramerate)
-		{
-			FlxG.updateFramerate = data.framerate;
-			FlxG.drawFramerate = data.framerate;
-		}
-		else
-		{
-			FlxG.drawFramerate = data.framerate;
-			FlxG.updateFramerate = data.framerate;
-		}
+		applyFramerate(data.framerate);
 
 		if(FlxG.save.data.gameplaySettings != null)
 		{
@@ -357,6 +351,23 @@ class ClientPrefs {
 		#end
 		
 		reloadVolumeKeys();
+	}
+
+	public static function applyFramerate(fps:Int = 60):Void
+	{
+		// adapted from NMV based
+		final targetFramerate:Int = data.unlockedFPS ? UNLOCKED_FPS_CAP : Std.int(FlxMath.bound(fps, 60, 240));
+
+		if(targetFramerate > FlxG.drawFramerate)
+		{
+			FlxG.updateFramerate = targetFramerate;
+			FlxG.drawFramerate = targetFramerate;
+		}
+		else
+		{
+			FlxG.drawFramerate = targetFramerate;
+			FlxG.updateFramerate = targetFramerate;
+		}
 	}
 
 	inline public static function getGameplaySetting(name:String, defaultValue:Dynamic = null, ?customDefaultValue:Bool = false):Dynamic
