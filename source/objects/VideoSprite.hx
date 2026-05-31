@@ -4,7 +4,11 @@ import flixel.addons.display.FlxPieDial;
 
 #if hxvlc
 import hxvlc.flixel.FlxVideoSprite;
-#else
+#end
+#if hxCodec
+import hxcodec.flixel.FlxVideoSprite;
+#end
+#if js
 import openfl.events.NetStatusEvent;
 import openfl.media.SoundTransform;
 import openfl.media.Video;
@@ -35,14 +39,17 @@ class VideoSprite extends FlxSpriteGroup {
 	var lastVideoScaleY:Float = -1;
 	var playTimer:FlxTimer = null;
 
-	#if hxvlc
-	public var videoSprite:FlxVideoSprite;
-	#elseif js
+	private var doWeLoop:Bool = false; // for hxCodec
+
+	#if js
 	public var videoSprite:FlxVideo;
+	#else
+	public var videoSprite:FlxVideoSprite;
 	#end
 	public function new(videoName:String, isWaiting:Bool, canSkip:Bool = false, shouldLoop:Dynamic = false) {
 		super();
 
+		this.doWeLoop = shouldLoop;
 		this.videoName = videoName;
 		scrollFactor.set();
 		cameras = [FlxG.cameras.list[FlxG.cameras.list.length - 1]];
@@ -58,12 +65,23 @@ class VideoSprite extends FlxSpriteGroup {
 		}
 
 		// initialize sprites
-		#if hxvlc
+		
+		#if js
+		videoSprite = new FlxVideo(videoName);
+		videoSprite.finishCallback= finishVideo;
+		#else
 		videoSprite = new FlxVideoSprite();
-		videoSprite.antialiasing = ClientPrefs.data.antialiasing;
 		if(!shouldLoop) videoSprite.bitmap.onEndReached.add(finishVideo);
+		#end
+		videoSprite.antialiasing = ClientPrefs.data.antialiasing;
+
+		#if hxvlc
 		videoSprite.load(videoName, shouldLoop ? ['input-repeat=65545'] : null);
+		
 		videoSprite.bitmap.onFormatSetup.add(function()
+		#else
+		videoSprite.bitmap.onTextureSetup.add(function()
+		#end
 		{
 			/*
 			#if hxvlc
@@ -79,10 +97,6 @@ class VideoSprite extends FlxSpriteGroup {
 			applyVideoScale(true);
 		});
 
-		#elseif js
-		videoSprite = new FlxVideo(videoName);
-		videoSprite.finishCallback= finishVideo;
-		#end
 		// callbacks
 		add(videoSprite);
 		storeBaseVideoScale();
@@ -154,10 +168,10 @@ class VideoSprite extends FlxSpriteGroup {
 			{
 				if(onSkip != null) onSkip();
 				finishCallback = null;
-				#if hxvlc
-				videoSprite.bitmap.onEndReached.dispatch();
-				#else
+				#if js
 				videoSprite.finishVideo();
+				#else
+				videoSprite.bitmap.onEndReached.dispatch();
 				#end
 				trace('Skipped video');
 				return;
@@ -225,7 +239,12 @@ class VideoSprite extends FlxSpriteGroup {
 		skipSprite.amount = Math.min(1, Math.max(0, (holdingTime / _timeToSkip) * 1.025));
 		skipSprite.alpha = FlxMath.remapToRange(skipSprite.amount, 0.025, 1, 0, 1);
 	}
-	#if hxvlc
+
+	#if js
+	public function play() videoSprite?.resumeVideo();
+	public function resume() videoSprite?.resumeVideo();
+	public function pause() videoSprite?.pauseVideo();
+	#else
 	public function play()
 	{
 		if(playTimer != null)
@@ -233,15 +252,11 @@ class VideoSprite extends FlxSpriteGroup {
 		playTimer = new FlxTimer().start(0.001, function(_)
 		{
 			playTimer = null;
-			videoSprite?.play();
+			#if hxvlc videoSprite?.play(); #else videoSprite?.play(videoName, doWeLoop); #end
 		});
 	}
 	public function resume() videoSprite?.resume();
 	public function pause() videoSprite?.pause();
-	#elseif js
-	public function play() videoSprite?.resumeVideo();
-	public function resume() videoSprite?.resumeVideo();
-	public function pause() videoSprite?.pauseVideo();
 	#end
 	public function stop() destroy();
 
@@ -251,28 +266,28 @@ class VideoSprite extends FlxSpriteGroup {
 			timeMs = 0;
 		timeMs = Math.max(0, timeMs);
 
-		#if hxvlc
+		#if js
+		videoSprite?.seekVideo(timeMs / 1000);
+		#else
 		if(videoSprite != null && videoSprite.bitmap != null)
 			videoSprite.bitmap.time = Std.int(timeMs);
-		#elseif js
-		videoSprite?.seekVideo(timeMs / 1000);
 		#end
 	}
 
 	public function getTime():Float
 	{
-		#if hxvlc
+		#if js
+		return videoSprite != null ? videoSprite.getTime() : 0;
+		#else
 		if(videoSprite != null && videoSprite.bitmap != null)
 			return Std.parseFloat(Std.string(videoSprite.bitmap.time));
-		#elseif js
-		return videoSprite != null ? videoSprite.getTime() : 0;
 		#end
 		return 0;
 	}
 
 	public function getLength():Float
 	{
-		#if hxvlc
+		#if !js
 		if(videoSprite != null && videoSprite.bitmap != null)
 			return Std.parseFloat(Std.string(videoSprite.bitmap.length));
 		#end
@@ -281,7 +296,7 @@ class VideoSprite extends FlxSpriteGroup {
 
 	public function isSeekable():Bool
 	{
-		#if hxvlc
+		#if !js
 		return videoSprite != null && videoSprite.bitmap != null && videoSprite.bitmap.isSeekable;
 		#end
 		return true;
@@ -289,7 +304,7 @@ class VideoSprite extends FlxSpriteGroup {
 
 	public function setPlaybackRate(rate:Float):Void
 	{
-		#if hxvlc
+		#if !js
 		if(videoSprite != null && videoSprite.bitmap != null)
 			videoSprite.bitmap.rate = rate;
 		#end

@@ -59,8 +59,8 @@ class DiscordClient
 			message += '($user)';
 		
 		var button:DiscordButton = new DiscordButton();
-		button.url = 'https://gamebanana.com/mods/591796';
-		button.label = 'On GameBanana';
+		button.url = 'https://www.youtube.com/watch?v=xVBj4RLmyrI';
+		button.label = 'Placeholder';
 		presence.__presence.buttons[0] = button;
 
 		updatePresence();

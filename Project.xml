@@ -49,7 +49,7 @@
 
 	<!-- define name="UNHOLYWANDERER04" -->
 	<!-- define name="BASE_GAME_FILES" -->
-	<define name="VIDEOS_ALLOWED" unless="32bits"/> <!-- IF YOU WANT TO USE VIDEOS ON YOUR SOURCE MOD, GET THIS LINE OUTSIDE OF THE SECTION -->
+	<define name="VIDEOS_ALLOWED" unless="32bits" />
 
 	<!-- ____________________________ Window Settings ___________________________ -->
 
@@ -140,12 +140,17 @@
 	<haxelib name="tjson" />
 
 	<!--Psych stuff needed-->
-	<haxelib name="hxvlc" unless = "html5" />
+	<section if="VIDEOS_ALLOWED" unless="html5">
+		<haxelib name="hxCodec" if="linux" /> <!-- fuck my stupid baka chud linux life -->
+		<haxelib name="hxvlc" unless="linux" />
+	</section>
 	<haxelib name="linc_luajit" if="LUA_ALLOWED"/>
 	<haxelib name="hscript-iris" if="HSCRIPT_ALLOWED" />
 	<haxelib name="hxdiscord_rpc" if="DISCORD_ALLOWED" />
 	<haxelib name="flixel-animate" />
 	<haxelib name="moonchart" />
+	<haxelib name="flxgif" />
+	<haxelib name="yagp" />
 	
 	<!-- Other -->
 	<haxelib name="grig.audio" />

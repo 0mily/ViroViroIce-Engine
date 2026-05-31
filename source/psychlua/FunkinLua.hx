@@ -47,6 +47,13 @@ import flixel.input.gamepad.FlxGamepadInputID;
 import haxe.Json;
 import tjson.TJSON;
 
+import flxgif.FlxGifSprite;
+import com.yagp.GifDecoder;
+import com.yagp.GifPlayer;
+
+import haxe.io.Bytes;
+import sys.io.File;
+
 class FunkinLua {
 	public var lua:State = null;
 	public var camTarget:FlxCamera;
@@ -820,6 +827,22 @@ class FunkinLua {
 			var funnyParse:Dynamic = TJSON.parse(funnyJson);
 
 			return funnyParse;
+		});
+
+		registerFunction("makeLuaGif", function(tag:String, ?gif:String = null, ?x:Float = 0, ?y:Float = 0) {
+			tag = tag.replace('.', '');
+			LuaUtils.destroyObject(tag);
+    		var path:String = Paths.getPath('images/$gif.gif', IMAGE);
+
+			var leGif:FlxGifSprite = new FlxGifSprite(x, y);
+			if(gif != null && gif.length > 0)
+			{
+				var bytes:Bytes = File.getBytes(path);
+				leGif.loadGif(bytes);
+				leGif.antialiasing = ClientPrefs.data.antialiasing;
+			}
+			MusicBeatState.getVariables().set(tag, leGif);
+			leGif.active = true;
 		});
 		
 		registerFunction('debugPrint', function(?text:Dynamic, ?color:String) ScriptedState.debugPrint(text, color == null ? null : CoolUtil.colorFromString(color)));

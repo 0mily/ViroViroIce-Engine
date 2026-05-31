@@ -237,6 +237,7 @@ class ReflectionFunctions
 			}
 		}
 		funk.addLocalCallback('addLuaSprite', addInstance);
+		funk.addLocalCallback('addLuaGif', addInstance);
 		funk.addLocalCallback('addInstance', addInstance);
 		funk.addLocalCallback('addLuaAtlas', addInstance);
 		funk.addLocalCallback('addAtlas', addInstance);

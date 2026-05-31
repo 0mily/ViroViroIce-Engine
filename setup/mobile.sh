@@ -13,6 +13,8 @@ haxelib install hxvlc --skip-dependencies
 haxelib install funkin-modchart
 haxelib install moonchart
 haxelib install away3d 5.0.9
+haxelib install yagp 1.1.4 --quiet 
+haxelib install flxgif 1.0.3 --quiet --skip-dependencies 
 haxelib git hscript-iris https://github.com/pisayesiwsi/hscript-iris.git dev
 haxelib install extension-haptics 1.0.4 --quiet --skip-dependencies
 haxelib install extension-androidtools 2.2.2 --quiet --skip-dependencies
