@@ -32,7 +32,10 @@ class VisualsSettingsSubState extends BaseOptionsMenu
 		}
 
 		// options
-		var noteSkins:Array<String> = Mods.mergeAllTextsNamed('images/noteSkins/list.txt');
+		var noteSkins:Array<String> = Mods.mergeAllTextsNamed('images/noteskins/notes/list.txt');
+		for (skin in Mods.mergeAllTextsNamed('images/noteSkins/list.txt'))
+			if (!noteSkins.contains(skin))
+				noteSkins.push(skin);
 		if(noteSkins.length > 0)
 		{
 			if(!noteSkins.contains(ClientPrefs.data.noteSkin))
@@ -50,7 +53,10 @@ class VisualsSettingsSubState extends BaseOptionsMenu
 			noteOptionID = optionsArray.length - 1;
 		}
 		
-		var noteSplashes:Array<String> = Mods.mergeAllTextsNamed('images/noteSplashes/list.txt');
+		var noteSplashes:Array<String> = Mods.mergeAllTextsNamed('images/noteskins/splashes/list.txt');
+		for (splash in Mods.mergeAllTextsNamed('images/noteSplashes/list.txt'))
+			if (!noteSplashes.contains(splash))
+				noteSplashes.push(splash);
 		if(noteSplashes.length > 0)
 		{
 			if(!noteSplashes.contains(ClientPrefs.data.splashSkin))

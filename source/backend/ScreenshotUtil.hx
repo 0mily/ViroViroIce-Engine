@@ -12,6 +12,8 @@ import sys.FileSystem;
 import sys.io.File;
 #end
 
+// alguém faz ele fazer sonzinho????
+
 class ScreenshotUtil // eu só roubei do Vslice e adaptei essa bct
 {
 	static inline final SCREENSHOT_FOLDER:String = 'screenshots';
@@ -80,7 +82,14 @@ class ScreenshotUtil // eu só roubei do Vslice e adaptei essa bct
 		var camera:FlxCamera = overlayCamera();
 		var state:FlxState = FlxG.state;
 
-		var flash:FlxSprite = new FlxSprite().makeGraphic(FlxG.width, FlxG.height, FlxColor.WHITE);
+		var fullScreenX:Float = CameraResizeFix.pegarFSX(camera);
+		var fullScreenY:Float = CameraResizeFix.pegarFSY(camera);
+		var fullScreenWidth:Float = CameraResizeFix.pegarFSL(camera);
+		var fullScreenHeight:Float = CameraResizeFix.pegarFSA(camera);
+
+		var flash:FlxSprite = new FlxSprite(fullScreenX, fullScreenY).makeGraphic(1, 1, FlxColor.WHITE);
+		flash.scale.set(fullScreenWidth, fullScreenHeight);
+		flash.updateHitbox();
 		flash.scrollFactor.set();
 		flash.cameras = [camera];
 		flash.alpha = ClientPrefs.data.flashing ? 1 : 0.45;

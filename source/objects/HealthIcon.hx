@@ -11,6 +11,7 @@ class HealthIcon extends FlxSprite
 	static inline final PIXEL_ICON_SOURCE_HEIGHT:Int = 32;
 
 	public var sprTracker:FlxSprite;
+	public var bop:Bool = true;
 	private var isPlayer:Bool = false;
 	private var char:String = '';
 

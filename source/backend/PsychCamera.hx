@@ -16,6 +16,7 @@ using flixel.util.FlxColorTransformUtil;
 
 // PsychCamera handles followLerp based on elapsed
 // and stops camera from snapping at higher framerates
+// can we change this name pls? this is fucking viroviro not fuckin psycghs
 
 class PsychCamera extends FlxCamera
 {
@@ -262,6 +263,44 @@ class PsychCamera extends FlxCamera
 		scroll.copyFrom(_scrollTarget);
 	}
 
+	function anglePivotX():Float
+	{
+		if(target != null)
+		{
+			var pivot:Float = target.x + target.width * 0.5 + targetOffset.x - scroll.x;
+			if(!Math.isNaN(pivot))
+				return pivot;
+		}
+		return followWidth() * 0.5;
+	}
+
+	function anglePivotY():Float
+	{
+		if(target != null)
+		{
+			var pivot:Float = target.y + target.height * 0.5 + targetOffset.y - scroll.y;
+			if(!Math.isNaN(pivot))
+				return pivot;
+		}
+		return followHeight() * 0.5;
+	}
+
+	function drawScreenFill(targetGraphics:Graphics, Color:FlxColor, FxAlpha:Float):Void
+	{
+		if(targetGraphics == null)
+			return;
+
+		var drawX:Float = CameraResizeFix.pegarFSX(this) - 1;
+		var drawY:Float = CameraResizeFix.pegarFSY(this) - 1;
+		var drawWidth:Float = CameraResizeFix.pegarFSL(this) + 2;
+		var drawHeight:Float = CameraResizeFix.pegarFSA(this) + 2;
+
+		targetGraphics.overrideBlendMode(null);
+		targetGraphics.beginFill(Color, FxAlpha);
+		targetGraphics.drawRect(drawX, drawY, drawWidth, drawHeight);
+		targetGraphics.endFill();
+	}
+
 	override public function drawPixels(?frame:FlxFrame, ?pixels:BitmapData, matrix:FlxMatrix, ?transform:ColorTransform, ?blend:BlendMode, ?smoothing:Bool = false,
 			?shader:FlxShader):Void
 	{
@@ -287,9 +326,11 @@ class PsychCamera extends FlxCamera
 
 			if(!rotateSprite && angle != 0)
 			{
-				matrix.translate(-width / 2, -height / 2);
+				var pivotX:Float = anglePivotX();
+				var pivotY:Float = anglePivotY();
+				matrix.translate(-pivotX, -pivotY);
 				matrix.rotateWithTrig(_cosAngle, _sinAngle);
-				matrix.translate(width / 2, height / 2);
+				matrix.translate(pivotX, pivotY);
 			}
 
 			#if FLX_RENDER_TRIANGLE
@@ -317,12 +358,7 @@ class PsychCamera extends FlxCamera
 		}
 		else
 		{
-			final targetGraphics = (graphics == null) ? canvas.graphics : graphics;
-
-			targetGraphics.overrideBlendMode(null);
-			targetGraphics.beginFill(Color, FxAlpha);
-			targetGraphics.drawRect(viewMarginLeft - 1, viewMarginTop - 1, viewWidth + 2, viewHeight + 2);
-			targetGraphics.endFill();
+			drawScreenFill((graphics == null) ? canvas.graphics : graphics, Color, FxAlpha);
 		}
 	}
 }

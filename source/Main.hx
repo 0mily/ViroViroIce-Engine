@@ -87,6 +87,7 @@ class Main extends Sprite
 		FlxG.signals.postGameReset.add(function() {
 			#if (!html5 && !switch) FlxG.autoPause = ClientPrefs.data.autoPause; #end
 			FlxG.fixedTimestep = false;
+			backend.DeveloperMode.applyCurrentTarget();
 		});
 		FlxG.signals.postGameStart.add(function() backend.CustomCursor.reloadFromMods());
 		
@@ -99,6 +100,7 @@ class Main extends Sprite
 		#if HSCRIPT_ALLOWED HScript.init(); #end
 		#if GLOBAL_SCRIPTS GlobalScriptHandler.init(); #end
 		#if LUA_ALLOWED Lua.set_callbacks_function(cpp.Callable.fromStaticFunction(psychlua.CallbackHandler.call)); #end
+		backend.ResolutionManager.init();
 		
 		#if ACHIEVEMENTS_ALLOWED Achievements.load(); #end
 		addChild(new #if UNHOLYWANDERER04 UnholyGame #else FlxGame #end(game.width, game.height, game.initialState, game.framerate, game.framerate, game.skipSplash, game.startFullscreen));

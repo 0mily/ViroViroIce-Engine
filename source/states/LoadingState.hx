@@ -54,7 +54,7 @@ class LoadingState extends ScriptedState
 	static var threadPool:FixedThreadPool = null;
 	#end
 	
-	public static var threaded:Bool = #if (target.threaded) true #else false #end ;
+	public static var threaded:Bool = false;
 	static var futures:Array<Future<Dynamic>> = [];
 	static var jobs:Array<LoaderJob> = [];
 
@@ -241,7 +241,7 @@ class LoadingState extends ScriptedState
 				}
 				else stateChangeDelay = Math.max(0, stateChangeDelay - elapsed);
 			}
-			intendedPercent = loaded / loadMax;
+			intendedPercent = loadMax > 0 ? loaded / loadMax : 1;
 		}
 
 		if (curPercent != intendedPercent)
@@ -343,6 +343,8 @@ class LoadingState extends ScriptedState
 		loadMax = 0;
 		initialThreadCompleted = true;
 		isIntrusive = false;
+		futures.resize(0);
+		jobs.resize(0);
 		
 		StageData.forceNextDirectory = null;
 		FlxTransitionableState.skipNextTransIn = true;
@@ -395,16 +397,25 @@ class LoadingState extends ScriptedState
 			FlxG.sound.music.stop();
 
 		#if sys
+		var waitStart:Float = Sys.time();
 		while(true)
 		{
+			updateJobs();
 			if(checkLoaded())
 			{
+				_loaded();
+				break;
+			}
+			if(Sys.time() - waitStart > 30)
+			{
+				trace('WARNING! LoadingState timed out; forcing state switch.');
 				_loaded();
 				break;
 			}
 			else Sys.sleep(0.001);
 		}
 		#else
+		updateJobs();
 		checkLoaded();
 		#end
 		
@@ -422,13 +433,27 @@ class LoadingState extends ScriptedState
 	static var dontPreloadDefaultVoices:Bool = false;
 	static function _startPool()
 	{
-		maxJobs = 10;
+		maxJobs = 1;
 		
-		#if (target.threaded) if (threaded && threadPool == null) {
-			var multiThreaded:Bool = #if (MULTITHREADED_LOADING && sys) true #else false #end ;
-			maxJobs = (multiThreaded ? Std.int(Math.max(1, getCPUThreadsCount() - #if DISCORD_ALLOWED 2 #else 1 #end)) : 1 );
+		#if (target.threaded)
+		threaded = ClientPrefs.data.multithreadedLoading;
+		if(!threaded)
+		{
+			if(threadPool != null)
+			{
+				threadPool.shutdown();
+				threadPool = null;
+			}
+			mutex = null;
+			return;
+		}
+
+		maxJobs = Std.int(Math.max(1, getCPUThreadsCount() - #if DISCORD_ALLOWED 2 #else 1 #end));
+		if(threadPool == null)
 			threadPool = new FixedThreadPool(maxJobs);
-		} #end
+		#else
+		threaded = false;
+		#end
 	}
 
 	public static function prepareToSong()
@@ -593,7 +618,8 @@ class LoadingState extends ScriptedState
 				} else #end
 				preloadCharacter(player2, prefixVocals);
 			}
-			if (!stageData.hide_girlfriend && gfVersion != player2 && gfVersion != player1) {
+			var hideGirlfriend:Bool = stageData != null && stageData.hide_girlfriend;
+			if (!hideGirlfriend && gfVersion != player2 && gfVersion != player1) {
 				#if (target.threaded) if (threaded) {
 					threadsMax ++;
 					threadPool.run(() -> { try { preloadCharacter(gfVersion); } catch (e:Dynamic) {} completedThread(); });
@@ -612,6 +638,9 @@ class LoadingState extends ScriptedState
 		}, isIntrusive))
 		.onError((err:Dynamic) -> {
 			trace('ERROR! while preparing song: $err');
+			initialThreadCompleted = true;
+			clearInvalids();
+			startThreads();
 		});
 	}
 
@@ -732,15 +761,14 @@ class LoadingState extends ScriptedState
 				case VIDEO(key): initThread(() -> preloadVideo(key), 'video $key');
 			}
 		} else #end {
-			var future:Future<Dynamic> = switch (job) {
+			var result:Dynamic = switch (job) {
 				case SOUND(key, path, ignoreMods): preloadSound(key, path, ignoreMods);
 				case BMD(key): preloadGraphic(key);
-				case VIDEO(key):
-					preloadVideo(key);
-					null;
+				case VIDEO(key): preloadVideo(key);
 			}
 			
-			if (future != null) {
+			if (result != null && Std.isOfType(result, Future)) {
+				var future:Future<Dynamic> = cast result;
 				function forward(_:Dynamic) { futures.remove(future); loaded ++; }
 				
 				futures.push(future);

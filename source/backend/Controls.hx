@@ -97,6 +97,9 @@ class Controls
 		var result:Bool = (FlxG.keys.anyJustPressed(keyboardBinds[key]) == true);
 		if(result) controllerMode = false;
 
+		if(key == 'accept' && DeveloperMode.isMobileLike() && TouchUtil.pressAction())
+			return true;
+
 		return result
 			|| _myGamepadJustPressed(gamepadBinds[key]) == true
 			#if TOUCH_CONTROLS_ALLOWED
@@ -273,6 +276,9 @@ class Controls
 	@:noCompletion
 	private function get_mobileC():Bool
 	{
+		if (DeveloperMode.mobileSimulation)
+			return true;
+
 		#if TOUCH_CONTROLS_ALLOWED
 		if (ClientPrefs.data.controlsAlpha >= 0.1)
 			return true;

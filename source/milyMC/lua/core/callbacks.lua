@@ -2,9 +2,32 @@
 -- Callbacks extras
 -- =========================================================================
 
+local externalModchartCallbacks = {
+    modChartCreate = 'milymc.create',
+    modChartStepHit = 'milymc.step',
+    modChartUpdate = 'milymc.update',
+    modChartBeatHit = 'milymc.beat',
+    modChartCreatePost = 'milymc.createPost',
+    modChartUpdatePost = 'milymc.updatePost',
+    modChartSongStart = 'milymc.songStart',
+    modChartDADNote = 'milymc.oppHit',
+    modChartBFNote = 'milymc.playerHit'
+}
+
+callLocalMilyMC = function(funcName, ...)
+    if milymc and type(milymc[funcName]) == 'function' then
+        milymc[funcName](...)
+    end
+end
+
 function callExternalModchart(funcName, args)
     if callOnScripts then
         callOnScripts(funcName, args or {}, true, true)
+
+        local namespacedFunc = externalModchartCallbacks[funcName]
+        if namespacedFunc then
+            callOnScripts(namespacedFunc, args or {}, true, true)
+        end
     end
 end
 
@@ -34,6 +57,7 @@ function onUpdate(elapsed)
     end
 
     if modChartUpdate then modChartUpdate(elapsed) end
+    callLocalMilyMC('update', elapsed)
     callExternalModchart('modChartUpdate', {elapsed})
 end
 
@@ -164,17 +188,20 @@ function onUpdatePost(elapsed)
     noteMathWasActive = hasActiveNoteMath
 
     if modChartUpdatePost then modChartUpdatePost(elapsed) end
+    callLocalMilyMC('updatePost', elapsed)
     callExternalModchart('modChartUpdatePost', {elapsed})
 end
 
 function onBeatHit()
     if modChartBeatHit then modChartBeatHit() end
+    callLocalMilyMC('beat')
     callExternalModchart('modChartBeatHit')
 end
 
 function onStepHit()
     runScheduledEvents()
     if modChartStepHit then modChartStepHit() end
+    callLocalMilyMC('step')
     callExternalModchart('modChartStepHit')
 end
 
@@ -190,11 +217,13 @@ end
 
 function goodNoteHit(id, nd, nt, sus)
     if modChartBFNote then modChartBFNote(id, nd, nt, sus) end
+    callLocalMilyMC('playerHit', id, nd, nt, sus)
     callExternalModchart('modChartBFNote', {id, nd, nt, sus})
 end
 
 function opponentNoteHit(id, nd, nt, sus)
     if modChartDADNote then modChartDADNote(id, nd, nt, sus) end
+    callLocalMilyMC('oppHit', id, nd, nt, sus)
     callExternalModchart('modChartDADNote', {id, nd, nt, sus})
 end
 
@@ -220,6 +249,7 @@ end
 
 function onSongStart()
     if modChartSongStart then modChartSongStart() end
+    callLocalMilyMC('songStart')
     callExternalModchart('modChartSongStart')
 end
 

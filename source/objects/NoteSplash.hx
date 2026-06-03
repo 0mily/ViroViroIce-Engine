@@ -42,7 +42,7 @@ class NoteSplash extends FlxSprite
 	var spawned:Bool = false;
 	var noteDataMap:Map<Int, String> = new Map();
 
-	public static var defaultNoteSplash(default, never):String = "noteSplashes/noteSplashes";
+	public static var defaultNoteSplash(default, never):String = "noteskins/splashes/noteSplashes";
 	public static var configs:Map<String, NoteSplashConfig> = new Map();
 
 	public function new(?x:Float = 0, ?y:Float = 0, ?splash:String)
@@ -58,6 +58,9 @@ class NoteSplash extends FlxSprite
 	}
 
 	public var maxAnims(default, set):Int = 0;
+	public static function resolveSplashPath(splash:String):String
+		return NoteSkinData.resolveSplashPath(splash);
+
 	public function loadSplash(?splash:String)
 	{
 		config = null;
@@ -69,20 +72,25 @@ class NoteSplash extends FlxSprite
 			if (PlayState.SONG != null && PlayState.SONG.splashSkin != null && PlayState.SONG.splashSkin.length > 0) splash = PlayState.SONG.splashSkin;
 		}
 
-		texture = splash;
+		texture = resolveSplashPath(splash);
 		frames = Paths.getSparrowAtlas(texture);
 		if (frames == null)
 		{
-			texture = defaultNoteSplash + getSplashSkinPostfix();
+			texture = resolveSplashPath(defaultNoteSplash + getSplashSkinPostfix());
 			frames = Paths.getSparrowAtlas(texture);
 			if (frames == null)
 			{
-				texture = defaultNoteSplash;
+				texture = resolveSplashPath(defaultNoteSplash);
 				frames = Paths.getSparrowAtlas(texture);
 			}
 		}
 
 		var path:String = 'images/$texture';
+		var tempConfig:NoteSplashConfig = createConfig();
+		var anim:String = 'note splash';
+		var fps:Array<Null<Int>> = [22, 26];
+		var offsets:Array<Array<Float>> = [[0, 0]];
+
 		if (configs.exists(path))
 		{
 			this.config = configs.get(path);
@@ -98,33 +106,41 @@ class NoteSplash extends FlxSprite
 			var config:Dynamic = haxe.Json.parse(Paths.getTextFromFile('$path.json'));
 			if (config != null)
 			{
-				var tempConfig:NoteSplashConfig = {
-					animations: new Map(),
-					scale: config.scale,
-					allowRGB: config.allowRGB,
-					allowPixel: config.allowPixel,
-					rgb: config.rgb
-				}
-
-				for (i in Reflect.fields(config.animations))
+				if (config.animations != null)
 				{
-					var anim:NoteSplashAnim = Reflect.field(config.animations, i);
-					tempConfig.animations.set(i, anim);
-					if (anim.noteData % 4 == 0)
-						maxAnims++;
+					tempConfig = {
+						animations: new Map(),
+						scale: config.scale ?? 1,
+						allowRGB: config.allowRGB ?? true,
+						allowPixel: config.allowPixel ?? true,
+						rgb: config.rgb
+					}
+
+					for (i in Reflect.fields(config.animations))
+					{
+						var anim:NoteSplashAnim = Reflect.field(config.animations, i);
+						tempConfig.animations.set(i, anim);
+						if (anim.noteData % 4 == 0)
+							maxAnims++;
+					}
+
+					this.config = tempConfig;
+					configs.set(path, this.config);
+					return;
 				}
 
-				this.config = tempConfig;
-				configs.set(path, this.config);
-				return;
+				anim = readSplashString(config, 'prefix', anim);
+				anim = readSplashString(config, 'animationPrefix', anim);
+				fps = readSplashFPS(config.fps, fps);
+				offsets = [readSplashOffset(config.offset ?? config.offsets)];
+				tempConfig.scale = readSplashFloat(config.scale, 1);
+				tempConfig.allowRGB = readSplashBool(config.allowRGB, true);
+				tempConfig.allowPixel = readSplashBool(config.allowPixel, true);
+				tempConfig.rgb = config.rgb;
 			}
 		}
 
 		// Splashes with no json
-		var tempConfig:NoteSplashConfig = createConfig();
-		var anim:String = 'note splash';
-		var fps:Array<Null<Int>> = [22, 26];
-		var offsets:Array<Array<Float>> = [[0, 0]];
 		if (Paths.fileExists('$path.txt', TEXT)) // Backwards compatibility with 0.7 splash txts
 		{
 			var configFile:Array<String> = CoolUtil.listFromString(Paths.getTextFromFile('$path.txt'));
@@ -200,6 +216,7 @@ class NoteSplash extends FlxSprite
 			var loadedTexture:String = defaultNoteSplash + getSplashSkinPostfix();
 			if (note != null && note.noteSplashData.texture != null) loadedTexture = note.noteSplashData.texture;
 			else if (PlayState.SONG != null && PlayState.SONG.splashSkin != null && PlayState.SONG.splashSkin.length > 0) loadedTexture = PlayState.SONG.splashSkin;
+			loadedTexture = resolveSplashPath(loadedTexture);
 
 			if (texture != loadedTexture) loadSplash(loadedTexture);
 		}
@@ -365,6 +382,77 @@ class NoteSplash extends FlxSprite
 		if (ClientPrefs.data.splashSkin != ClientPrefs.defaultData.splashSkin)
 			skin = '-' + ClientPrefs.data.splashSkin.trim().toLowerCase().replace(' ', '-');
 		return skin;
+	}
+
+	static function readSplashString(data:Dynamic, field:String, fallback:String):String
+	{
+		if (data == null || !Reflect.hasField(data, field))
+			return fallback;
+		var value:Dynamic = Reflect.field(data, field);
+		return value != null ? Std.string(value) : fallback;
+	}
+
+	static function readSplashFPS(value:Dynamic, fallback:Array<Null<Int>>):Array<Null<Int>>
+	{
+		if (value == null)
+			return fallback;
+
+		if (Std.isOfType(value, Array))
+		{
+			var values:Array<Dynamic> = cast value;
+			var min:Null<Int> = Std.parseInt(Std.string(values[0]));
+			var max:Null<Int> = Std.parseInt(Std.string(values[1]));
+			if (min == null) min = fallback[0];
+			if (max == null) max = min;
+			return [min, max];
+		}
+
+		var fps:Null<Int> = Std.parseInt(Std.string(value));
+		return fps != null ? [fps, fps] : fallback;
+	}
+
+	static function readSplashOffset(value:Dynamic):Array<Float>
+	{
+		if (value == null)
+			return [0, 0];
+
+		if (Std.isOfType(value, Array))
+		{
+			var values:Array<Dynamic> = cast value;
+			return [readSplashFloat(values[0], 0), readSplashFloat(values[1], 0)];
+		}
+
+		if (Std.isOfType(value, String))
+		{
+			var parts:Array<String> = Std.string(value).replace(',', ' ').split(' ');
+			parts = [for (part in parts) if (part.trim().length > 0) part.trim()];
+			return [readSplashFloat(parts[0], 0), readSplashFloat(parts[1], 0)];
+		}
+
+		return [readSplashFloat(Reflect.field(value, 'x'), 0), readSplashFloat(Reflect.field(value, 'y'), 0)];
+	}
+
+	static function readSplashFloat(value:Dynamic, fallback:Float):Float
+	{
+		if (value == null)
+			return fallback;
+		var parsed:Float = Std.parseFloat(Std.string(value));
+		return Math.isNaN(parsed) ? fallback : parsed;
+	}
+
+	static function readSplashBool(value:Dynamic, fallback:Bool):Bool
+	{
+		if (value == null)
+			return fallback;
+		if (Std.isOfType(value, Bool))
+			return value;
+
+		return switch (Std.string(value).toLowerCase().trim())
+		{
+			case 'true' | '1' | 'yes' | 'on': true;
+			case 'false' | '0' | 'no' | 'off': false;
+			default: fallback;
+		}
 	}
 
 	public static function createConfig():NoteSplashConfig

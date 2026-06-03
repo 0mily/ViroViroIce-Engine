@@ -49,6 +49,11 @@ import psychlua.HScript;
 
 import backend.DropShadowData;
 
+typedef StrumRuntimeTarget = {
+	var staticIndices:Array<Int>;
+	var noteIndices:Array<Int>;
+}
+
 /*here's some useful tips if you are making a mod in source:
 
 If you want to add your stage to the game, copy states/stages/Template.hx,
@@ -108,6 +113,7 @@ class PlayState extends ScriptedState
 	public var extraCharacterGroups:Map<String, FlxSpriteGroup> = new Map<String, FlxSpriteGroup>(); // XIXI COCO BUCETA. NUM FUNFA
 	public var extraCharacterNoteTypes:Map<String, String> = new Map<String, String>();
 	var extraCharacterIsPlayer:Map<String, Bool> = new Map<String, Bool>();
+	var pendingExtraCharacterScroll:Map<String, Array<Float>> = new Map<String, Array<Float>>();
 	
 
 	var BF_X:Float = 770;
@@ -303,6 +309,12 @@ class PlayState extends ScriptedState
 	 * Group containing the opponent's note receptors.
 	*/
 	public var opponentStrums:FlxTypedGroup<StrumNote> = new FlxTypedGroup<StrumNote>();
+	public var strumSkinOverrides:Array<String> = [for (_ in 0...8) null];
+	public var noteSkinOverrides:Array<String> = [for (_ in 0...8) null];
+	public var strumRGBOverrides:Array<Null<FlxColor>> = [for (_ in 0...8) null];
+	public var noteRGBOverrides:Array<Null<FlxColor>> = [for (_ in 0...8) null];
+	public var strumRGBAllowedOverrides:Array<Null<Bool>> = [for (_ in 0...8) null];
+	public var noteRGBAllowedOverrides:Array<Null<Bool>> = [for (_ in 0...8) null];
 	/**
 	 * Group containing all note splashes.
 	*/
@@ -336,6 +348,11 @@ class PlayState extends ScriptedState
 	public var scriptedCameraBopRate:Float = 4;
 	public var scriptedCameraBopOffset:Float = 0;
 	public var scriptedCameraBopIntensity:Float = 1;
+	public var scriptedCameraBopUnit:String = 'beat';
+	public var scriptedCameraBopGame:Float = 0.015;
+	public var scriptedCameraBopHUD:Float = 0.03;
+	public var scriptedCameraBopPattern:Array<Int> = null;
+	public var scriptedCameraBopBlocksDefault:Bool = false;
 
 	/**
 	 * How frequently the speakers (middle) character should bop every beat.
@@ -723,6 +740,7 @@ class PlayState extends ScriptedState
 		setVar('camMain', camGame);
 		setVar('camHUD', camHUD);
 		setVar('camOther', camOther);
+		setVar('camPause', camOther);
 
 		backend.CameraResizeFix.aplyAll();
 		
@@ -737,7 +755,7 @@ class PlayState extends ScriptedState
 				#end
 
 				#if HSCRIPT_ALLOWED
-				if(file.toLowerCase().endsWith('.hx'))
+				if(HScript.hasScriptExtension(file))
 					initHScript('$folder$file');
 				#end
 			}
@@ -875,6 +893,16 @@ class PlayState extends ScriptedState
 		if (ClientPrefs.data.downScroll) scoreTxt.y = 100;
 		else scoreTxt.y = 680;
 
+		setVar('playFields', noteGroup);
+		setVar('playHUD', {
+			healthBar: healthBar,
+			iconP1: iconP1,
+			iconP2: iconP2,
+			scoreTxt: scoreTxt,
+			timeBar: timeBar,
+			timeTxt: timeTxt
+		});
+
 		botplayTxt = new FlxText(400, healthBar.y - 90, FlxG.width - 800, Language.getPhrase("Botplay").toUpperCase(), 32);
 		botplayTxt.setFormat(Paths.font("vcr.ttf"), 32, FlxColor.WHITE, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
 		botplayTxt.scrollFactor.set();
@@ -917,7 +945,7 @@ class PlayState extends ScriptedState
 				#end
 
 				#if HSCRIPT_ALLOWED
-				if(file.toLowerCase().endsWith('.hx'))
+				if(HScript.hasScriptExtension(file))
 					initHScript(folder + file);
 				#end
 			}
@@ -1204,6 +1232,440 @@ class PlayState extends ScriptedState
 			FlxColor.fromRGB(boyfriend.healthColorArray[0], boyfriend.healthColorArray[1], boyfriend.healthColorArray[2]));
 	}
 
+	public function setStrumSkin(target:Dynamic, skinName:String):Bool
+	{
+		if (skinName == null || skinName.trim().length < 1)
+			return false;
+
+		var parsed:StrumRuntimeTarget = parseStrumRuntimeTarget(target, true, true);
+		for (index in parsed.staticIndices)
+		{
+			strumSkinOverrides[index] = skinName;
+			applyStrumSkinOverride(index, skinName);
+		}
+
+		for (index in parsed.noteIndices)
+			noteSkinOverrides[index] = skinName;
+
+		forEachGameplayNote(function(note:Note) {
+			var index:Int = getRuntimeNoteIndex(note);
+			if (parsed.noteIndices.contains(index))
+			{
+				applyNoteSkinOverride(note, skinName);
+				applyRuntimeNoteRGBState(note, index);
+			}
+		});
+		return parsed.staticIndices.length > 0 || parsed.noteIndices.length > 0;
+	}
+
+	public function setPlayerSplash(splashName:String):Bool
+	{
+		if (splashName == null || splashName.trim().length < 1)
+			return false;
+
+		var resolvedSplash:String = NoteSplash.resolveSplashPath(splashName);
+		if (SONG != null)
+			SONG.splashSkin = resolvedSplash;
+
+		forEachGameplayNote(function(note:Note) {
+			if (note.mustPress)
+				note.noteSplashData.texture = resolvedSplash;
+		});
+		return true;
+	}
+
+	public function setStrumRGB(target:Dynamic, colorHex:String):Bool
+	{
+		var color:FlxColor = CoolUtil.colorFromString(colorHex);
+		var parsed:StrumRuntimeTarget = parseStrumRuntimeTarget(target, true, true);
+		applyRuntimeRGBAllowed(parsed, true);
+		applyRuntimeRGB(parsed, color);
+		return parsed.staticIndices.length > 0 || parsed.noteIndices.length > 0;
+	}
+
+	public function allowStrumRGB(target:Dynamic, enabled:Bool = true):Bool
+	{
+		var parsed:StrumRuntimeTarget = parseStrumRuntimeTarget(target, true, true);
+		applyRuntimeRGBAllowed(parsed, enabled);
+		return parsed.staticIndices.length > 0 || parsed.noteIndices.length > 0;
+	}
+
+	public function tweenStrumRGB(tag:String, target:Dynamic, seconds:Float, colorHex:String, ease:String = 'linear'):String
+	{
+		var parsed:StrumRuntimeTarget = parseStrumRuntimeTarget(target, true, true);
+		if (parsed.staticIndices.length < 1 && parsed.noteIndices.length < 1)
+			return null;
+
+		applyRuntimeRGBAllowed(parsed, true);
+		var targetColor:FlxColor = CoolUtil.colorFromString(colorHex);
+		var staticStart:Array<FlxColor> = [for (index in parsed.staticIndices) getRuntimeStrumRGB(index)];
+		var noteStart:Array<FlxColor> = [for (index in parsed.noteIndices) getRuntimeNoteRGB(index)];
+		var tweenTag:String = tag != null && tag.length > 0 ? 'tween_' + formatRuntimeTweenTag(tag) : null;
+
+		if (tweenTag != null)
+		{
+			var oldTween:FlxTween = MusicBeatState.getVariables().get(tweenTag);
+			if (oldTween != null)
+			{
+				oldTween.cancel();
+				oldTween.destroy();
+			}
+		}
+
+		var tween:FlxTween = FlxTween.num(0, 1, Math.max(seconds, 0), {
+			ease: getRuntimeTweenEase(ease),
+			onComplete: function(twn:FlxTween) {
+				if (tweenTag != null)
+					MusicBeatState.getVariables().remove(tweenTag);
+				#if LUA_ALLOWED
+				if (tag != null && tag.length > 0)
+					FunkinLua.luaCallGlobal('onTweenCompleted', [tag]);
+				#end
+			}
+		}, function(value:Float) {
+			for (i in 0...parsed.staticIndices.length)
+				applyRuntimeRGBToStatic(parsed.staticIndices[i], FlxColor.interpolate(staticStart[i], targetColor, value));
+			for (i in 0...parsed.noteIndices.length)
+				applyRuntimeRGBToNotes(parsed.noteIndices[i], FlxColor.interpolate(noteStart[i], targetColor, value));
+		});
+
+		if (tweenTag != null)
+			MusicBeatState.getVariables().set(tweenTag, tween);
+		return tweenTag;
+	}
+
+	function applyRuntimeNoteOverrides(note:Note):Void
+	{
+		var index:Int = getRuntimeNoteIndex(note);
+		var skin:String = noteSkinOverrides[index];
+		if (skin != null && skin.length > 0)
+			applyNoteSkinOverride(note, skin);
+
+		applyRuntimeNoteRGBState(note, index);
+	}
+
+	function applyRuntimeNoteRGBState(note:Note, index:Int):Void
+	{
+		var allowed:Null<Bool> = noteRGBAllowedOverrides[index];
+		if (allowed != null)
+			note.useRGBShader = allowed;
+
+		var color:Null<FlxColor> = noteRGBOverrides[index];
+		if (color != null && note.useRGBShader)
+			note.setRGBOverride(color);
+	}
+
+	function applyStrumSkinOverride(index:Int, skinName:String):Void
+	{
+		var strum:StrumNote = strumLineNotes.members[index];
+		if (strum == null)
+			return;
+
+		var downscrollGap:Null<Float> = strum.downScroll ? Math.max(0, FlxG.height - strum.y - strum.height) : null;
+		strum.texture = skinName;
+		if (downscrollGap != null)
+			strum.y = FlxG.height - strum.height - downscrollGap;
+
+		var allowed:Null<Bool> = strumRGBAllowedOverrides[index];
+		if (allowed != null)
+			strum.setRGBAllowed(allowed);
+
+		var color:Null<FlxColor> = strumRGBOverrides[index];
+		if (color != null && strum.useRGBShader)
+			strum.setRGBOverride(color);
+
+		if (strum.animation.curAnim == null)
+			strum.playAnim('static', true);
+	}
+
+	function applyNoteSkinOverride(note:Note, skinName:String):Void
+	{
+		if (note == null || note.noteData < 0)
+			return;
+
+		note.texture = skinName;
+		note.applyNoteSkinOffsets();
+	}
+
+	function applyRuntimeRGB(target:StrumRuntimeTarget, color:FlxColor):Void
+	{
+		for (index in target.staticIndices)
+			applyRuntimeRGBToStatic(index, color);
+		for (index in target.noteIndices)
+			applyRuntimeRGBToNotes(index, color);
+	}
+
+	function applyRuntimeRGBToStatic(index:Int, color:FlxColor):Void
+	{
+		strumRGBOverrides[index] = color;
+		if (strumRGBAllowedOverrides[index] == false)
+			return;
+
+		var strum:StrumNote = strumLineNotes.members[index];
+		if (strum != null)
+			strum.setRGBOverride(color);
+	}
+
+	function applyRuntimeRGBToNotes(index:Int, color:FlxColor):Void
+	{
+		noteRGBOverrides[index] = color;
+		if (noteRGBAllowedOverrides[index] == false)
+			return;
+
+		forEachGameplayNote(function(note:Note) {
+			if (getRuntimeNoteIndex(note) == index)
+				note.setRGBOverride(color);
+		});
+	}
+
+	function applyRuntimeRGBAllowed(target:StrumRuntimeTarget, enabled:Bool):Void
+	{
+		for (index in target.staticIndices)
+			applyRuntimeRGBAllowedToStatic(index, enabled);
+		for (index in target.noteIndices)
+			applyRuntimeRGBAllowedToNotes(index, enabled);
+	}
+
+	function applyRuntimeRGBAllowedToStatic(index:Int, enabled:Bool):Void
+	{
+		strumRGBAllowedOverrides[index] = enabled;
+		var strum:StrumNote = strumLineNotes.members[index];
+		if (strum == null)
+			return;
+
+		strum.setRGBAllowed(enabled);
+		if (enabled && strumRGBOverrides[index] != null)
+			strum.setRGBOverride(strumRGBOverrides[index]);
+	}
+
+	function applyRuntimeRGBAllowedToNotes(index:Int, enabled:Bool):Void
+	{
+		noteRGBAllowedOverrides[index] = enabled;
+		forEachGameplayNote(function(note:Note) {
+			if (getRuntimeNoteIndex(note) == index)
+			{
+				note.useRGBShader = enabled;
+				if (enabled && noteRGBOverrides[index] != null)
+					note.setRGBOverride(noteRGBOverrides[index]);
+			}
+		});
+	}
+
+	function getRuntimeStrumRGB(index:Int):FlxColor
+	{
+		var colorOverride:Null<FlxColor> = strumRGBOverrides[index];
+		if (colorOverride != null)
+			return colorOverride;
+
+		var strum:StrumNote = strumLineNotes.members[index];
+		if (strum != null && strum.rgbOverride != null)
+			return strum.rgbOverride;
+
+		var noteData:Int = Std.int(Math.abs(index) % 4);
+		var arr:Array<FlxColor> = PlayState.isPixelStage ? ClientPrefs.data.arrowRGBPixel[noteData] : ClientPrefs.data.arrowRGB[noteData];
+		return arr != null && arr.length > 0 ? arr[0] : FlxColor.WHITE;
+	}
+
+	function getRuntimeNoteRGB(index:Int):FlxColor
+	{
+		var colorOverride:Null<FlxColor> = noteRGBOverrides[index];
+		if (colorOverride != null)
+			return colorOverride;
+		return getRuntimeStrumRGB(index);
+	}
+
+	function forEachGameplayNote(callback:Note->Void):Void
+	{
+		if (callback == null)
+			return;
+
+		for (note in unspawnNotes)
+			if (note != null)
+				callback(note);
+
+		if (notes != null)
+		{
+			for (note in notes.members)
+				if (note != null)
+					callback(note);
+		}
+	}
+
+	function getRuntimeNoteIndex(note:Note):Int
+		return note.noteData + (note.mustPress ? 4 : 0);
+
+	static function parseStrumRuntimeTarget(target:Dynamic, defaultStatic:Bool, defaultNotes:Bool):StrumRuntimeTarget
+	{
+		var result:StrumRuntimeTarget = {staticIndices: [], noteIndices: []};
+		if (target == null)
+		{
+			addIndices(result.staticIndices, [0, 1, 2, 3, 4, 5, 6, 7]);
+			addIndices(result.noteIndices, [0, 1, 2, 3, 4, 5, 6, 7]);
+			return result;
+		}
+
+		if (Std.isOfType(target, String))
+		{
+			var raw:String = Std.string(target).toLowerCase().trim();
+			switch (raw)
+			{
+				case 'notes' | 'note':
+					addIndices(result.noteIndices, [0, 1, 2, 3, 4, 5, 6, 7]);
+					return result;
+				case 'static' | 'strum' | 'strums' | 'receptor' | 'receptors':
+					addIndices(result.staticIndices, [0, 1, 2, 3, 4, 5, 6, 7]);
+					return result;
+			}
+		}
+
+		if (Std.isOfType(target, Array))
+		{
+			var indices:Array<Int> = selectorToIndices(target);
+			if (defaultStatic) addIndices(result.staticIndices, indices);
+			if (defaultNotes) addIndices(result.noteIndices, indices);
+			return result;
+		}
+
+		if (Type.typeof(target) == TObject)
+		{
+			var hasStatic:Bool = Reflect.hasField(target, 'static') || Reflect.hasField(target, 'strums');
+			var hasNotes:Bool = Reflect.hasField(target, 'notes') || Reflect.hasField(target, 'note');
+			var loose:Array<Int> = selectorObjectLooseIndices(target);
+
+			if (hasStatic)
+			{
+				var value:Dynamic = Reflect.hasField(target, 'static') ? Reflect.field(target, 'static') : Reflect.field(target, 'strums');
+				addIndices(result.staticIndices, selectorToIndices(value));
+				addIndices(result.staticIndices, loose);
+			}
+			if (hasNotes)
+			{
+				var value:Dynamic = Reflect.hasField(target, 'notes') ? Reflect.field(target, 'notes') : Reflect.field(target, 'note');
+				addIndices(result.noteIndices, selectorToIndices(value));
+				if (!hasStatic)
+					addIndices(result.noteIndices, loose);
+			}
+			if (!hasStatic && !hasNotes)
+			{
+				var indices:Array<Int> = selectorToIndices(target);
+				if (defaultStatic) addIndices(result.staticIndices, indices);
+				if (defaultNotes) addIndices(result.noteIndices, indices);
+			}
+			return result;
+		}
+
+		var indices:Array<Int> = selectorToIndices(target);
+		if (defaultStatic) addIndices(result.staticIndices, indices);
+		if (defaultNotes) addIndices(result.noteIndices, indices);
+		return result;
+	}
+
+	static function selectorToIndices(selector:Dynamic):Array<Int>
+	{
+		if (selector == null)
+			return [];
+
+		if (Std.isOfType(selector, Array))
+		{
+			var result:Array<Int> = [];
+			for (value in (cast selector:Array<Dynamic>))
+				addIndices(result, selectorToIndices(value));
+			return result;
+		}
+
+		if (Std.isOfType(selector, String))
+			return selectorStringToIndices(Std.string(selector));
+
+		var parsed:Null<Int> = dynamicToInt(selector);
+		if (parsed != null)
+			return clampStrumIndex(parsed);
+
+		if (Type.typeof(selector) == TObject)
+			return selectorObjectLooseIndices(selector);
+
+		return [];
+	}
+
+	static function selectorStringToIndices(value:String):Array<Int>
+	{
+		value = value.toLowerCase().trim();
+		if (value.contains(',') || value.contains(' '))
+		{
+			var result:Array<Int> = [];
+			var parts:Array<String> = value.replace(',', ' ').split(' ');
+			for (part in parts)
+				if (part.trim().length > 0)
+					addIndices(result, selectorStringToIndices(part));
+			return result;
+		}
+
+		return switch (value)
+		{
+			case 'bf' | 'boyfriend' | 'player': [4, 5, 6, 7];
+			case 'dad' | 'opponent' | 'opp': [0, 1, 2, 3];
+			case 'both' | 'all' | 'gen' | 'strum_gen': [0, 1, 2, 3, 4, 5, 6, 7];
+			case 'left': [0, 4];
+			case 'down': [1, 5];
+			case 'up': [2, 6];
+			case 'right': [3, 7];
+			default:
+				var parsed:Null<Int> = Std.parseInt(value);
+				parsed != null ? clampStrumIndex(parsed) : [];
+		}
+	}
+
+	static function selectorObjectLooseIndices(selector:Dynamic):Array<Int>
+	{
+		var result:Array<Int> = [];
+		for (field in Reflect.fields(selector))
+		{
+			if (field == 'static' || field == 'strums' || field == 'notes' || field == 'note')
+				continue;
+			addIndices(result, selectorToIndices(Reflect.field(selector, field)));
+		}
+		return result;
+	}
+
+	static function addIndices(target:Array<Int>, source:Array<Int>):Void
+	{
+		if (source == null)
+			return;
+		for (index in source)
+			if (index >= 0 && index < 8 && !target.contains(index))
+				target.push(index);
+	}
+
+	static function clampStrumIndex(index:Int):Array<Int>
+		return index >= 0 && index < 8 ? [index] : [];
+
+	static function dynamicToInt(value:Dynamic):Null<Int>
+	{
+		if (value == null)
+			return null;
+
+		return switch (Type.typeof(value))
+		{
+			case TInt: Std.int(value);
+			case TFloat:
+				var parsed:Float = value;
+				Math.isNaN(parsed) ? null : Std.int(parsed);
+			default:
+				var parsed:Null<Int> = Std.parseInt(Std.string(value));
+				parsed;
+		}
+	}
+
+	static function getRuntimeTweenEase(ease:String):Dynamic
+	{
+		if (ease == null || ease.length < 1)
+			return FlxEase.linear;
+		var tweenEase:Dynamic = Reflect.field(FlxEase, ease);
+		return tweenEase != null ? tweenEase : FlxEase.linear;
+	}
+
+	static function formatRuntimeTweenTag(tag:String):String
+		return tag.trim().replace(' ', '_').replace('.', '');
+
 	/**
 	 * Precaches a character.
 	 * 
@@ -1295,6 +1757,32 @@ class PlayState extends ScriptedState
 		}
 	}
 
+	public function queueExtraCharacterScroll(target:String, scrollX:Null<Float>, scrollY:Null<Float>):Bool
+	{
+		var tag:String = normalizeCharacterTarget(target);
+		switch(tag)
+		{
+			case 'boyfriend' | 'dad' | 'gf':
+				return false;
+			default:
+		}
+
+		if(scrollX == null || Math.isNaN(scrollX)) scrollX = 1;
+		if(scrollY == null || Math.isNaN(scrollY)) scrollY = scrollX;
+		pendingExtraCharacterScroll.set(tag, [scrollX, scrollY]);
+		return true;
+	}
+
+	function applyPendingExtraCharacterScroll(tag:String, group:FlxSpriteGroup):Void
+	{
+		if(tag == null || group == null || !pendingExtraCharacterScroll.exists(tag))
+			return;
+
+		var scroll:Array<Float> = pendingExtraCharacterScroll.get(tag);
+		group.scrollFactor.set(scroll[0], scroll[1]);
+		pendingExtraCharacterScroll.remove(tag);
+	}
+
 	function normalizeCharacterTarget(target:String):String
 	{
 		if(target == null) return 'dad';
@@ -1362,7 +1850,9 @@ class PlayState extends ScriptedState
 			group = new FlxSpriteGroup(x, y);
 			extraCharacterGroups.set(tag, group);
 			variables.set(tag, group);
+			variables.set(tag + 'Group', group);
 			setVar(tag, group);
+			setVar(tag + 'Group', group);
 			insertExtraCharacterGroup(group); // eu esqueci de colocarisso
 		}
 		else
@@ -1370,6 +1860,7 @@ class PlayState extends ScriptedState
 			group.setPosition(x, y);
 			insertExtraCharacterGroup(group);
 		}
+		applyPendingExtraCharacterScroll(tag, group);
 
 		var oldCharacter:Character = extraCharacterMap.get(tag);
 		if(oldCharacter != null)
@@ -1439,6 +1930,15 @@ class PlayState extends ScriptedState
 		return true;
 	}
 
+	public function snapCamFollowToPos(x:Float, y:Float):Void
+	{
+		if(camFollow == null)
+			return;
+		camFollow.setPosition(x, y);
+		if(camGame != null)
+			camGame.snapToTarget();
+	}
+
 	@:dox(hide) function startCharacterScripts(name:String)
 	{
 		// Lua
@@ -1481,23 +1981,69 @@ class PlayState extends ScriptedState
 	{
 		for(folder in Character.CHARACTER_FILE_FOLDERS)
 		{
-			var scriptFile:String = folder + name + '.' + extension;
-			#if ADDONS_ALLOWED
-			var replacePath:String = Paths.modFolders(scriptFile);
-			if(FileSystem.exists(replacePath))
-				return replacePath;
+			var scriptFiles:Array<String> = [folder + name + '.' + extension];
+			#if HSCRIPT_ALLOWED
+			if(extension == 'hx')
+				scriptFiles = [for(ext in HScript.SCRIPT_EXTENSIONS) folder + name + ext];
 			#end
+			for(scriptFile in scriptFiles)
+			{
+				#if ADDONS_ALLOWED
+				var replacePath:String = Paths.modFolders(scriptFile);
+				if(FileSystem.exists(replacePath))
+					return replacePath;
+				#end
 
-			var sharedPath:String = Paths.getSharedPath(scriptFile);
-			#if sys
-			if(FileSystem.exists(sharedPath))
-				return sharedPath;
-			#else
-			if(OpenFlAssets.exists(sharedPath))
-				return sharedPath;
-			#end
+				var sharedPath:String = Paths.getSharedPath(scriptFile);
+				#if sys
+				if(FileSystem.exists(sharedPath))
+					return sharedPath;
+				#else
+				if(OpenFlAssets.exists(sharedPath))
+					return sharedPath;
+				#end
+			}
 		}
 		return null;
+	}
+
+	function getNoteSpawnTime(note:Note):Float
+	{
+		var time:Float = spawnTime * playbackRate;
+		if(songSpeed < 1) time /= songSpeed;
+		if(note != null && note.multSpeed < 1) time /= note.multSpeed;
+
+		if(ClientPrefs.data.downScroll)
+			time += getDownscrollNoteSpawnOffset(note);
+
+		return time;
+	}
+
+	function getDownscrollNoteSpawnOffset(note:Note):Float
+	{
+		var extraDistance:Float = getDownscrollNoteSpawnExtraDistance();
+		if(extraDistance <= 0)
+			return 0;
+
+		var noteSpeed:Float = (songSpeed * (note != null ? note.multSpeed : 1)) / Math.max(0.001, playbackRate);
+		return extraDistance / (0.45 * Math.max(0.001, noteSpeed));
+	}
+
+	public function getDownscrollNoteSpawnExtraDistance():Float
+	{
+		if(!ClientPrefs.data.downScroll)
+			return 0;
+
+		var hudHeight:Float = camHUD != null ? camHUD.height : FlxG.height;
+		return Math.max(0, hudHeight - FlxG.height) * 0.5;
+	}
+
+	public function getDownscrollNoteCullPadding(note:Note):Float
+	{
+		var padding:Float = backend.PsychCamera.DEFAULT_ZOOM_CULL_PADDING + getDownscrollNoteSpawnExtraDistance();
+		if(note != null)
+			padding = Math.max(padding, Math.abs(note.distance) + note.frameHeight + getDownscrollNoteSpawnExtraDistance());
+		return padding;
 	}
 	
 	/**
@@ -1507,6 +2053,48 @@ class PlayState extends ScriptedState
 	*/
 	public function getLuaObject(tag:String):Dynamic
 		return variables.get(tag);
+
+	override public function addCamera(tag:String, bgColor:String = '00000000', x:Float = 0, y:Float = 0, width:Int = -1, height:Int = -1, zoom:Float = 1, front:Bool = false):FlxCamera
+	{
+		if(tag == null)
+			return null;
+
+		tag = tag.trim();
+		if(tag.length < 1 || variables.exists(tag))
+			return null;
+
+		var autoSize:Bool = width <= 0 || height <= 0;
+		if(width <= 0) width = FlxG.width;
+		if(height <= 0) height = FlxG.height;
+
+		var camera:backend.PsychCamera = new backend.PsychCamera();
+		camera.setSize(width, height);
+		camera.x = x;
+		camera.y = y;
+		camera.zoom = zoom;
+		camera.bgColor = CoolUtil.colorFromString(bgColor);
+
+		if(front || FlxG.cameras.list.length < 1)
+			FlxG.cameras.add(camera, false);
+		else
+			insertCameraBehindHUD(camera);
+
+		variables.set(tag, camera);
+		customCameras.set(tag, camera);
+		customCameraAutoSize.set(tag, autoSize);
+		if(autoSize)
+			resizeAutoCamera(camera);
+		return camera;
+	}
+
+	function insertCameraBehindHUD(camera:FlxCamera):Void
+	{
+		var index:Int = FlxG.cameras.list.indexOf(camHUD);
+		if(index < 0)
+			index = Std.int(Math.max(0, FlxG.cameras.list.length - 1));
+		FlxG.cameras.insert(camera, index, false);
+	}
+
 
 	@:dox(hide) function startCharacterPos(char:Character, ?gfCheck:Bool = false) {
 		if(gfCheck && char.curCharacter.startsWith('gf')) { //IF DAD IS GIRLFRIEND, HE GOES TO HER POSITION
@@ -1555,6 +2143,7 @@ class PlayState extends ScriptedState
 		}
 
 		removeVideo(tag);
+		LoadingState.preloadVideo(name);
 
 		var video:VideoSprite = new VideoSprite(fileName, true, canSkip, loop);
 		video.tag = tag;
@@ -1688,6 +2277,7 @@ class PlayState extends ScriptedState
 
 		if (videoFileExists(fileName))
 		{
+			LoadingState.preloadVideo(name);
 			videoCutscene = new VideoSprite(fileName, forMidSong, canSkip, loop);
 			videoCutscene.pauseWithGame = pauseWithGame;
 			videoCutscene.syncWithSong = forMidSong;
@@ -2533,6 +3123,7 @@ class PlayState extends ScriptedState
 				swagNote.noteType = noteType;
 				assignExtraCharacterToNote(swagNote);
 				swagNote.section = sectionI;
+				applyRuntimeNoteOverrides(swagNote);
 	
 				swagNote.scrollFactor.set();
 				unspawnNotes.push(swagNote);
@@ -2554,6 +3145,7 @@ class PlayState extends ScriptedState
 						sustainNote.scrollFactor.set();
 						sustainNote.section = sectionI;
 						sustainNote.parent = swagNote;
+						applyRuntimeNoteOverrides(sustainNote);
 						unspawnNotes.push(sustainNote);
 						swagNote.tail.push(sustainNote);
 						
@@ -2709,6 +3301,10 @@ class PlayState extends ScriptedState
 	 * Whether or not the note fade-in animation should be skipped at the start of a song. Ignored in Story Mode or when `skipCountdown` is true.
 	*/
 	public var skipArrowStartTween:Bool = false; //for lua
+
+	function getDownscrollStrumY(strum:StrumNote):Float
+		return FlxG.height - strum.height - 50;
+
 	private function generateStaticArrows(player:Bool):Void
 	{
 		var strumLineX:Float = ClientPrefs.data.middleScroll ? STRUM_X_MIDDLESCROLL : STRUM_X;
@@ -2719,7 +3315,7 @@ class PlayState extends ScriptedState
 			babyArrow.downScroll = ClientPrefs.data.downScroll;
 			
 			if (babyArrow.downScroll)
-				babyArrow.y = (FlxG.height - babyArrow.height - babyArrow.y);
+				babyArrow.y = getDownscrollStrumY(babyArrow);
 			
 			if (!player) {
 				if (!ClientPrefs.data.opponentStrums) babyArrow.alpha = 0;
@@ -2740,6 +3336,19 @@ class PlayState extends ScriptedState
 
 			strumLineNotes.add(babyArrow);
 			babyArrow.playerPosition();
+
+			var runtimeIndex:Int = i + (player ? 4 : 0);
+			if (strumSkinOverrides[runtimeIndex] != null)
+				applyStrumSkinOverride(runtimeIndex, strumSkinOverrides[runtimeIndex]);
+			else
+			{
+				var allowed:Null<Bool> = strumRGBAllowedOverrides[runtimeIndex];
+				if (allowed != null)
+					babyArrow.setRGBAllowed(allowed);
+			}
+
+			if (strumRGBOverrides[runtimeIndex] != null && babyArrow.useRGBShader)
+				babyArrow.setRGBOverride(strumRGBOverrides[runtimeIndex]);
 		}
 	}
 	function tweenInArrows():Void {
@@ -2984,9 +3593,7 @@ class PlayState extends ScriptedState
 
 		if (unspawnNotes[0] != null)
 		{
-			var time:Float = spawnTime * playbackRate;
-			if(songSpeed < 1) time /= songSpeed;
-			if(unspawnNotes[0].multSpeed < 1) time /= unspawnNotes[0].multSpeed;
+			var time:Float = getNoteSpawnTime(unspawnNotes[0]);
 
 			while (unspawnNotes.length > 0 && unspawnNotes[0].strumTime - Conductor.songPosition < time)
 			{
@@ -3309,13 +3916,36 @@ class PlayState extends ScriptedState
 			cameraZoomTween.cancel();
 			cameraZoomTween = null;
 		}
+		FlxTween.cancelTweensOf(this, ['defaultCamZoom']);
 		if(FlxG.camera != null)
 			FlxTween.cancelTweensOf(FlxG.camera, ['zoom']);
 	}
 
+	function setDefaultCamZoomPreservingBop(value:Float):Void
+	{
+		var zoomAdd:Float = 0;
+		if(FlxG.camera != null)
+			zoomAdd = FlxG.camera.zoom - defaultCamZoom;
+
+		defaultCamZoom = value;
+		if(FlxG.camera != null)
+			FlxG.camera.zoom = value + zoomAdd;
+	}
+
+	function addCameraZoomBop(gameZoom:Float, hudZoom:Float):Void
+	{
+		if(!ClientPrefs.data.camZooms || FlxG.camera == null || camHUD == null)
+			return;
+		if(FlxG.camera.zoom >= defaultCamZoom + 0.35)
+			return;
+
+		FlxG.camera.zoom += gameZoom;
+		camHUD.zoom += hudZoom;
+	}
+
 		function getCameraZoomEase(ease:String):Float->Float
 			{
-				switch (ease.toLowerCase())
+				switch ((ease ?? '').toLowerCase().trim())
 				{
 					case 'linear':
 						return FlxEase.linear;
@@ -3406,6 +4036,84 @@ class PlayState extends ScriptedState
 	 * @param 	value2 		The second value of the event.
 	 * @param 	strumTime 	The time (in milliseconds) this event is triggered on.
 	*/
+	public function applyCameraZoom(zoom:Float, steps:Float = 0, ease:String = 'classic', type:String = 'nll'):Float
+	{
+		if (Math.isNaN(zoom)) zoom = defaultCamZoom;
+		if (Math.isNaN(steps)) steps = 0;
+		if (ease == null || ease.trim().length < 1) ease = 'classic';
+		if (type == null || type.trim().length < 1) type = 'nll';
+
+		var baseZoom:Float = defaultCamZoom;
+		var targetZoom:Float = baseZoom;
+		switch (type.toLowerCase().trim())
+		{
+			case 'nll' | 'set' | 'absolute':
+				targetZoom = zoom;
+			case 'mr' | 'add' | 'relative' | '+':
+				targetZoom = baseZoom + zoom;
+			case 'lss' | 'subtract' | 'sub' | '-':
+				targetZoom = baseZoom - zoom;
+			default:
+				targetZoom = zoom;
+		}
+
+		var zoomMode:String = ease.toLowerCase().trim();
+		cancelCameraZoomTween();
+
+		switch (zoomMode)
+		{
+			case 'instant':
+				FlxG.camera.zoom = targetZoom;
+				defaultCamZoom = targetZoom;
+			case 'classic' | 'og':
+				defaultCamZoom = targetZoom;
+			default:
+				if (steps <= 0)
+				{
+					FlxG.camera.zoom = targetZoom;
+					defaultCamZoom = targetZoom;
+				}
+				else
+				{
+					var time:Float = (steps * Conductor.stepCrochet / 1000) / playbackRate;
+					var startZoom:Float = defaultCamZoom;
+					cameraZoomTween = FlxTween.num(startZoom, targetZoom, time, {
+						ease: getCameraZoomEase(ease),
+						onComplete: function(twn:FlxTween)
+						{
+							setDefaultCamZoomPreservingBop(targetZoom);
+							if(cameraZoomTween == twn)
+								cameraZoomTween = null;
+						}
+					}, function(value:Float)
+					{
+						setDefaultCamZoomPreservingBop(value);
+					});
+				}
+		}
+		return targetZoom;
+	}
+
+	public function applyCameraZoomEvent(value1:String, value2:String):Float
+	{
+		var v1:Array<String> = (value1 ?? '').split(',');
+		var v2:Array<String> = (value2 ?? '').split(',');
+
+		var zoom:Float = Std.parseFloat(v1[0].trim());
+		var steps:Float = 0;
+		if (v1.length > 1)
+			steps = Std.parseFloat(v1[1].trim());
+
+		var ease:String = 'OG';
+		var type:String = 'nll';
+		if (v2.length > 0 && v2[0].trim() != '')
+			ease = v2[0].trim();
+		if (v2.length > 1 && v2[1].trim() != '')
+			type = v2[1].trim();
+
+		return applyCameraZoom(zoom, steps, ease, type);
+	}
+
 	public function triggerEvent(eventName:String, value1:String, value2:String, strumTime:Float, ?values:Array<String>) {
 		var flValue1:Null<Float> = Std.parseFloat(value1);
 		var flValue2:Null<Float> = Std.parseFloat(value2);
@@ -3464,16 +4172,15 @@ class PlayState extends ScriptedState
 				gfSpeed = Math.round(flValue1);
 
 			case 'Add Camera Zoom':
-				if(ClientPrefs.data.camZooms && FlxG.camera.zoom < 1.35) {
-					if(flValue1 == null) flValue1 = 0.015;
-					if(flValue2 == null) flValue2 = 0.03;
-
-					FlxG.camera.zoom += flValue1;
-					camHUD.zoom += flValue2;
-				}
+				if(flValue1 == null) flValue1 = 0.015;
+				if(flValue2 == null) flValue2 = 0.03;
+				addCameraZoomBop(flValue1, flValue2);
 
 			case 'Camera Module Bop':
-				applySetCameraBopEvent(value1, value2, values);
+				applyCameraModuleBopEvent(value1, value2, values);
+
+			case 'Modify Camera Move' | 'ModifyCameraMove': // desculpa Shiho
+				applyModifyCameraMoveEvent(value1, value2, values);
 
 			case 'Set Camera Bop' | 'SetCameraBop':
 				applySetCameraBopEvent(value1, value2, values);
@@ -3688,77 +4395,7 @@ class PlayState extends ScriptedState
 					}
 
 			case 'Camera Zoom':
-						var v1:Array<String> = value1.split(',');
-						var v2:Array<String> = value2.split(',');
-
-						var num:Float = Std.parseFloat(v1[0].trim());
-						var steps:Float = 0;
-
-						if (v1.length > 1)
-							steps = Std.parseFloat(v1[1].trim());
-
-						var ease:String = 'OG';
-						var type:String = 'nll';
-
-						if (v2.length > 0 && v2[0].trim() != '')
-							ease = v2[0].trim();
-
-						if (v2.length > 1 && v2[1].trim() != '')
-							type = v2[1].trim().toLowerCase();
-
-						if (Math.isNaN(num)) num = defaultCamZoom;
-						if (Math.isNaN(steps)) steps = 0;
-
-						var targetZoom:Float = FlxG.camera.zoom;
-
-						switch (type)
-						{
-							case 'nll':
-								targetZoom = num;
-
-							case 'mr':
-								targetZoom = FlxG.camera.zoom + num;
-
-							case 'lss':
-								targetZoom = FlxG.camera.zoom - num;
-
-							default:
-								targetZoom = num;
-						}
-
-						var zoomMode:String = ease.toLowerCase().trim();
-						cancelCameraZoomTween();
-
-						switch (zoomMode)
-						{
-							case 'instant':
-								FlxG.camera.zoom = targetZoom;
-								defaultCamZoom = targetZoom;
-
-							case 'classic' | 'og': // melhorando isso
-								defaultCamZoom = targetZoom;
-
-							default:
-								if (steps <= 0)
-								{
-									FlxG.camera.zoom = targetZoom;
-									defaultCamZoom = targetZoom;
-								}
-								else
-								{
-									var time:Float = (steps * Conductor.stepCrochet / 1000) / playbackRate;
-
-									cameraZoomTween = FlxTween.tween(FlxG.camera, {zoom: targetZoom}, time, {
-										ease: getCameraZoomEase(ease),
-										onComplete: function(twn:FlxTween)
-										{
-											defaultCamZoom = targetZoom;
-											if(cameraZoomTween == twn)
-												cameraZoomTween = null;
-										}
-									});
-								}
-						}
+				applyCameraZoomEvent(value1, value2);
 
 			case 'Camera Angle' | 'Camera Rotate' | 'Camera Rotation':
 				var angleData:Array<String> = splitCameraEventValues(value1);
@@ -3810,6 +4447,19 @@ class PlayState extends ScriptedState
 		callOnScripts('onEvent', buildEventCallbackArgs(eventName, value1, value2, strumTime, values));
 	}
 
+	function resetScriptedCameraBop(blockDefault:Bool = false):Void
+	{
+		scriptedCameraBopActive = false;
+		scriptedCameraBopBlocksDefault = blockDefault;
+		scriptedCameraBopRate = 4;
+		scriptedCameraBopOffset = 0;
+		scriptedCameraBopIntensity = 1;
+		scriptedCameraBopUnit = 'beat';
+		scriptedCameraBopGame = 0.015;
+		scriptedCameraBopHUD = 0.03;
+		scriptedCameraBopPattern = null;
+	}
+
 	function applySetCameraBopEvent(value1:String, value2:String, ?values:Array<String>):Void
 	{
 		var hasValues:Bool = false;
@@ -3829,10 +4479,7 @@ class PlayState extends ScriptedState
 
 		if(!hasValues)
 		{
-			scriptedCameraBopActive = false;
-			scriptedCameraBopRate = 4;
-			scriptedCameraBopOffset = 0;
-			scriptedCameraBopIntensity = 1;
+			resetScriptedCameraBop();
 			return;
 		}
 
@@ -3842,7 +4489,154 @@ class PlayState extends ScriptedState
 		if(Math.isNaN(scriptedCameraBopIntensity)) scriptedCameraBopIntensity = 1;
 		if(Math.isNaN(scriptedCameraBopRate) || scriptedCameraBopRate < 0) scriptedCameraBopRate = 0;
 		if(Math.isNaN(scriptedCameraBopOffset)) scriptedCameraBopOffset = 0;
+		scriptedCameraBopUnit = 'beat';
+		scriptedCameraBopGame = 0.015;
+		scriptedCameraBopHUD = 0.03;
+		scriptedCameraBopPattern = null;
 		scriptedCameraBopActive = scriptedCameraBopRate > 0 && scriptedCameraBopIntensity != 0;
+		scriptedCameraBopBlocksDefault = scriptedCameraBopActive;
+	}
+
+	function applyCameraModuleBopEvent(value1:String, value2:String, ?values:Array<String>):Void
+	{
+		var timingValue:String = getEventValue(values, 0, value1);
+		var zoomValue:String = getEventValue(values, 1, value2);
+
+		if(zoomValue == null || zoomValue.trim().length < 1)
+		{
+			resetScriptedCameraBop();
+			return;
+		}
+		if(isCameraBopDisableValue(zoomValue))
+		{
+			resetScriptedCameraBop(true);
+			return;
+		}
+
+		var timing:Array<String> = splitCameraEventValues(timingValue);
+		var zoom:Array<String> = splitCameraEventValues(zoomValue);
+
+		scriptedCameraBopRate = parseFloatOr(timing.length > 0 ? timing[0] : null, 1);
+		if(Math.isNaN(scriptedCameraBopRate) || scriptedCameraBopRate <= 0)
+			scriptedCameraBopRate = 1;
+
+		scriptedCameraBopUnit = normalizeCameraBopUnit(timing.length > 1 ? timing[1] : 'beat');
+		scriptedCameraBopOffset = 0;
+		scriptedCameraBopIntensity = 1;
+		scriptedCameraBopGame = parseFloatOr(zoom.length > 0 ? zoom[0] : null, 0);
+		scriptedCameraBopHUD = parseFloatOr(zoom.length > 1 ? zoom[1] : null, 0);
+		scriptedCameraBopPattern = null;
+
+		if(timing.length > 2)
+		{
+			var mode:String = (timing[2] ?? '').toLowerCase().trim();
+			if(isCameraBopPatternValue(timing[2]) || mode == 'pattern' || mode == 'patterns' || mode == 'inconsistent' || mode == 'irregular')
+				scriptedCameraBopPattern = parseCameraBopPattern(isCameraBopPatternValue(timing[2]) ? timing[2] : (timing.length > 3 ? timing[3] : ''));
+			else
+				scriptedCameraBopOffset = parseFloatOr(timing[2], 0);
+		}
+
+		if(timing.length > 4)
+			scriptedCameraBopOffset = parseFloatOr(timing[4], scriptedCameraBopOffset);
+
+		if(Math.isNaN(scriptedCameraBopGame)) scriptedCameraBopGame = 0;
+		if(Math.isNaN(scriptedCameraBopHUD)) scriptedCameraBopHUD = 0;
+		if(Math.isNaN(scriptedCameraBopOffset)) scriptedCameraBopOffset = 0;
+
+		scriptedCameraBopActive = scriptedCameraBopRate > 0 && (scriptedCameraBopGame != 0 || scriptedCameraBopHUD != 0);
+		scriptedCameraBopBlocksDefault = true;
+		if(scriptedCameraBopPattern != null && scriptedCameraBopPattern.length < 1)
+			scriptedCameraBopActive = false;
+	}
+
+	function applyModifyCameraMoveEvent(value1:String, value2:String, ?values:Array<String>):Void
+	{
+		var data:Array<String> = [];
+		if(values != null && values.length > 2)
+		{
+			for(raw in values)
+			{
+				var parts:Array<String> = splitCameraEventValues(raw);
+				if(parts.length > 1)
+				{
+					for(part in parts)
+						data.push(part);
+				}
+				else
+					data.push(raw != null ? raw : '');
+			}
+		}
+		else
+		{
+			var rawValues:Array<String> = [value1, value2];
+			for(raw in rawValues)
+			{
+				var parts:Array<String> = splitCameraEventValues(raw);
+				for(part in parts)
+					data.push(part);
+			}
+		}
+		while(data.length < 4)
+			data.push('');
+
+		var enabled:Null<Bool> = parseNullableEventBool(data[0]);
+		if(enabled == null)
+		{
+			for(i in 1...data.length)
+			{
+				enabled = parseCameraMoveToggleKeyword(data[i]);
+				if(enabled != null)
+				{
+					data[i] = '';
+					break;
+				}
+			}
+		}
+		var intensity:Null<Float> = parseOptionalEventFloat(data[1]);
+		var speed:Null<Float> = parseOptionalEventFloat(data[2]);
+		var offset:Null<Float> = parseOptionalEventFloat(data[3]);
+
+		if(intensity != null)
+			cameraMoveIntensity = intensity;
+		if(speed != null)
+			cameraMoveSpeed = Math.max(0, speed);
+		if(offset != null)
+			cameraMoveOffset = Math.max(0, offset);
+		if(enabled != null)
+			cameraMoveEnabled = enabled;
+		if(enabled == true)
+			cameraMoveReturning = false;
+
+		if(Math.isNaN(cameraMoveIntensity))
+			cameraMoveIntensity = 1;
+		if(Math.isNaN(cameraMoveSpeed) || cameraMoveSpeed < 0)
+			cameraMoveSpeed = 1;
+		if(Math.isNaN(cameraMoveOffset) || cameraMoveOffset < 0)
+			cameraMoveOffset = 30;
+
+		setOnScripts('cameraMoveEnabled', cameraMoveEnabled);
+		setOnScripts('cameraMoveIntensity', cameraMoveIntensity);
+		setOnScripts('cameraMoveSpeed', cameraMoveSpeed);
+		setOnScripts('cameraMoveOffset', cameraMoveOffset);
+
+		if((!cameraMoveEnabled || cameraMoveIntensity == 0 || cameraMoveOffset == 0) && (cameraMoveOffsetX != 0 || cameraMoveOffsetY != 0 || cameraMoveTween != null))
+			setCameraMoveTarget(0, 0);
+	}
+
+	function parseCameraMoveToggleKeyword(value:String):Null<Bool>
+	{
+		if(value == null)
+			return null;
+
+		return switch(value.toLowerCase().trim())
+		{
+			case 'on' | 'enable' | 'enabled' | 'true' | 'yes' | 'y':
+				true;
+			case 'off' | 'disable' | 'disabled' | 'false' | 'no' | 'n':
+				false;
+			default:
+				null;
+		}
 	}
 
 	function applySetHealthIconEvent(value1:String, value2:String, ?values:Array<String>):Void
@@ -3871,8 +4665,91 @@ class PlayState extends ScriptedState
 	function parseEventFloat(?values:Array<String>, index:Int = 0, fallbackValue:String = null, fallback:Float = 0):Float
 	{
 		var raw:String = getEventValue(values, index, fallbackValue);
-		var parsed:Float = Std.parseFloat(raw ?? '');
+		return parseFloatOr(raw, fallback);
+	}
+
+	function parseFloatOr(value:String, fallback:Float = 0):Float
+	{
+		var parsed:Float = Std.parseFloat(value ?? '');
 		return Math.isNaN(parsed) ? fallback : parsed;
+	}
+
+	function parseOptionalEventFloat(value:String):Null<Float>
+	{
+		if(isEventKeepValue(value))
+			return null;
+
+		var parsed:Float = Std.parseFloat(value);
+		return Math.isNaN(parsed) ? null : parsed;
+	}
+
+	function isEventKeepValue(value:String):Bool
+	{
+		if(value == null)
+			return true;
+
+		return switch(value.toLowerCase().trim())
+		{
+			case '' | 'keep' | 'same' | 'unchanged' | '-':
+				true;
+			default:
+				false;
+		}
+	}
+
+	function normalizeCameraBopUnit(unit:String):String
+	{
+		return switch((unit ?? '').toLowerCase().trim())
+		{
+			case 'step' | 'steps' | 's':
+				'step';
+			default:
+				'beat';
+		}
+	}
+
+	function isCameraBopPatternValue(value:String):Bool
+	{
+		if(value == null)
+			return false;
+
+		var raw:String = value.trim();
+		return (raw.startsWith('{') && raw.endsWith('}')) || (raw.startsWith('[') && raw.endsWith(']'));
+	}
+
+	function isCameraBopDisableValue(value:String):Bool
+	{
+		if(value == null)
+			return false;
+
+		var raw:String = value.toLowerCase().trim();
+		return switch(raw)
+		{
+			case 'off' | 'disable' | 'disabled' | 'false' | 'no' | 'none':
+				true;
+			default:
+				false;
+		}
+	}
+
+	function parseCameraBopPattern(value:String):Array<Int>
+	{
+		var pattern:Array<Int> = [];
+		if(value == null)
+			return pattern;
+
+		var raw:String = value.trim();
+		for(chars in ['{', '}', '[', ']'])
+			raw = raw.replace(chars, ' ');
+
+		var splitter:EReg = ~/[,\s;|]+/g;
+		for(part in splitter.split(raw))
+		{
+			var parsed:Null<Int> = Std.parseInt(part.trim());
+			if(parsed != null && !pattern.contains(parsed))
+				pattern.push(parsed);
+		}
+		return pattern;
 	}
 
 	function buildEventCallbackArgs(eventName:String, value1:String, value2:String, strumTime:Float, ?values:Array<String>):Array<Dynamic>
@@ -3891,9 +4768,9 @@ class PlayState extends ScriptedState
 
 		return switch(value.toLowerCase().trim())
 		{
-			case 'true' | '1' | 'yes' | 'y' | 'on':
+			case 'true' | '1' | 'yes' | 'y' | 'on' | 'enable' | 'enabled':
 				true;
-			case 'false' | '0' | 'no' | 'n' | 'off':
+			case 'false' | '0' | 'no' | 'n' | 'off' | 'disable' | 'disabled':
 				false;
 			default:
 				null;
@@ -3966,18 +4843,57 @@ class PlayState extends ScriptedState
 		var y:String = targetData[2] ?? '0';
 		var ease:String = easeData[0] ?? targetData[3] ?? 'classic';
 		var steps:String = easeData[1] ?? targetData[4] ?? '0';
+		if(easeData.length > 1 && isNumericString(easeData[0]) && !isNumericString(easeData[1]))
+		{
+			steps = easeData[0];
+			ease = easeData[1];
+		}
 
 		return [target, x, y, ease, steps];
 	}
 
 	function splitCameraEventValues(value:String):Array<String> {
-		if(value == null || value.length < 1) return [];
+		if(value == null || value.length < 1)
+			return [];
 
-		var values:Array<String> = value.split(',');
-		for (i in 0...values.length)
-			values[i] = values[i].trim();
+		var values:Array<String> = [];
+		var current:String = '';
+		var depth:Int = 0;
+		for(i in 0...value.length)
+		{
+			var char:String = value.charAt(i);
+			switch(char)
+			{
+				case '{' | '[' | '(':
+					depth++;
+					current += char;
+				case '}' | ']' | ')':
+					depth = Std.int(Math.max(0, depth - 1));
+					current += char;
+				case ',':
+					if(depth <= 0)
+					{
+						values.push(current.trim());
+						current = '';
+					}
+					else
+						current += char;
+				default:
+					current += char;
+			}
+		}
+		values.push(current.trim());
 
 		return values;
+	}
+
+	function isNumericString(value:String):Bool
+	{
+		if(value == null || value.trim().length < 1)
+			return false;
+
+		var parsed:Float = Std.parseFloat(value);
+		return !Math.isNaN(parsed);
 	}
 
 	public function moveCameraSection(?sec:Null<Int>):Void {
@@ -4082,18 +4998,28 @@ class PlayState extends ScriptedState
 
 			case 'classic':
 				camFollow.setPosition(targetX, targetY);
+				if(cameraSpeed <= 0)
+					FlxG.camera.snapToTarget();
 
 			default:
 				if(steps <= 0)
 				{
 					camFollow.setPosition(targetX, targetY);
+					if(cameraSpeed <= 0)
+						FlxG.camera.snapToTarget();
 					return;
 				}
 
 				camFollow.setPosition(startX, startY);
 				cameraFocusTween = FlxTween.tween(camFollow, {x: targetX, y: targetY}, (steps * Conductor.stepCrochet / 1000) / playbackRate, {
 					ease: LuaUtils.getTweenEaseByString(easeMode),
-					onComplete: (_) -> cameraFocusTween = null
+					onUpdate: (_) -> if(cameraSpeed <= 0) FlxG.camera.snapToTarget(),
+					onComplete: (_) ->
+					{
+						if(cameraSpeed <= 0)
+							FlxG.camera.snapToTarget();
+						cameraFocusTween = null;
+					}
 				});
 		}
 	}
@@ -4122,7 +5048,7 @@ class PlayState extends ScriptedState
 		{
 			case 'classic' | 'og':
 				'classic';
-			case 'instant':
+			case 'instant' | 'inst':
 				'instant';
 			default:
 				ease;
@@ -5197,6 +6123,12 @@ class PlayState extends ScriptedState
 
 		FlxG.camera.filters = [];
 
+		for(tag => camera in customCameras)
+			if(camera != null)
+				FlxG.cameras.remove(camera, true);
+		customCameras.clear();
+		customCameraAutoSize.clear();
+
 		#if FLX_PITCH if (FlxG.sound.music != null) FlxG.sound.music.pitch = 1; #end
 		FlxG.animationTimeScale = 1;
 
@@ -5215,6 +6147,7 @@ class PlayState extends ScriptedState
 			return;
 		
 		super.stepHit(step);
+		applyScriptedCameraBop(step, 'step');
 		
 		lastStepHit = step;
 	}
@@ -5234,32 +6167,62 @@ class PlayState extends ScriptedState
 			});
 		}
 		
-		iconP1.scale.set(1.2, 1.2);
-		iconP2.scale.set(1.2, 1.2);
+		if (iconP1 != null && iconP1.bop) {
+			iconP1.scale.set(1.2, 1.2);
+			iconP1.updateHitbox();
+		}
+		if (iconP2 != null && iconP2.bop) {
+			iconP2.scale.set(1.2, 1.2);
+			iconP2.updateHitbox();
+		}
 		
-		iconP1.updateHitbox();
-		iconP2.updateHitbox();
-		
-		applyScriptedCameraBop(beat);
+		applyScriptedCameraBop(beat, 'beat');
 		characterBopper(beat);
 		
 		super.beatHit(beat);
 		lastBeatHit = beat;
 	}
 
-	function applyScriptedCameraBop(beat:Int):Void
+	function applyScriptedCameraBop(position:Int, unit:String):Void
 	{
-		if(!scriptedCameraBopActive || !camZooming || !ClientPrefs.data.camZooms || scriptedCameraBopRate <= 0)
+		if(!scriptedCameraBopActive || !ClientPrefs.data.camZooms || scriptedCameraBopRate <= 0)
+			return;
+		if(normalizeCameraBopUnit(unit) != scriptedCameraBopUnit)
 			return;
 		if(FlxG.camera.zoom >= defaultCamZoom + 0.35)
 			return;
 
-		var beatRatio:Float = (beat - scriptedCameraBopOffset) / scriptedCameraBopRate;
-		if(Math.abs(beatRatio - Math.round(beatRatio)) > 0.001)
+		if(!scriptedCameraBopHitsPosition(position))
 			return;
 
-		FlxG.camera.zoom += 0.015 * camZoomingMult * scriptedCameraBopIntensity;
-		camHUD.zoom += 0.03 * camZoomingMult * scriptedCameraBopIntensity;
+		addCameraZoomBop(scriptedCameraBopGame * camZoomingMult * scriptedCameraBopIntensity, scriptedCameraBopHUD * camZoomingMult * scriptedCameraBopIntensity);
+	}
+
+	function scriptedCameraBopHitsPosition(position:Int):Bool
+	{
+		if(scriptedCameraBopPattern != null)
+		{
+			var cycle:Int = Math.round(scriptedCameraBopRate);
+			if(cycle <= 0)
+				return false;
+
+			var local:Int = positiveModulo(Math.round(position - scriptedCameraBopOffset), cycle);
+			for(hit in scriptedCameraBopPattern)
+				if(positiveModulo(hit, cycle) == local)
+					return true;
+			return false;
+		}
+
+		var ratio:Float = (position - scriptedCameraBopOffset) / scriptedCameraBopRate;
+		return Math.abs(ratio - Math.round(ratio)) <= 0.001;
+	}
+
+	function positiveModulo(value:Int, mod:Int):Int
+	{
+		if(mod == 0)
+			return 0;
+		var result:Int = value % mod;
+		return result < 0 ? result + mod : result;
 	}
 
 	/**
@@ -5296,9 +6259,8 @@ class PlayState extends ScriptedState
 
 	public override function sectionHit(section:Int):Void {
 		if (SONG.notes[section] != null) {
-			if (!scriptedCameraBopActive && camZooming && FlxG.camera.zoom < defaultCamZoom + 0.35 && ClientPrefs.data.camZooms) {
-				FlxG.camera.zoom += 0.015 * camZoomingMult;
-				camHUD.zoom += 0.03 * camZoomingMult;
+			if (!scriptedCameraBopActive && !scriptedCameraBopBlocksDefault && camZooming && FlxG.camera.zoom < defaultCamZoom + 0.35 && ClientPrefs.data.camZooms) {
+				addCameraZoomBop(0.015 * camZoomingMult, 0.03 * camZoomingMult);
 			}
 
 			if (SONG.notes[section].changeBPM) {

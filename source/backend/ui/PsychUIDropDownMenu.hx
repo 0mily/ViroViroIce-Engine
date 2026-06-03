@@ -23,6 +23,7 @@ class PsychUIDropDownMenu extends PsychUIInputText
 
 		_itemWidth = width - 2;
 		setGraphicSize(width, 20);
+		fieldWidth = Std.int(width);
 		updateHitbox();
 		textObj.y += 2;
 
@@ -88,12 +89,15 @@ class PsychUIDropDownMenu extends PsychUIInputText
 	public var curScroll:Int = 0;
 	override function update(elapsed:Float)
 	{
+		if(!exists)
+			return;
+
 		var lastFocus = PsychUIInputText.focusOn;
 		super.update(elapsed);
 		if(button == null || !button.exists)
 			return;
 
-		var inputCamera:FlxCamera = camera != null ? camera : FlxG.camera;
+		var inputCamera:FlxCamera = PsychUIInputText.getInputCamera(camera); // no more softlocks and crashes i think
 		if(inputCamera == null)
 			return;
 
@@ -128,9 +132,9 @@ class PsychUIDropDownMenu extends PsychUIInputText
 
 	private function showDropDownClickFix()
 	{
-		if(FlxG.mouse.justPressed)
+		if(FlxG.mouse.justPressed && _items != null)
 		{
-			for (item in _items) //extra update to fix a little bug where it wouldnt click on any option if another input text was behind the drop down
+			for (item in liveItems()) //extra update to fix a little bug where it wouldnt click on any option if another input text was behind the drop down
 				if(item != null && item.active && item.visible)
 					item.update(0);
 		}
@@ -138,17 +142,21 @@ class PsychUIDropDownMenu extends PsychUIInputText
 
 	public function showDropDown(vis:Bool = true, scroll:Int = 0, onlyAllowed:Array<String> = null)
 	{
+		if(!exists || _items == null)
+			return;
+
 		if(!vis)
 		{
 			text = selectedLabel ?? '';
 			_curFilter = null;
 		}
 
+		var items:Array<PsychUIDropDownItem> = liveItems();
 		curScroll = Std.int(Math.max(0, Math.min(onlyAllowed != null ? (onlyAllowed.length - 1) : (list.length - 1), scroll)));
 		if(vis)
 		{
 			var n:Int = 0;
-			for (item in _items)
+			for (item in items)
 			{
 				if(onlyAllowed != null)
 				{
@@ -167,12 +175,12 @@ class PsychUIDropDownMenu extends PsychUIInputText
 			}
 
 			var txtY:Float = behindText.y + behindText.height + 1;
-			for (num => item in _items)
+			for (item in items)
 			{
 				if(!item.visible) continue;
 				item.x = behindText.x;
 				item.y = txtY;
-				txtY += item.height;
+				txtY += item.dropdownHeight();
 				item.forceNextUpdate = true;
 			}
 			bg.scale.y = 1;
@@ -180,12 +188,25 @@ class PsychUIDropDownMenu extends PsychUIInputText
 		}
 		else
 		{
-			for (item in _items)
+			for (item in items)
 				item.active = item.visible = false;
 
 			bg.scale.y = 1;
 			bg.updateHitbox();
 		}
+	}
+
+	function liveItems():Array<PsychUIDropDownItem>
+	{
+		if(_items == null)
+			return [];
+
+		var items:Array<PsychUIDropDownItem> = [];
+		for(item in _items)
+			if(item != null && item.exists && item.bg != null && item.bg.exists && item.text != null && item.text.exists)
+				items.push(item);
+		_items = items;
+		return items;
 	}
 
 	public var broadcastDropDownEvent:Bool = true;
@@ -216,10 +237,11 @@ class PsychUIDropDownMenu extends PsychUIInputText
 
 	function set_list(v:Array<String>)
 	{
+		if(v == null) v = [];
 		var selected:String = selectedLabel;
 		showDropDown(false);
 
-		for (item in _items)
+		for (item in liveItems())
 		{
 			remove(item, true);
 			item.kill();
@@ -232,6 +254,20 @@ class PsychUIDropDownMenu extends PsychUIInputText
 
 		if(selectedLabel != null) selectedLabel = selected;
 		return v;
+	}
+
+	override public function destroy()
+	{
+		if(PsychUIInputText.focusOn == this)
+			PsychUIInputText.focusOn = null;
+		onSelect = null;
+		if(_items != null)
+			for(item in _items)
+				if(item != null)
+					item.onClick = null;
+		_items = null;
+		button = null;
+		super.destroy();
 	}
 }
 
@@ -271,6 +307,9 @@ class PsychUIDropDownItem extends FlxSpriteGroup
 
 	public function resizeItem(width:Float)
 	{
+		if(bg == null || text == null)
+			return;
+
 		_itemWidth = width;
 		bg.makeGraphic(Std.int(Math.max(1, Math.ceil(_itemWidth))), Std.int(Math.max(1, Math.ceil(_itemHeight))), HaxeUITheme.INPUT_FILL, true);
 		bg.scale.set(1, 1);
@@ -285,10 +324,19 @@ class PsychUIDropDownItem extends FlxSpriteGroup
 	public var forceNextUpdate:Bool = false;
 	override function update(elapsed:Float)
 	{
+		if(!exists || bg == null || text == null)
+			return;
+
 		super.update(elapsed);
+		if(bg == null || !bg.exists || bg.scrollFactor == null || text == null || !text.exists)
+			return;
+
 		if(FlxG.mouse.justMoved || FlxG.mouse.justPressed || forceNextUpdate)
 		{
-			var overlapped:Bool = (FlxG.mouse.overlaps(bg, camera));
+			var inputCamera:FlxCamera = PsychUIInputText.getInputCamera(camera);
+			if(inputCamera == null)
+				return;
+			var overlapped:Bool = (FlxG.mouse.overlaps(bg, inputCamera));
 
 			var style = overlapped ? hoverStyle : normalStyle;
 			applyStyle(style);
@@ -306,16 +354,37 @@ class PsychUIDropDownItem extends FlxSpriteGroup
 	function set_label(v:String)
 	{
 		label = v;
-		text.text = v;
-		_itemHeight = text.height + 6;
-		resizeItem(_itemWidth);
+		if(text != null)
+		{
+			text.text = v;
+			_itemHeight = text.height + 6;
+			resizeItem(_itemWidth);
+		}
 		return v;
+	}
+
+	public function dropdownHeight():Float
+	{
+		if(Math.isNaN(_itemHeight) || _itemHeight <= 0)
+			return 20;
+		return _itemHeight;
 	}
 
 	function applyStyle(style:UIStyleData)
 	{
+		if(bg == null)
+			return;
+
 		bg.color = style.bgColor;
 		bg.alpha = style.bgAlpha;
 		if(text != null) text.color = style.textColor;
+	}
+
+	override public function destroy()
+	{
+		onClick = null;
+		super.destroy();
+		bg = null;
+		text = null;
 	}
 }

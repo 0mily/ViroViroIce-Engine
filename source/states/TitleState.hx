@@ -724,15 +724,8 @@ class TitleState extends ScriptedState
 
 		var pressedEnter:Bool = FlxG.keys.justPressed.ENTER || controls.ACCEPT;
 
-		#if mobile
-		for (touch in FlxG.touches.list)
-		{
-			if (touch.justPressed)
-			{
-				pressedEnter = true;
-			}
-		}
-		#end
+		if (backend.DeveloperMode.isMobileLike() && TouchUtil.pressAction())
+			pressedEnter = true;
 
 		var gamepad:FlxGamepad = FlxG.gamepads.lastActive;
 		var blockedFNFInput:Bool = (callOnScripts('onInputUpdate', [elapsed], true) == psychlua.LuaUtils.Function_Stop);

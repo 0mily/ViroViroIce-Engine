@@ -14,6 +14,11 @@ import states.editors.content.VSlice.PsychPackage;
 import states.editors.content.VSlice.VSliceChart;
 import states.editors.content.VSlice.VSliceMetadata;
 
+#if GLOBAL_SCRIPTS
+import psychlua.GlobalScriptHandler;
+import psychlua.LuaUtils;
+#end
+
 #if sys
 import sys.FileSystem;
 import sys.io.File;
@@ -124,7 +129,7 @@ class MoonchartConverters
 		return resultFromSave(save, targetFormat);
 	}
 
-	public static function convertFileToEngine(sourceFormat:Format, chartPath:String, ?metadataPath:String, outputFolder:String, difficulty:String):MoonchartConversionResult
+	public static function convertFileToEngine(sourceFormat:Format, chartPath:String, ?metadataPath:String, outputFolder:String, difficulty:String, ?conversionName:String):MoonchartConversionResult
 	{
 		ensureInit();
 
@@ -138,14 +143,14 @@ class MoonchartConverters
 		psych.fromFormat(source, diff);
 
 		var save = psych.save(normalizePath(outputFolder));
-		normalizeEngineSave(save);
+		normalizeEngineSave(save, conversionName ?? getFormatName(sourceFormat));
 
 		return resultFromSave(save, ENGINE_FORMAT);
 	}
 
 	public static function convertNightmareVisionToEngine(chartPath:String, outputFolder:String, difficulty:String):MoonchartConversionResult
 	{
-		return convertFileToEngine(ENGINE_FORMAT, chartPath, null, outputFolder, difficulty);
+		return convertFileToEngine(ENGINE_FORMAT, chartPath, null, outputFolder, difficulty, 'Nightmare Vision');
 	}
 
 	static function convertVSliceFileToEngine(chartPath:String, ?metadataPath:String, outputFolder:String, difficulty:String):MoonchartConversionResult
@@ -237,18 +242,64 @@ class MoonchartConverters
 		#end
 	}
 
-	static function normalizeEngineSave(save:Dynamic):Dynamic
+	static function normalizeEngineSave(save:Dynamic, ?conversionName:String = 'ViroViroIce'):Dynamic
 	{
 		#if sys
 		if(save != null && save.dataPath != null)
 		{
 			var dataPath:String = normalizePath(save.dataPath);
 			var songData:SwagSong = Song.parseJSON(File.getContent(dataPath), dataPath);
+			applyGeneralStateConversionHooks(songData, conversionName, dataPath);
 			File.saveContent(dataPath, PsychJsonPrinter.print(songData, ['sectionNotes', 'events']));
 			save.dataPath = dataPath;
 		}
 		#end
 		return save;
+	}
+
+	static function applyGeneralStateConversionHooks(songData:SwagSong, conversionName:String, dataPath:String):Void
+	{
+		#if GLOBAL_SCRIPTS
+		if(songData == null || songData.events == null)
+			return;
+
+		GlobalScriptHandler.refreshScripts(false, true);
+
+		for (event in songData.events)
+		{
+			if(event == null || event[1] == null)
+				continue;
+
+			var pack:Array<Dynamic> = event[1];
+			for (subEvent in pack)
+			{
+				if(subEvent == null || subEvent.length < 1)
+					continue;
+
+				while(subEvent.length < 3)
+					subEvent.push('');
+
+				var eventName:String = subEvent[0] != null ? Std.string(subEvent[0]) : '';
+				var value1:String = subEvent[1] != null ? Std.string(subEvent[1]) : '';
+				var value2:String = subEvent[2] != null ? Std.string(subEvent[2]) : '';
+				var returned:Dynamic = GlobalScriptHandler.call('onConvertEventValue2', [
+					eventName,
+					value1,
+					value2,
+					conversionName,
+					dataPath
+				], [
+					LuaUtils.Function_Stop,
+					LuaUtils.Function_StopLua,
+					LuaUtils.Function_StopHScript,
+					LuaUtils.Function_StopAll
+				], true);
+
+				if(returned != null && Std.isOfType(returned, String) && returned != LuaUtils.Function_Continue)
+					subEvent[2] = returned;
+			}
+		}
+		#end
 	}
 
 	static function resultFromSave(save:Dynamic, format:Format):MoonchartConversionResult

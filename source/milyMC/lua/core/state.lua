@@ -43,6 +43,11 @@ local UPSCROLL_Y = 50
 local DOWNSCROLL_Y = 580
 local depthSortDirty = false
 local callExternalModchart = function() end
+local callLocalMilyMC = function(funcName, ...)
+    if milymc and type(milymc[funcName]) == 'function' then
+        milymc[funcName](...)
+    end
+end
 
 local function refreshViewport()
     VP_X = (screenWidth or 1280) / 2
@@ -68,6 +73,7 @@ end
 function onCreate()
     if awesomeLuaCreate then awesomeLuaCreate() end
     if modChartCreate then modChartCreate() end
+    callLocalMilyMC('create')
     callExternalModchart('modChartCreate')
 end
 
@@ -85,6 +91,7 @@ function onCreatePost()
     end
     refreshScrollAnchors()
     if modChartCreatePost then modChartCreatePost() end
+    callLocalMilyMC('createPost')
     callExternalModchart('modChartCreatePost')
 end
 

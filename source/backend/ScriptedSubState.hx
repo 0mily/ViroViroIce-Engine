@@ -219,12 +219,20 @@ class ScriptedSubState extends MusicBeatSubstate {
 	public function getSingleStateScriptPath(scriptName:String, extension:String):String {
 		var prefix:String = getFolderName();
 		if (prefix.length > 0) prefix += '/';
+		var extensions:Array<String> = [extension];
+		#if HSCRIPT_ALLOWED
+		if(extension == '.hx')
+			extensions = HScript.SCRIPT_EXTENSIONS;
+		#end
 
 		for (scriptRoot in getScriptFolders()) {
-			var file:String = '$scriptRoot/$prefix$scriptName$extension';
-			var path:String = getModOnlyScriptPath(file);
-			if (path != null)
-				return path;
+			for(ext in extensions)
+			{
+				var file:String = '$scriptRoot/$prefix$scriptName$ext';
+				var path:String = getModOnlyScriptPath(file);
+				if (path != null)
+					return path;
+			}
 		}
 		return null;
 	}
@@ -378,32 +386,50 @@ class ScriptedSubState extends MusicBeatSubstate {
 		if (multiScript) {
 			for (scriptRoot in getScriptFolders()) {
 				for (folder in Mods.directoriesWithFile(Paths.getSharedPath(), scriptRoot)) {
-					var path:String = '$folder/$prefix${scriptStateName()}.hx';
-					if (FileSystem.exists(path))
-						loaded = (initHScript(path) != null || loaded);
+					for(ext in HScript.SCRIPT_EXTENSIONS)
+					{
+						var path:String = '$folder/$prefix${scriptStateName()}$ext';
+						if (FileSystem.exists(path))
+							loaded = (initHScript(path) != null || loaded);
+					}
 				}
 			}
 		} else {
 			for (scriptRoot in getScriptFolders()) {
-				var file:String = '$scriptRoot/$prefix${scriptStateName()}.hx';
-				var path:String = getModOnlyScriptPath(file);
-				if (path != null)
-					loaded = (initHScript(path) != null || loaded);
+				for(ext in HScript.SCRIPT_EXTENSIONS)
+				{
+					var file:String = '$scriptRoot/$prefix${scriptStateName()}$ext';
+					var path:String = getModOnlyScriptPath(file);
+					if (path != null)
+						loaded = (initHScript(path) != null || loaded);
+				}
 			}
 		}
 		
 		return loaded;
 	}
 	public function startHScriptsNamed(scriptFile:String) {
-		#if ADDONS_ALLOWED
-		var scriptToLoad:String = Paths.modFolders(scriptFile);
-		if(!FileSystem.exists(scriptToLoad))
-			scriptToLoad = Paths.getSharedPath(scriptFile);
-		#else
-		var scriptToLoad:String = Paths.getSharedPath(scriptFile);
-		#end
+		var scriptToLoad:String = null;
+		for(candidate in HScript.withScriptExtensions(scriptFile))
+		{
+			#if ADDONS_ALLOWED
+			var modPath:String = Paths.modFolders(candidate);
+			if(FileSystem.exists(modPath))
+			{
+				scriptToLoad = modPath;
+				break;
+			}
+			#end
 
-		if(FileSystem.exists(scriptToLoad)) {
+			var sharedPath:String = Paths.getSharedPath(candidate);
+			if(FileSystem.exists(sharedPath))
+			{
+				scriptToLoad = sharedPath;
+				break;
+			}
+		}
+
+		if(scriptToLoad != null && FileSystem.exists(scriptToLoad)) {
 			if (Iris.instances.exists(scriptToLoad)) return false;
 
 			initHScript(scriptToLoad);

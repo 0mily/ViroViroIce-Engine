@@ -8,6 +8,8 @@ import flixel.FlxG;
  */
 class SwipeUtil
 {
+	public static inline var DRAG_THRESHOLD:Float = 8;
+
 	public static var swipeDown(get, never):Bool;
 	public static var swipeLeft(get, never):Bool;
 	public static var swipeRight(get, never):Bool;
@@ -17,6 +19,9 @@ class SwipeUtil
 	@:noCompletion
 	static function get_swipeDown():Bool
 	{
+		if(backend.DeveloperMode.isMobileLike() && TouchUtil.pressed)
+			return TouchUtil.deltaViewY > DRAG_THRESHOLD;
+
 		for (swipe in FlxG.swipes)
 			return (swipe.degrees > -135 && swipe.degrees < -45 && swipe.distance > 20);
 
@@ -26,6 +31,9 @@ class SwipeUtil
 	@:noCompletion
 	static function get_swipeLeft():Bool
 	{
+		if(backend.DeveloperMode.isMobileLike() && TouchUtil.pressed)
+			return TouchUtil.deltaViewX < -DRAG_THRESHOLD;
+
 		for (swipe in FlxG.swipes)
 			return (swipe.degrees > -45 && swipe.degrees < 45 && swipe.distance > 20);
 
@@ -34,6 +42,9 @@ class SwipeUtil
 	@:noCompletion
 	static function get_swipeRight():Bool
 	{
+		if(backend.DeveloperMode.isMobileLike() && TouchUtil.pressed)
+			return TouchUtil.deltaViewX > DRAG_THRESHOLD;
+
 		for (swipe in FlxG.swipes)
 			return ((swipe.degrees > 135 || swipe.degrees < -135) && swipe.distance > 20);
 
@@ -43,6 +54,9 @@ class SwipeUtil
 	@:noCompletion
 	static function get_swipeUp():Bool
 	{
+		if(backend.DeveloperMode.isMobileLike() && TouchUtil.pressed)
+			return TouchUtil.deltaViewY < -DRAG_THRESHOLD;
+
 		for (swipe in FlxG.swipes)
 			return (swipe.degrees > 45 && swipe.degrees < 135 && swipe.distance > 20);
 

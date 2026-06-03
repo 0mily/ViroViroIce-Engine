@@ -267,6 +267,7 @@ class PsychUIBox extends FlxSpriteGroup
 
 	private function set_selectedTab(v:PsychUITab)
 	{
+		var changed:Bool = selectedTab != v;
 		if(v != null)
 		{
 			@:bypassAccessor selectedName = v.name;
@@ -277,6 +278,8 @@ class PsychUIBox extends FlxSpriteGroup
 			@:bypassAccessor selectedName = null;
 			@:bypassAccessor selectedIndex = -1;
 		}
+		if(changed)
+			PsychUIInputText.focusOn = null;
 		selectedTab = v;
 		return selectedTab;
 	}

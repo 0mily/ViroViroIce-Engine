@@ -118,7 +118,11 @@ class CodenameRuntimeShader extends ErrorHandledRuntimeShader // foda a codename
 			return;
 
 		if(Reflect.hasField(shader.data, "_camSize"))
-			shader.setFloatArray("_camSize", [0, 0, FlxG.width, FlxG.height]);
+		{
+			var visibleX:Float = backend.CameraResizeFix.pegarExtraX(camera) * 0.5;
+			var visibleY:Float = backend.CameraResizeFix.pegarExtraY(camera) * 0.5;
+			shader.setFloatArray("_camSize", [visibleX, visibleY, FlxG.width, FlxG.height]);
+		}
 
 		if(Reflect.hasField(shader.data, "iResolution"))
 			shader.setFloatArray("iResolution", [FlxG.width, FlxG.height]);

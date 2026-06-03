@@ -156,6 +156,8 @@ class ScriptedState extends ScriptedSubState {
 		variables.set(tag, camera);
 		customCameras.set(tag, camera);
 		customCameraAutoSize.set(tag, autoSize);
+		if(autoSize)
+			resizeAutoCamera(camera);
 		return camera;
 	}
 
@@ -204,14 +206,19 @@ class ScriptedState extends ScriptedSubState {
 		for(tag => camera in customCameras)
 		{
 			if(camera != null && customCameraAutoSize.exists(tag) && customCameraAutoSize.get(tag) == true)
-			{
-				camera.setSize(CameraResizeFix.baseWidth(), CameraResizeFix.baseHeight());
-				camera.x = 0;
-				camera.y = 0;
-				if(Std.isOfType(camera, PsychCamera))
-					cast(camera, PsychCamera).setLogicalSize(CameraResizeFix.baseWidth(), CameraResizeFix.baseHeight());
-			}
+				resizeAutoCamera(camera);
 		}
+	}
+
+	function resizeAutoCamera(camera:FlxCamera):Void
+	{
+		if(camera == null)
+			return;
+
+		if(ResolutionManager.hasCustomResolution())
+			CameraResizeFix.resetGameCamera(camera);
+		else
+			CameraResizeFix.aplyExpand(camera);
 	}
 
 	public function shouldAutoResizeCamera(camera:FlxCamera):Bool {

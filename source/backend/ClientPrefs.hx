@@ -18,10 +18,14 @@ using StringTools;
 	public var weekpixel:Bool = true;
 	public var mikudside:Bool = false;
 	public var extra:Bool = false;
+	public var developerMode:Bool = false;
 	public var neatRating:Bool = true;
 	public var neatWindow:Float = 22.0;
 	public var sustainAlpha:Float = 1;
 	public var opaqueSustains:Bool = true; // isso não deveria ser strums ao invés de sustains?? -Shiho
+	public var multithreadedLoading:Bool = false;
+	public var screenshots:Bool = true;
+	public var screenshotKey:Dynamic = {keyboard: 'F10', gamepad: 'NONE'}; // dps eu faço melhor // ah eu
 
 // Mobile
 
@@ -112,8 +116,6 @@ using StringTools;
 	public var guitarHeroSustains:Bool = true;
 	public var discordRPC:Bool = true;
 	public var loadingScreen:Bool = true;
-	public var screenshots:Bool = true;
-	public var screenshotKey:Dynamic = {keyboard: 'F10', gamepad: 'NONE'}; // dps eu faço melhor
 	public var language:String = 'en-US';
 }
 

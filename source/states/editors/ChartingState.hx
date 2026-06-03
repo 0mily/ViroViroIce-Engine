@@ -57,6 +57,8 @@ typedef EventLayoutData = {
 	var name:String;
 	var description:String;
 	var fields:Array<Dynamic>;
+	@:optional var layoutType:String;
+	@:optional var tabs:Array<String>;
 }
 
 enum abstract UndoAction(String)
@@ -92,24 +94,17 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 	public static final defaultEvents:Array<Array<String>> =
 	[
 		['', "Nothing. Yep, that's right."], //Always leave this one empty pls
-		['Dadbattle Spotlight', "Used in Dad Battle,\nValue 1: 0/1 = ON/OFF,\n2 = Target Dad\n3 = Target BF"],
 		['Hey!', "Plays the \"Hey!\" animation from Bopeebo,\nValue 1: BF = Only Boyfriend, GF = Only Girlfriend,\nSomething else = Both.\nValue 2: Custom animation duration,\nleave it blank for 0.6s"],
 		['Set GF Speed', "Sets GF head bopping speed,\nValue 1: 1 = Normal speed,\n2 = 1/2 speed, 4 = 1/4 speed etc.\nUsed on Fresh during the beatbox parts.\n\nWarning: Value must be integer!"],
-		['Philly Glow', "Exclusive to Week 3\nValue 1: 0/1/2 = OFF/ON/Reset Gradient\n \nNo, i won't add it to other weeks."],
-		['Kill Henchmen', "For Mom's songs, don't use this please, i love them :("],
 		['Add Camera Zoom', "Used on MILF on that one \"hard\" part\nValue 1: Camera zoom add (Default: 0.015)\nValue 2: UI zoom add (Default: 0.03)\nLeave the values blank if you want to use Default."],
-		['BG Freaks Expression', "Should be used only in \"school\" Stage!"],
-		['Trigger BG Ghouls', "Should be used only in \"schoolEvil\" Stage!"],
 		['Play Animation', "Plays an animation on a Character,\nonce the animation is completed,\nthe animation changes to Idle\n\nValue 1: Animation to play.\nValue 2: Character (Dad, BF, GF)"],
 		['Camera Follow Pos', "Value 1: X\nValue 2: Y\n\nThe camera won't change the follow point\nafter using this, for getting it back\nto normal, leave both values blank."],
-		['Alt Idle Animation', "Sets a specified postfix after the idle animation name.\nYou can use this to trigger 'idle-alt' if you set\nValue 2 to -alt\n\nValue 1: Character to set (Dad, BF or GF)\nValue 2: New postfix (Leave it blank to disable)"],
 		['Screen Shake', "Value 1: Camera shake\nValue 2: HUD shake\n\nEvery value works as the following example: \"1, 0.05\".\nThe first number (1) is the duration.\nThe second number (0.05) is the intensity."],
 		['Change Character', "Value 1: Character to change (Dad, BF, GF)\nValue 2: New character's name"],
 		['Change Scroll Speed', "Value 1: Scroll Speed Multiplier (1 is default)\nValue 2: Time it takes to change fully in seconds."],
 		['Change Scroll Speed GOOD', "Value 1: Scroll Speed\nValue 2: Time it takes to change fully in seconds."],
 		['Set Property', "Value 1: Variable name\nValue 2: New value"],
-		['Play Sound', "Value 1: Sound file name\nValue 2: Volume (Default: 1), ranges from 0 to 1"],
-		['==== [Soft Coded Events] ====]', "These events are only used for organizational purposes, they don't actually do anything."]
+		['Play Sound', "Value 1: Sound file name\nValue 2: Volume (Default: 1), ranges from 0 to 1"]
 	];
 	
 	public static var instance:ChartingState = null;
@@ -834,8 +829,10 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 		var lines:Array<String> = ['<?xml version="1.0" encoding="utf-8"?>', '<gradientPreset>'];
 		for(i in 0...coresLegaisManeiras.length)
 			lines.push('\t<color index="${i + 1}">#${coresLegaisManeiras[i]}</color>');
+		for(i in 0...gridNadaLegalENadaManeira.length)
+			lines.push('\t<gridColor index="${i + 1}">#${gridNadaLegalENadaManeira[i]}</gridColor>');
 		lines.push('</gradientPreset>');
-		return lines.join('\n');
+		return lines.join('\n'); // pronto amor @Shiho
 	}
 
 	function loadPresetGrad(data:String):Bool
@@ -851,10 +848,16 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 				return false;
 
 			var colors:Array<String> = [];
+			var customGridColors:Array<String> = [];
 			for(field in ['color1', 'color2', 'color3'])
 			{
 				if(root.exists(field))
 					colors.push(normalizar(root.get(field), coresLegaisManeiras[Std.int(Math.min(colors.length, coresLegaisManeiras.length - 1))]));
+			}
+			for(field in ['gridColor1', 'gridColor2', 'customGridColor1', 'customGridColor2'])
+			{
+				if(root.exists(field))
+					customGridColors.push(normalizar(root.get(field), gridNadaLegalENadaManeira[Std.int(Math.min(customGridColors.length, gridNadaLegalENadaManeira.length - 1))]));
 			}
 
 			for(child in root.elements())
@@ -867,6 +870,27 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 					if(raw != null)
 						colors.push(normalizar(raw, coresLegaisManeiras[Std.int(Math.min(colors.length, coresLegaisManeiras.length - 1))]));
 				}
+				else if(nodeName == 'gridcolor' || nodeName == 'grid-color' || nodeName == 'customgridcolor' || nodeName == 'custom-grid-color')
+				{
+					var textNode:Xml = child.firstChild();
+					var raw:String = textNode != null ? textNode.nodeValue : child.get('value');
+					if(raw != null)
+						customGridColors.push(normalizar(raw, gridNadaLegalENadaManeira[Std.int(Math.min(customGridColors.length, gridNadaLegalENadaManeira.length - 1))]));
+				}
+				else if(nodeName == 'grid' || nodeName == 'customgrid')
+				{
+					for(gridChild in child.elements())
+					{
+						var gridNodeName:String = gridChild.nodeName.toLowerCase();
+						if(gridNodeName == 'color' || gridNodeName == 'gridcolor' || gridNodeName == 'grid-color')
+						{
+							var textNode:Xml = gridChild.firstChild();
+							var raw:String = textNode != null ? textNode.nodeValue : gridChild.get('value');
+							if(raw != null)
+								customGridColors.push(normalizar(raw, gridNadaLegalENadaManeira[Std.int(Math.min(customGridColors.length, gridNadaLegalENadaManeira.length - 1))]));
+						}
+					}
+				}
 			}
 
 			if(colors.length < 3)
@@ -874,6 +898,12 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 
 			for(i in 0...coresLegaisManeiras.length)
 				coresLegaisManeiras[i] = normalizar(colors[i], coresLegaisManeiras[i]);
+			if(customGridColors.length >= gridNadaLegalENadaManeira.length)
+			{
+				for(i in 0...gridNadaLegalENadaManeira.length)
+					gridNadaLegalENadaManeira[i] = normalizar(customGridColors[i], gridNadaLegalENadaManeira[i]);
+				chartEditorSave.data.customGridColors = gridNadaLegalENadaManeira.copy();
+			}
 
 			chartEditorSave.data.coresLegaisManeiras = coresLegaisManeiras.copy();
 			chartEditorSave.flush();
@@ -1115,6 +1145,11 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 			return;
 		}
 		updateScriptCharacterDropdownData(elapsed);
+		if(eventLayoutRefreshQueued)
+		{
+			eventLayoutRefreshQueued = false;
+			refreshEventLayout();
+		}
 		
 		var charterFocus:Bool = focusedOnEditor();
 		
@@ -3296,6 +3331,8 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 	var eventLayoutValues:Array<String> = ['', '', ''];
 	var eventLayoutGroupParts:Map<Int, Array<String>> = new Map();
 	var eventLayouts:Map<String, EventLayoutData> = new Map();
+	var eventLayoutRefreshQueued:Bool = false;
+	var eventLayoutEventName:String = '';
 	var scriptCharacterScanTimer:Float = 0;
 	var scriptCharacterSignature:String = null;
 
@@ -3540,6 +3577,8 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 		if(mainBox == null || eventDropDown == null || value1InputText == null || value2InputText == null || value1Label == null || value2Label == null)
 			return;
 
+		sanitizeInputFocus();
+
 		var tab_group = mainBox.getTab('Events').menu;
 		for(control in eventLayoutControls)
 		{
@@ -3555,7 +3594,14 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 
 		var eventName:String = getCurrentEventName();
 		var layout:EventLayoutData = getEventLayout(eventName);
-		var useCustomLayout:Bool = layout != null && layout.fields != null && layout.fields.length > 0;
+		var useCameraBopLayout:Bool = eventLayoutIsCameraBop(eventName, layout);
+		var useChainLayout:Bool = eventLayoutIsChain(eventName, layout);
+		var useCustomLayout:Bool = useCameraBopLayout || useChainLayout || (layout != null && layout.fields != null && layout.fields.length > 0);
+		var previousLayoutValues:Array<String> = eventLayoutEventName == eventName ? eventLayoutValues.copy() : null;
+		eventLayoutEventName = eventName;
+
+		if(useCustomLayout && (PsychUIInputText.focusOn == value1InputText || PsychUIInputText.focusOn == value2InputText))
+			PsychUIInputText.focusOn = null;
 
 		value1Label.visible = value1InputText.visible = value1InputText.active = !useCustomLayout;
 		value2Label.visible = value2InputText.visible = value2InputText.active = !useCustomLayout;
@@ -3573,6 +3619,19 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 
 		var objX:Float = 10;
 		var objY:Float = Math.min(250, Math.max(165, 68 + eventDescriptionText.height + 22));
+		if(useCameraBopLayout)
+		{
+			buildCameraBopEventLayout(tab_group, objX, objY, previousLayoutValues);
+			bringEventDropDownToFront(tab_group);
+			return;
+		}
+		if(useChainLayout)
+		{
+			buildChainEventLayout(tab_group, objX, objY, previousLayoutValues);
+			bringEventDropDownToFront(tab_group);
+			return;
+		}
+
 		var nextValueIndex:Int = 1;
 		for(field in layout.fields)
 		{
@@ -3766,6 +3825,580 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 			eventDescriptionText.text = '';
 
 		bringEventDropDownToFront(tab_group);
+	}
+
+	function buildCameraBopEventLayout(tab_group:FlxSpriteGroup, objX:Float, objY:Float, previousLayoutValues:Array<String>):Void
+	{
+		var timingRaw:String = getCameraBopEditorValue(1, '1, beat, cycle', previousLayoutValues);
+		var zoomRaw:String = getCameraBopEditorValue(2, '0.015, 0.03', previousLayoutValues);
+		var timing:Array<String> = splitEventGroupValue(timingRaw, ', ');
+		var zoom:Array<String> = splitEventGroupValue(zoomRaw, ', ');
+
+		var unit:String = normalizeCameraBopEditorUnit(timing.length > 1 ? timing[1] : 'beat');
+		var mode:String = normalizeCameraBopEditorMode(timing.length > 2 ? timing[2] : 'cycle');
+		var patternRaw:String = timing.length > 3 ? timing[3] : '';
+		if(timing.length > 2 && isCameraBopPatternString(timing[2]))
+		{
+			mode = 'pattern';
+			patternRaw = timing[2];
+		}
+
+		var pattern:Array<Int> = parseCameraBopPatternString(patternRaw);
+		var cycleValue:Float = parseEventLayoutFloat(timing.length > 0 ? timing[0] : null, mode == 'pattern' ? 16 : 1);
+		if(Math.isNaN(cycleValue) || cycleValue <= 0)
+			cycleValue = mode == 'pattern' ? 16 : 1;
+		var patternSize:Int = normalizeCameraBopPatternSize(Math.round(cycleValue));
+		var everyValue:Float = mode == 'pattern' ? patternSize : cycleValue;
+
+		var bopEnabled:Bool = !cameraBopEditorZoomIsDisabled(zoomRaw);
+		var gameZoom:Float = bopEnabled ? parseEventLayoutFloat(zoom.length > 0 ? zoom[0] : null, 0.015) : 0;
+		var hudZoom:Float = bopEnabled ? parseEventLayoutFloat(zoom.length > 1 ? zoom[1] : null, 0.03) : 0;
+		if(Math.isNaN(gameZoom)) gameZoom = 0.015;
+		if(Math.isNaN(hudZoom)) hudZoom = 0.03;
+		if(gameZoom == 0 && hudZoom == 0)
+			bopEnabled = false;
+
+		setEventLayoutValue(1, formatCameraBopTimingValue(everyValue, unit, mode, pattern));
+		setEventLayoutValue(2, formatCameraBopZoomValue(gameZoom, hudZoom));
+
+		function addControl(control:FlxSprite):Void
+		{
+			tab_group.add(control);
+			eventLayoutControls.push(control);
+		}
+
+		function writeTiming(rate:Float, nextUnit:String, nextMode:String, nextPattern:Array<Int>):Void
+		{
+			setSelectedEventsValue(formatCameraBopTimingValue(rate, nextUnit, nextMode, nextPattern), 1);
+		}
+
+		function writeZoom(nextGame:Float, nextHud:Float):Void
+		{
+			setSelectedEventsValue(formatCameraBopZoomValue(nextGame, nextHud), 2);
+		}
+
+		function setBopEnabled(enabled:Bool):Void
+		{
+			if(enabled)
+				writeZoom(0.015, 0.03);
+			else
+				writeZoom(0, 0);
+			eventLayoutRefreshQueued = true;
+		}
+
+		var cycleTab:PsychUIButton = new PsychUIButton(objX, objY, 'Cycle', function()
+		{
+			writeTiming(mode == 'pattern' ? 1 : everyValue, unit, 'cycle', pattern);
+			eventLayoutRefreshQueued = true;
+		}, 90, 22);
+		styleCameraBopTab(cycleTab, mode != 'pattern');
+		addControl(cycleTab);
+
+		var patternTab:PsychUIButton = new PsychUIButton(objX + 96, objY, 'Pattern', function()
+		{
+			var nextPattern:Array<Int> = pattern.length > 0 ? pattern.copy() : [0];
+			writeTiming(patternSize, unit, 'pattern', trimCameraBopPattern(nextPattern, patternSize));
+			eventLayoutRefreshQueued = true;
+		}, 90, 22);
+		styleCameraBopTab(patternTab, mode == 'pattern');
+		addControl(patternTab);
+
+		var enableButton:PsychUIButton = new PsychUIButton(objX + 192, objY, bopEnabled ? 'Bop: On' : 'Bop: Off', function()
+		{
+			setBopEnabled(!bopEnabled);
+		}, 90, 22);
+		styleCameraBopToggle(enableButton, bopEnabled);
+		addControl(enableButton);
+
+		var labelY:Float = objY + 30;
+		var unitLabel:FlxText = new FlxText(objX, labelY, 80, 'Unit:');
+		addControl(unitLabel);
+		var unitDropdown:PsychUIDropDownMenu = new PsychUIDropDownMenu(objX, labelY + 14, ['beat', 'step'], function(id:Int, label:String)
+		{
+			writeTiming(everyValue, normalizeCameraBopEditorUnit(label), mode, pattern);
+		}, 96);
+		unitDropdown.selectedLabel = unit;
+		addControl(unitDropdown);
+
+		if(mode == 'pattern')
+		{
+			var sizeLabel:FlxText = new FlxText(objX + 120, labelY, 90, 'Pattern:');
+			addControl(sizeLabel);
+			var sizeDropdown:PsychUIDropDownMenu = new PsychUIDropDownMenu(objX + 120, labelY + 14, ['16', '32'], function(id:Int, label:String)
+			{
+				var nextSize:Int = Std.parseInt(label) == 32 ? 32 : 16;
+				var nextPattern:Array<Int> = trimCameraBopPattern(pattern.copy(), nextSize);
+				if(nextPattern.length < 1)
+					nextPattern.push(0);
+				writeTiming(nextSize, unit, 'pattern', nextPattern);
+				eventLayoutRefreshQueued = true;
+			}, 82);
+			sizeDropdown.selectedLabel = Std.string(patternSize);
+			addControl(sizeDropdown);
+		}
+		else
+		{
+			var everyLabel:FlxText = new FlxText(objX + 120, labelY, 80, 'Every:');
+			addControl(everyLabel);
+			var everyStepper:PsychUINumericStepper = new PsychUINumericStepper(objX + 120, labelY + 14, 1, everyValue, 1, 999, 0, 78);
+			everyStepper.onValueChange = function()
+			{
+				writeTiming(everyStepper.value, unit, 'cycle', pattern);
+			}
+			addControl(everyStepper);
+		}
+
+		var zoomY:Float = labelY + 50;
+		var gameLabel:FlxText = new FlxText(objX, zoomY, 80, 'Game:');
+		addControl(gameLabel);
+		var gameStepper:PsychUINumericStepper = new PsychUINumericStepper(objX, zoomY + 14, 0.005, gameZoom, -2, 2, 4, 82);
+		gameStepper.onValueChange = function()
+		{
+			writeZoom(gameStepper.value, hudZoom);
+		}
+		addControl(gameStepper);
+
+		var hudLabel:FlxText = new FlxText(objX + 120, zoomY, 80, 'HUD:');
+		addControl(hudLabel);
+		var hudStepper:PsychUINumericStepper = new PsychUINumericStepper(objX + 120, zoomY + 14, 0.005, hudZoom, -2, 2, 4, 82);
+		hudStepper.onValueChange = function()
+		{
+			writeZoom(gameZoom, hudStepper.value);
+		}
+		addControl(hudStepper);
+
+		if(mode == 'pattern')
+		{
+			var gridLabel:FlxText = new FlxText(objX, zoomY + 48, MAIN_BOX_WIDTH - 20, 'Beats in cycle:');
+			addControl(gridLabel);
+
+			var markerSize:Int = 18;
+			var markerGap:Int = 2;
+			var gridX:Float = objX;
+			var gridY:Float = zoomY + 64;
+			pattern = trimCameraBopPattern(pattern, patternSize);
+			for(i in 0...patternSize)
+			{
+				var marker:Int = i;
+				var selected:Bool = pattern.contains(marker);
+				var markerButton:PsychUIButton = new PsychUIButton(
+					gridX + (marker % 16) * (markerSize + markerGap),
+					gridY + Std.int(marker / 16) * (markerSize + markerGap),
+					Std.string(marker),
+					function()
+					{
+						var nextPattern:Array<Int> = pattern.copy();
+						if(nextPattern.contains(marker))
+							nextPattern.remove(marker);
+						else
+							nextPattern.push(marker);
+						nextPattern.sort(Reflect.compare);
+						writeTiming(patternSize, unit, 'pattern', nextPattern);
+						eventLayoutRefreshQueued = true;
+					},
+					markerSize,
+					markerSize
+				);
+				markerButton.text.size = 7;
+				styleCameraBopMarker(markerButton, selected);
+				addControl(markerButton);
+			}
+		}
+	}
+
+	function eventLayoutIsCameraBop(eventName:String, layout:EventLayoutData):Bool
+	{
+		var layoutType:String = layout != null && layout.layoutType != null ? layout.layoutType : '';
+		return eventName == 'Camera Module Bop' || layoutType.toLowerCase().trim() == 'camerabop';
+	}
+
+	function buildChainEventLayout(tab_group:FlxSpriteGroup, objX:Float, objY:Float, previousLayoutValues:Array<String>):Void
+	{
+		var timingRaw:String = getCameraBopEditorValue(1, '1, beat, cycle', previousLayoutValues);
+		var flashRaw:String = getCameraBopEditorValue(2, '#FF0000, 0.6, game', previousLayoutValues);
+		var timing:Array<String> = splitEventGroupValue(timingRaw, ', ');
+		var flash:Array<String> = splitEventGroupValue(flashRaw, ', ');
+
+		var unit:String = normalizeCameraBopEditorUnit(timing.length > 1 ? timing[1] : 'beat');
+		var mode:String = normalizeCameraBopEditorMode(timing.length > 2 ? timing[2] : 'cycle');
+		var patternRaw:String = timing.length > 3 ? timing[3] : '';
+		if(timing.length > 2 && isCameraBopPatternString(timing[2]))
+		{
+			mode = 'pattern';
+			patternRaw = timing[2];
+		}
+
+		var pattern:Array<Int> = parseCameraBopPatternString(patternRaw);
+		var cycleValue:Float = parseEventLayoutFloat(timing.length > 0 ? timing[0] : null, mode == 'pattern' ? 16 : 1);
+		if(Math.isNaN(cycleValue) || cycleValue <= 0)
+			cycleValue = mode == 'pattern' ? 16 : 1;
+		var patternSize:Int = normalizeCameraBopPatternSize(Math.round(cycleValue));
+		var everyValue:Float = mode == 'pattern' ? patternSize : cycleValue;
+
+		var chainEnabled:Bool = !chainEditorFlashIsDisabled(flashRaw);
+		var colorValue:String = chainEnabled ? normalizeEventColor(flash.length > 0 ? flash[0] : '#FF0000', '#FF0000') : '#FF0000';
+		var durationValue:Float = chainEnabled ? parseEventLayoutFloat(flash.length > 1 ? flash[1] : null, 0.6) : 0.6;
+		var cameraValue:String = chainEnabled && flash.length > 2 ? flash[2].trim() : 'game';
+		if(Math.isNaN(durationValue) || durationValue < 0)
+			durationValue = 0.6;
+		if(cameraValue.length < 1)
+			cameraValue = 'game';
+
+		setEventLayoutValue(1, formatCameraBopTimingValue(everyValue, unit, mode, pattern));
+		setEventLayoutValue(2, chainEnabled ? formatChainFlashValue(colorValue, durationValue, cameraValue) : 'off');
+
+		function addControl(control:FlxSprite):Void
+		{
+			tab_group.add(control);
+			eventLayoutControls.push(control);
+		}
+
+		function writeTiming(rate:Float, nextUnit:String, nextMode:String, nextPattern:Array<Int>):Void
+		{
+			setSelectedEventsValue(formatCameraBopTimingValue(rate, nextUnit, nextMode, nextPattern), 1);
+		}
+
+		function writeFlash(nextColor:String, nextDuration:Float, nextCamera:String):Void
+		{
+			setSelectedEventsValue(formatChainFlashValue(nextColor, nextDuration, nextCamera), 2);
+		}
+
+		var cycleTab:PsychUIButton = new PsychUIButton(objX, objY, 'Cycle', function()
+		{
+			writeTiming(mode == 'pattern' ? 1 : everyValue, unit, 'cycle', pattern);
+			eventLayoutRefreshQueued = true;
+		}, 90, 22);
+		styleCameraBopTab(cycleTab, mode != 'pattern');
+		addControl(cycleTab);
+
+		var patternTab:PsychUIButton = new PsychUIButton(objX + 96, objY, 'Pattern', function()
+		{
+			var nextPattern:Array<Int> = pattern.length > 0 ? pattern.copy() : [0];
+			writeTiming(patternSize, unit, 'pattern', trimCameraBopPattern(nextPattern, patternSize));
+			eventLayoutRefreshQueued = true;
+		}, 90, 22);
+		styleCameraBopTab(patternTab, mode == 'pattern');
+		addControl(patternTab);
+
+		var enableButton:PsychUIButton = new PsychUIButton(objX + 192, objY, chainEnabled ? 'Chain: On' : 'Chain: Off', function()
+		{
+			if(chainEnabled)
+				setSelectedEventsValue('off', 2);
+			else
+				writeFlash('#FF0000', 0.6, 'game');
+			eventLayoutRefreshQueued = true;
+		}, 90, 22);
+		styleCameraBopToggle(enableButton, chainEnabled);
+		addControl(enableButton);
+
+		var labelY:Float = objY + 30;
+		var unitLabel:FlxText = new FlxText(objX, labelY, 80, 'Unit:');
+		addControl(unitLabel);
+		var unitDropdown:PsychUIDropDownMenu = new PsychUIDropDownMenu(objX, labelY + 14, ['beat', 'step'], function(id:Int, label:String)
+		{
+			writeTiming(everyValue, normalizeCameraBopEditorUnit(label), mode, pattern);
+		}, 96);
+		unitDropdown.selectedLabel = unit;
+		addControl(unitDropdown);
+
+		if(mode == 'pattern')
+		{
+			var sizeLabel:FlxText = new FlxText(objX + 120, labelY, 90, 'Pattern:');
+			addControl(sizeLabel);
+			var sizeDropdown:PsychUIDropDownMenu = new PsychUIDropDownMenu(objX + 120, labelY + 14, ['16', '32'], function(id:Int, label:String)
+			{
+				var nextSize:Int = Std.parseInt(label) == 32 ? 32 : 16;
+				var nextPattern:Array<Int> = trimCameraBopPattern(pattern.copy(), nextSize);
+				if(nextPattern.length < 1)
+					nextPattern.push(0);
+				writeTiming(nextSize, unit, 'pattern', nextPattern);
+				eventLayoutRefreshQueued = true;
+			}, 82);
+			sizeDropdown.selectedLabel = Std.string(patternSize);
+			addControl(sizeDropdown);
+		}
+		else
+		{
+			var everyLabel:FlxText = new FlxText(objX + 120, labelY, 80, 'Every:');
+			addControl(everyLabel);
+			var everyStepper:PsychUINumericStepper = new PsychUINumericStepper(objX + 120, labelY + 14, 1, everyValue, 1, 999, 0, 78);
+			everyStepper.onValueChange = function()
+			{
+				writeTiming(everyStepper.value, unit, 'cycle', pattern);
+			}
+			addControl(everyStepper);
+		}
+
+		var flashY:Float = labelY + 50;
+		var colorInput:PsychUIInputText = null;
+		var durationStepper:PsychUINumericStepper = null;
+		var cameraDropdown:PsychUIDropDownMenu = null;
+		function currentChainColor():String
+			return colorInput != null ? normalizeEventColor('#' + colorInput.text, colorValue) : colorValue;
+		function currentChainDuration():Float
+			return durationStepper != null ? durationStepper.value : durationValue;
+		function currentChainCamera():String
+			return cameraDropdown != null && cameraDropdown.selectedLabel != null ? cameraDropdown.selectedLabel : cameraValue;
+
+		var colorLabel:FlxText = new FlxText(objX, flashY, 80, 'Color:');
+		addControl(colorLabel);
+		var colorButton:PsychUIButton = null;
+		colorInput = new PsychUIInputText(objX + 26, flashY + 14, 70, colorValue.replace('#', ''), 8);
+		colorInput.maxLength = 6;
+		colorInput.filterMode = ONLY_HEXADECIMAL;
+		colorInput.forceCase = UPPER_CASE;
+		colorButton = new PsychUIButton(objX, flashY + 14, '', function()
+		{
+			openEventColorWheel('#' + colorInput.text, function(value:String)
+			{
+				var normalized:String = normalizeEventColor(value, colorValue);
+				colorInput.text = normalized.replace('#', '');
+				updateEventColorButton(colorButton, normalized);
+				writeFlash(normalized, currentChainDuration(), currentChainCamera());
+			});
+		}, 20, 20);
+		updateEventColorButton(colorButton, colorValue);
+		colorInput.onChange = function(old:String, cur:String)
+		{
+			var normalized:String = normalizeEventColor('#' + cur, colorValue);
+			updateEventColorButton(colorButton, normalized);
+			writeFlash(normalized, currentChainDuration(), currentChainCamera());
+		}
+		addControl(colorButton);
+		addControl(colorInput);
+
+		var durationLabel:FlxText = new FlxText(objX + 120, flashY, 80, 'Dura:');
+		addControl(durationLabel);
+		durationStepper = new PsychUINumericStepper(objX + 120, flashY + 14, 0.05, durationValue, 0, 999, 2, 78);
+		durationStepper.onValueChange = function()
+		{
+			writeFlash(currentChainColor(), durationStepper.value, currentChainCamera());
+		}
+		addControl(durationStepper);
+
+		var cameraLabel:FlxText = new FlxText(objX + 220, flashY, 70, 'Camera:');
+		addControl(cameraLabel);
+		cameraDropdown = new PsychUIDropDownMenu(objX + 220, flashY + 14, ['game', 'hud', 'other'], function(id:Int, label:String)
+		{
+			writeFlash(currentChainColor(), currentChainDuration(), label);
+		}, 62);
+		cameraDropdown.selectedLabel = cameraValue;
+		if(cameraDropdown.selectedIndex < 0)
+			cameraDropdown.selectedIndex = 0;
+		addControl(cameraDropdown);
+
+		if(mode == 'pattern')
+		{
+			var gridLabel:FlxText = new FlxText(objX, flashY + 48, MAIN_BOX_WIDTH - 20, unit == 'step' ? 'Steps in cycle:' : 'Beats in cycle:');
+			addControl(gridLabel);
+
+			var markerSize:Int = 18;
+			var markerGap:Int = 2;
+			var gridX:Float = objX;
+			var gridY:Float = flashY + 64;
+			pattern = trimCameraBopPattern(pattern, patternSize);
+			for(i in 0...patternSize)
+			{
+				var marker:Int = i;
+				var selected:Bool = pattern.contains(marker);
+				var markerButton:PsychUIButton = new PsychUIButton(
+					gridX + (marker % 16) * (markerSize + markerGap),
+					gridY + Std.int(marker / 16) * (markerSize + markerGap),
+					Std.string(marker),
+					function()
+					{
+						var nextPattern:Array<Int> = pattern.copy();
+						if(nextPattern.contains(marker))
+							nextPattern.remove(marker);
+						else
+							nextPattern.push(marker);
+						nextPattern.sort(Reflect.compare);
+						writeTiming(patternSize, unit, 'pattern', nextPattern);
+						eventLayoutRefreshQueued = true;
+					},
+					markerSize,
+					markerSize
+				);
+				markerButton.text.size = 7;
+				styleCameraBopMarker(markerButton, selected);
+				addControl(markerButton);
+			}
+		}
+	}
+
+	function eventLayoutIsChain(eventName:String, layout:EventLayoutData):Bool
+	{
+		var layoutType:String = layout != null && layout.layoutType != null ? layout.layoutType : '';
+		return switch(layoutType.toLowerCase().trim())
+		{
+			case 'chain' | 'timingchain' | 'eventchain':
+				true;
+			default:
+				false;
+		}
+	}
+
+	function getCameraBopEditorValue(index:Int, fallback:String, previousLayoutValues:Array<String>):String
+	{
+		if(selectedEvents.length > 0)
+			return getSelectedEventValue(index, fallback);
+		if(previousLayoutValues != null && previousLayoutValues.length > index && previousLayoutValues[index] != null && previousLayoutValues[index].trim().length > 0)
+			return previousLayoutValues[index];
+		return fallback;
+	}
+
+	function normalizeCameraBopEditorUnit(unit:String):String
+	{
+		return switch((unit ?? '').toLowerCase().trim())
+		{
+			case 'step' | 'steps' | 's':
+				'step';
+			default:
+				'beat';
+		}
+	}
+
+	function normalizeCameraBopEditorMode(mode:String):String
+	{
+		return switch((mode ?? '').toLowerCase().trim())
+		{
+			case 'pattern' | 'patterns' | 'irregular' | 'inconsistent':
+				'pattern';
+			default:
+				'cycle';
+		}
+	}
+
+	function normalizeCameraBopPatternSize(size:Int):Int
+		return size > 16 ? 32 : 16;
+
+	function parseEventLayoutFloat(value:String, fallback:Float):Float
+	{
+		var parsed:Float = Std.parseFloat(value ?? '');
+		return Math.isNaN(parsed) ? fallback : parsed;
+	}
+
+	function isCameraBopPatternString(value:String):Bool
+	{
+		if(value == null)
+			return false;
+		var raw:String = value.trim();
+		return (raw.startsWith('{') && raw.endsWith('}')) || (raw.startsWith('[') && raw.endsWith(']'));
+	}
+
+	function parseCameraBopPatternString(value:String):Array<Int>
+	{
+		var pattern:Array<Int> = [];
+		if(value == null)
+			return pattern;
+
+		var raw:String = value.trim();
+		for(chars in ['{', '}', '[', ']'])
+			raw = raw.replace(chars, ' ');
+
+		var splitter:EReg = ~/[,\s;|]+/g;
+		for(part in splitter.split(raw))
+		{
+			var parsed:Null<Int> = Std.parseInt(part.trim());
+			if(parsed != null && parsed >= 0 && !pattern.contains(parsed))
+				pattern.push(parsed);
+		}
+		pattern.sort(Reflect.compare);
+		return pattern;
+	}
+
+	function trimCameraBopPattern(pattern:Array<Int>, size:Int):Array<Int>
+	{
+		return [for(value in pattern) if(value >= 0 && value < size) value];
+	}
+
+	function formatCameraBopTimingValue(rate:Float, unit:String, mode:String, pattern:Array<Int>):String
+	{
+		var cycle:Int = Math.round(rate);
+		if(cycle <= 0)
+			cycle = 1;
+
+		mode = normalizeCameraBopEditorMode(mode);
+		unit = normalizeCameraBopEditorUnit(unit);
+		if(mode == 'pattern')
+		{
+			cycle = normalizeCameraBopPatternSize(cycle);
+			var sourcePattern:Array<Int> = pattern != null ? pattern : [];
+			var hits:Array<Int> = trimCameraBopPattern(sourcePattern, cycle);
+			return '$cycle, $unit, pattern, {' + hits.join(', ') + '}';
+		}
+		return '$cycle, $unit, cycle';
+	}
+
+	function formatCameraBopZoomValue(gameZoom:Float, hudZoom:Float):String
+		return '$gameZoom, $hudZoom';
+
+	function cameraBopEditorZoomIsDisabled(value:String):Bool
+	{
+		if(value == null)
+			return false;
+
+		var raw:String = value.toLowerCase().trim();
+		return switch(raw)
+		{
+			case 'off' | 'disable' | 'disabled' | 'false' | 'no' | 'none':
+				true;
+			default:
+				false;
+		}
+	}
+
+	function formatChainFlashValue(color:String, duration:Float, camera:String):String
+	{
+		var normalizedColor:String = normalizeEventColor(color, '#FF0000');
+		if(Math.isNaN(duration) || duration < 0)
+			duration = 0.6;
+		camera = (camera ?? 'game').trim();
+		if(camera.length < 1)
+			camera = 'game';
+		return '$normalizedColor, $duration, $camera';
+	}
+
+	function chainEditorFlashIsDisabled(value:String):Bool
+	{
+		if(value == null)
+			return false;
+
+		var raw:String = value.toLowerCase().trim();
+		return switch(raw)
+		{
+			case 'off' | 'disable' | 'disabled' | 'false' | 'no' | 'none':
+				true;
+			default:
+				false;
+		}
+	}
+
+	function styleCameraBopTab(button:PsychUIButton, selected:Bool):Void
+	{
+		button.normalStyle.bgColor = selected ? HaxeUITheme.PURPLE_DARK : HaxeUITheme.PANEL;
+		button.hoverStyle.bgColor = selected ? HaxeUITheme.PURPLE_DARK : HaxeUITheme.PANEL_LIGHT;
+		button.clickStyle.bgColor = HaxeUITheme.PURPLE_DARK;
+		button.normalStyle.textColor = selected ? FlxColor.WHITE : HaxeUITheme.TEXT;
+		button.forceCheckNext = true;
+	}
+
+	function styleCameraBopToggle(button:PsychUIButton, enabled:Bool):Void
+	{
+		button.normalStyle.bgColor = enabled ? HaxeUITheme.PURPLE_DARK : HaxeUITheme.INPUT_FILL;
+		button.hoverStyle.bgColor = enabled ? HaxeUITheme.PURPLE_DARK : HaxeUITheme.PANEL_LIGHT;
+		button.clickStyle.bgColor = HaxeUITheme.PURPLE_DARK;
+		button.normalStyle.textColor = enabled ? FlxColor.WHITE : HaxeUITheme.INPUT_TEXT;
+		button.forceCheckNext = true;
+	}
+
+	function styleCameraBopMarker(button:PsychUIButton, selected:Bool):Void
+	{
+		button.normalStyle.bgColor = selected ? HaxeUITheme.PURPLE_DARK : HaxeUITheme.INPUT_FILL;
+		button.hoverStyle.bgColor = selected ? HaxeUITheme.PURPLE_DARK : HaxeUITheme.PANEL_LIGHT;
+		button.clickStyle.bgColor = selected ? HaxeUITheme.INPUT_FILL : HaxeUITheme.PURPLE_DARK;
+		button.normalStyle.textColor = selected ? FlxColor.WHITE : HaxeUITheme.INPUT_TEXT;
+		button.forceCheckNext = true;
 	}
 
 	function applyEventInputMetrics(input:PsychUIInputText, field:Dynamic, width:Int, ?defaultHeight:Int = 20):Void
@@ -4126,9 +4759,41 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 		if(delimiter == null || delimiter.length < 1)
 			delimiter = ',';
 		if(delimiter.contains(','))
-			delimiter = ',';
+			return splitCommaEventGroupValue(value);
 
 		return [for(part in value.split(delimiter)) part.trim()];
+	}
+
+	function splitCommaEventGroupValue(value:String):Array<String>
+	{
+		var parts:Array<String> = [];
+		var current:String = '';
+		var depth:Int = 0;
+		for(i in 0...value.length)
+		{
+			var char:String = value.charAt(i);
+			switch(char)
+			{
+				case '{' | '[' | '(':
+					depth++;
+					current += char;
+				case '}' | ']' | ')':
+					depth = Std.int(Math.max(0, depth - 1));
+					current += char;
+				case ',':
+					if(depth <= 0)
+					{
+						parts.push(current.trim());
+						current = '';
+					}
+					else
+						current += char;
+				default:
+					current += char;
+			}
+		}
+		parts.push(current.trim());
+		return parts;
 	}
 
 	function joinEventGroupValue(parts:Array<String>, separator:String):String
@@ -4142,6 +4807,18 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 	{
 		var eventName:String = getCurrentEventName();
 		var layout:EventLayoutData = getEventLayout(eventName);
+		if(eventLayoutIsCameraBop(eventName, layout))
+		{
+			if(useDefaults)
+				return [eventName, '1, beat, cycle', '0.015, 0.03'];
+			return [eventName, getEventLayoutValue(1), getEventLayoutValue(2)];
+		}
+		if(eventLayoutIsChain(eventName, layout))
+		{
+			if(useDefaults)
+				return [eventName, '1, beat, cycle', '#FF0000, 0.6, game'];
+			return [eventName, getEventLayoutValue(1), getEventLayoutValue(2)];
+		}
 		if(layout == null || layout.fields == null || layout.fields.length < 1)
 			return [eventName, useDefaults ? '' : value1InputText.text, useDefaults ? '' : value2InputText.text];
 
@@ -4525,6 +5202,19 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 			var data:Dynamic = Json.parse(raw);
 			var eventName:String = eventFieldString(data, ['name', 'event', 'eventName'], file);
 			var description:String = eventFieldString(data, ['description', 'desc'], txtDescription ?? '');
+			var layoutType:String = eventFieldString(data, ['layoutType', 'customLayout', 'editorLayout'], '');
+			var tabs:Array<String> = [];
+			var rawTabs:Dynamic = eventFieldRaw(data, ['tabs']);
+			if(Std.isOfType(rawTabs, Array))
+			{
+				for(tab in (cast rawTabs:Array<Dynamic>))
+				{
+					if(Type.typeof(tab) == TObject)
+						tabs.push(eventFieldString(tab, ['id', 'name', 'label'], ''));
+					else
+						tabs.push(Std.string(tab));
+				}
+			}
 			var fields:Array<Dynamic> = [];
 			var rawFields:Dynamic = eventFieldRaw(data, ['fields', 'layout', 'controls', 'values', 'params', 'parameters']);
 			if(rawFields != null && Std.isOfType(rawFields, Array))
@@ -4555,7 +5245,9 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 			return {
 				name: eventName,
 				description: description,
-				fields: fields
+				fields: fields,
+				layoutType: layoutType,
+				tabs: tabs
 			};
 		}
 		catch(e:Dynamic)
@@ -6710,6 +7402,8 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 						{
 							for(i in 0...gradientInputs.length)
 								gradientInputs[i].text = coresLegaisManeiras[i];
+							for(i in 0...gridInputs.length)
+								gridInputs[i].text = gridNadaLegalENadaManeira[i];
 						});
 					}, 110);
 					openPreset.screenCenter(X);
@@ -7218,8 +7912,16 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 		}
 	}
 	
-	inline function focusedOnEditor(?allowMouseFocusRelease:Bool = false):Bool {
+	function focusedOnEditor(?allowMouseFocusRelease:Bool = false):Bool {
+		sanitizeInputFocus();
 		return (PsychUIInputText.focusOn == null && (lastFocus == null || (allowMouseFocusRelease && FlxG.mouse.justPressed)) && (persistentUpdate || subState == null));
+	}
+
+	function sanitizeInputFocus():Void
+	{
+		PsychUIInputText.clearInvalidFocus();
+		if(lastFocus != null && (!lastFocus.exists || !lastFocus.active || !lastFocus.visible))
+			lastFocus = null;
 	}
 	
 	function updateVortexHolds() {

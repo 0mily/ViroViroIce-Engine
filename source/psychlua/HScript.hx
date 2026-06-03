@@ -61,6 +61,50 @@ class HScript extends Iris {
 	public var parentState:FlxState = null;
 	
 	public static var globalStatic(default, never):Map<String, Dynamic> = [];
+	public static final SCRIPT_EXTENSIONS:Array<String> = ['.hx', '.hxc', '.hscript'];
+
+	public static function hasScriptExtension(file:String):Bool
+	{
+		if(file == null)
+			return false;
+
+		file = file.toLowerCase();
+		for(ext in SCRIPT_EXTENSIONS)
+			if(file.endsWith(ext))
+				return true;
+		return false;
+	}
+
+	public static function withoutScriptExtension(file:String):String
+	{
+		if(file == null)
+			return null;
+
+		var lower:String = file.toLowerCase();
+		for(ext in SCRIPT_EXTENSIONS)
+			if(lower.endsWith(ext))
+				return file.substr(0, file.length - ext.length);
+		return file;
+	}
+
+	public static function withScriptExtensions(file:String):Array<String>
+	{
+		if(file == null)
+			return [];
+
+		var candidates:Array<String> = [];
+		var addCandidate = function(path:String)
+		{
+			if(path != null && path.length > 0 && !candidates.contains(path))
+				candidates.push(path);
+		};
+
+		addCandidate(file);
+		var base:String = withoutScriptExtension(file);
+		for(ext in SCRIPT_EXTENSIONS)
+			addCandidate(base + ext);
+		return candidates;
+	}
 
 	#if LUA_ALLOWED
 	public var parentLua:FunkinLua;
@@ -100,6 +144,15 @@ class HScript extends Iris {
 	
 	public static function init():Void {
 		Iris.proxyImports.set('options.GameplayChangersSubstate', options.GameplayChangersSubState); // lol
+		Iris.proxyImports.set('funkin.data.ClientPrefs', funkin.data.ClientPrefs);
+		Iris.proxyImports.set('funkin.data.Conductor', funkin.data.Conductor);
+		Iris.proxyImports.set('funkin.objects.BGSprite', funkin.objects.BGSprite);
+		Iris.proxyImports.set('funkin.objects.SnowEmitter', funkin.objects.SnowEmitter);
+		Iris.proxyImports.set('funkin.objects.shader.OverlayShader', funkin.objects.shader.OverlayShader);
+		Iris.proxyImports.set('funkin.game.shaders.OverlayShader', funkin.objects.shader.OverlayShader);
+		Iris.proxyImports.set('funkin.utils.CameraUtil', funkin.utils.CameraUtil);
+		Iris.proxyImports.set('funkin.utils.CoolUtil', funkin.utils.CoolUtil);
+		Iris.proxyImports.set('funkin.states.PlayState', states.PlayState);
 		Iris.logLevel = (level:ErrorSeverity, x:Dynamic, ?pos:haxe.PosInfos) -> {
 			var newPos:HScriptInfos = cast pos;
 			if (newPos.showLine == null) newPos.showLine = true;
@@ -150,6 +203,7 @@ class HScript extends Iris {
 			var f:String = file.replace('\\', '/');
 			if(f.contains('/') && !f.contains('\n')) {
 				scriptThing = Paths.getTextFromFile(f);
+				scriptThing = normalizeCompatScript(scriptThing);
 				scriptName = f;
 			}
 		}
@@ -159,7 +213,8 @@ class HScript extends Iris {
 		#end
 		
 		super(scriptThing, new IrisConfig(scriptName, false, false));
-		Iris.instances.set(scriptName, this); // idgaf
+		if(scriptName != null && scriptName.length > 0)
+			Iris.instances.set(scriptName, this); // idgaf
 		var customInterp:CustomInterp = new CustomInterp();
 		customInterp.parentInstance = getParent();
 		customInterp.showPosOnLog = false;
@@ -196,8 +251,7 @@ class HScript extends Iris {
 			newScript.unsafe = true;
 			newScript.execute();
 			
-			if (newScript.exists('onCreate'))
-				newScript.call('onCreate');
+			newScript.callInitialCallbacks();
 			
 			newScript.unsafe = false;
 		} catch(e:Dynamic) {
@@ -229,8 +283,7 @@ class HScript extends Iris {
 			newScript.unsafe = true;
 			newScript.execute();
 
-			if (newScript.exists('onCreate'))
-				newScript.call('onCreate');
+			newScript.callInitialCallbacks();
 
 			newScript.unsafe = false;
 		} catch(e:Dynamic) {
@@ -258,6 +311,17 @@ class HScript extends Iris {
 		
 		for (define => value in backend.macro.Scripting.Defines.list)
 			parser.preprocesorValues.set(define, value);
+
+		if(backend.DeveloperMode.mobileSimulation)
+		{
+			parser.preprocesorValues.set('mobile', true);
+			parser.preprocesorValues.set('TOUCH_CONTROLS_ALLOWED', true);
+			parser.preprocesorValues.set('desktop', false);
+			parser.preprocesorValues.set('windows', false);
+			parser.preprocesorValues.set('linux', false);
+			parser.preprocesorValues.set('mac', false);
+			parser.preprocesorValues.set('html5', false);
+		}
 		
 		// Some very commonly used classes
 		set('Type', Type);
@@ -268,8 +332,18 @@ class HScript extends Iris {
 		set('FlxG', flixel.FlxG);
 		set('FlxMath', flixel.math.FlxMath);
 		set('FlxSprite', flixel.FlxSprite);
+		set('FlxBackdrop', flixel.addons.display.FlxBackdrop);
+		set('FlxAxes', {
+			X: flixel.util.FlxAxes.X,
+			Y: flixel.util.FlxAxes.Y,
+			XY: flixel.util.FlxAxes.XY,
+			NONE: flixel.util.FlxAxes.NONE
+		});
 		set('FlxText', flixel.text.FlxText);
 		set('FlxCamera', flixel.FlxCamera);
+		set('FlxTypedGroup', flixel.group.FlxGroup.FlxTypedGroup);
+		set('FlxSpriteGroup', flixel.group.FlxSpriteGroup);
+		set('FlxBar', flixel.ui.FlxBar);
 		set('PsychCamera', backend.PsychCamera);
 		set('FlxTimer', flixel.util.FlxTimer);
 		set('FlxTween', flixel.tweens.FlxTween);
@@ -278,12 +352,23 @@ class HScript extends Iris {
 		set('Countdown', backend.BaseStage.Countdown);
 		set('PlayState', PlayState);
 		set('Paths', Paths);
+		set('VignetteUtil', backend.VignetteUtil);
+		set('VVIESpriteHandler', objects.VVIESpriteHandler);
+		set('OverlayShader', shaders.OverlayShader);
 		set('DialoguePlus', cutscenes.DialoguePlus);
 		set('DialoguePlusRuntime', cutscenes.DialoguePlusRuntime);
 		set('ResolutionManager', backend.ResolutionManager);
+		set('DeveloperMode', backend.DeveloperMode);
+		set('milymc', {});
 		set('Conductor', Conductor);
-		set('ClientPrefs', ClientPrefs);
+		set('ClientPrefs', funkin.data.ClientPrefs);
 		set('CustomCursor', backend.CustomCursor);
+		set('script_COVERSTARTOffsets', [
+			{x: 0.0, y: 0.0},
+			{x: 0.0, y: 0.0},
+			{x: 0.0, y: 0.0},
+			{x: 0.0, y: 0.0}
+		]);
 		#if ACHIEVEMENTS_ALLOWED
 		set('Achievements', Achievements);
 		#end
@@ -342,6 +427,12 @@ class HScript extends Iris {
 		});
 		#end
 		set('ShaderFilter', openfl.filters.ShaderFilter);
+		set('BlurFilter', openfl.filters.BlurFilter);
+		set('BitmapFilterQuality', {
+			LOW: openfl.filters.BitmapFilterQuality.LOW,
+			MEDIUM: openfl.filters.BitmapFilterQuality.MEDIUM,
+			HIGH: openfl.filters.BitmapFilterQuality.HIGH
+		});
 		set('StringTools', StringTools);
 		#if flxanimate
 		set('FlxAnimate', FlxAnimate);
@@ -360,6 +451,7 @@ class HScript extends Iris {
 			var stateName:String = clsName.substr(clsName.indexOf('.') + 1);
 			
 			set('game', parentState);
+			set('stage', parentState);
 			set(stateName, cls);
 		}
 
@@ -367,10 +459,14 @@ class HScript extends Iris {
 			set('camGame', PlayState.instance.camGame);
 			set('camHUD', PlayState.instance.camHUD);
 			set('camOther', PlayState.instance.camOther);
+			set('camPause', PlayState.instance.camOther);
 		}
 		
 		set('global', variableMap);
 		set('globalStatic', HScript.globalStatic);
+		set('refreshZ', function(?target:Dynamic = null) {
+			return refreshZTarget(target, parentState);
+		});
 		set('startDialoguePlus', function(dialogueFile:String = 'dialogue', ?music:String = null) {
 			return PlayState.instance != null ? PlayState.instance.startDialoguePlus(dialogueFile, music) : false;
 		});
@@ -410,6 +506,18 @@ class HScript extends Iris {
 			PlayState.instance.finishDialoguePlusCutscene(callFinish);
 			return true;
 		});
+		set('addCamera', function(tag:String, bgColor:String = '00000000', x:Float = 0, y:Float = 0, width:Int = -1, height:Int = -1, zoom:Float = 1, front:Bool = false) {
+			return PlayState.instance != null ? PlayState.instance.addCamera(tag, bgColor, x, y, width, height, zoom, front) : null;
+		});
+		set('removeCamera', function(tag:String, destroy:Bool = true) {
+			return PlayState.instance != null && PlayState.instance.removeCamera(tag, destroy);
+		});
+		set('setMainCamera', function(tag:String) {
+			return PlayState.instance != null && PlayState.instance.setMainCamera(tag);
+		});
+		set('setCameraOrder', function(tag:String, index:Int) {
+			return PlayState.instance != null && PlayState.instance.setCameraOrder(tag, index);
+		});
 		set('setCameraAngle', function(camera:String, angle:Float) {
 			var cam:FlxCamera = LuaUtils.cameraFromString(camera);
 			if(cam != null)
@@ -439,6 +547,13 @@ class HScript extends Iris {
 		set('ChangeRes', function(width:Int, height:Int, resizable:Bool = true) return backend.ResolutionManager.changeRes(width, height, resizable));
 		set('resetRes', function() return backend.ResolutionManager.reset());
 		set('ResetRes', function() return backend.ResolutionManager.reset());
+		set('tweenRes', function(width:Int, height:Int, duration:Float = 1, ease:String = 'linear', resizable:Bool = true)
+			return backend.ResolutionManager.tweenRes(width, height, duration, LuaUtils.getTweenEaseByString(ease), resizable));
+		set('TweenRes', function(width:Int, height:Int, duration:Float = 1, ease:String = 'linear', resizable:Bool = true)
+			return backend.ResolutionManager.tweenRes(width, height, duration, LuaUtils.getTweenEaseByString(ease), resizable));
+		set('tweenResFrom', function(fromWidth:Int, fromHeight:Int, toWidth:Int, toHeight:Int, duration:Float = 1, ease:String = 'linear', resizable:Bool = true)
+			return backend.ResolutionManager.tweenResFrom(fromWidth, fromHeight, toWidth, toHeight, duration, LuaUtils.getTweenEaseByString(ease), resizable));
+		set('cancelTweenRes', function() backend.ResolutionManager.cancelTweenRes());
 		set('preloadVideo', function(name:String) return LoadingState.preloadVideo(name) != null);
 		set('precacheVideo', function(name:String) return LoadingState.preloadVideo(name) != null);
 		set('getSongPosition', function() return Conductor.songPosition);
@@ -488,6 +603,15 @@ class HScript extends Iris {
 		set('ChangeFocus', function(target:String, x:Float = 0, y:Float = 0, ease:String = 'classic', steps:Float = 0) {
 			PlayState.instance?.changeFocus(target, x, y, ease, steps);
 		});
+		set('cameraZoom', function(zoom:Float, steps:Float = 0, ease:String = 'classic', type:String = 'nll') {
+			return PlayState.instance != null ? PlayState.instance.applyCameraZoom(zoom, steps, ease, type) : 0.0;
+		});
+		set('CameraZoom', function(zoom:Float, steps:Float = 0, ease:String = 'classic', type:String = 'nll') {
+			return PlayState.instance != null ? PlayState.instance.applyCameraZoom(zoom, steps, ease, type) : 0.0;
+		});
+		set('cameraZoomEvent', function(value1:String = '', value2:String = '') {
+			return PlayState.instance != null ? PlayState.instance.applyCameraZoomEvent(value1, value2) : 0.0;
+		});
 		set('changeIcon', function(icon:String, side:Int = 0) {
 			return PlayState.instance != null && PlayState.instance.changeHealthIcon(icon, side);
 		});
@@ -508,6 +632,274 @@ class HScript extends Iris {
 			if(side == null)
 				return PlayState.instance.setIconFrame(0, frame) && PlayState.instance.setIconFrame(1, frame);
 			return PlayState.instance.setIconFrame(side, frame);
+		});
+		var scriptVariables = function():Map<String, Dynamic> {
+			var vars:Map<String, Dynamic> = variableMap;
+			if(vars == null && FlxG.state != null)
+				vars = FlxG.state.extraData;
+			return vars;
+		};
+		var targetInstance = function():Dynamic {
+			return CustomSubstate.instance != null ? CustomSubstate.instance : LuaUtils.getTargetInstance();
+		};
+		var getObject = function(name:String):Dynamic {
+			if(name == null)
+				return null;
+			return LuaUtils.getObjectDirectly(name);
+		};
+		var makeLuaSprite = function(tag:String, image:String = null, x:Float = 0, y:Float = 0) {
+			if(tag == null)
+				return null;
+			tag = tag.replace('.', '');
+			LuaUtils.destroyObject(tag);
+			var spr:ModchartSprite = new ModchartSprite(x, y);
+			if(image != null && image.length > 0)
+				spr.loadGraphic(Paths.image(image));
+			scriptVariables()?.set(tag, spr);
+			spr.active = true;
+			return spr;
+		};
+		var makeAnimatedLuaSprite = function(tag:String, image:String = null, x:Float = 0, y:Float = 0, spriteType:String = 'auto') {
+			if(tag == null)
+				return null;
+			tag = tag.replace('.', '');
+			LuaUtils.destroyObject(tag);
+			var spr:ModchartSprite = new ModchartSprite(x, y);
+			if(image != null && image.length > 0)
+				LuaUtils.loadFrames(spr, image, spriteType);
+			scriptVariables()?.set(tag, spr);
+			spr.active = true;
+			return spr;
+		};
+		var addInstance = function(objectName:String, inFront:Bool = false) {
+			var obj:Dynamic = getObject(objectName);
+			var instance:Dynamic = targetInstance();
+			if(obj == null || instance == null || instance.add == null)
+				return false;
+
+			if(inFront)
+			{
+				instance.add(obj);
+				return true;
+			}
+
+			var gameover = substates.GameOverSubstate.instance;
+			var addToGameover:Bool = ((instance == PlayState.instance && PlayState.instance.isDead) || instance == gameover);
+			if(instance != PlayState.instance || addToGameover)
+			{
+				if(addToGameover && gameover != null)
+					gameover.insert(gameover.members.indexOf(gameover.boyfriend), obj);
+				else
+					instance.insert(0, obj);
+			}
+			else
+			{
+				var pos:Int = instance.members.indexOf(LuaUtils.getLowestCharacterGroup());
+				if(pos < 0) pos = 0;
+				instance.insert(pos, obj);
+			}
+			return true;
+		};
+		var addAnimByPrefix = function(objName:String, name:String, prefix:String, framerate:Float = 24, loop:Bool = true) {
+			var obj:Dynamic = getObject(objName);
+			if(obj == null)
+				return false;
+
+			if(obj.animation != null)
+			{
+				obj.animation.addByPrefix(name, prefix, framerate, loop);
+				if(obj.animation.curAnim == null)
+				{
+					if(obj.playAnim != null) obj.playAnim(name, true);
+					else obj.animation.play(name, true);
+				}
+				return true;
+			}
+			if(obj.anim != null)
+			{
+				obj.anim.addByPrefix(name, prefix, framerate, loop);
+				if(obj.hasActiveAtlasAnimation == null || !obj.hasActiveAtlasAnimation())
+				{
+					if(obj.playAnim != null) obj.playAnim(name, true);
+					else obj.anim.play(name, true);
+				}
+				return true;
+			}
+			return false;
+		};
+		set('getObject', getObject);
+		set('getObjectDirectly', getObject);
+		set('getProperty', function(variable:String, allowMaps:Bool = false)
+			return LuaUtils.getPropertyLoop(variable, allowMaps, parentState ?? FlxG.state));
+		set('setProperty', function(variable:String, value:Dynamic, allowMaps:Bool = false)
+			return LuaUtils.setPropertyLoop(variable, value, allowMaps, parentState ?? FlxG.state));
+		set('getPropertyFromClass', function(classVar:String, variable:String, allowMaps:Bool = false)
+			return LuaUtils.getPropertyLoop(variable, allowMaps, Type.resolveClass(classVar)));
+		set('setPropertyFromClass', function(classVar:String, variable:String, value:Dynamic, allowMaps:Bool = false)
+			return LuaUtils.setPropertyLoop(variable, value, allowMaps, Type.resolveClass(classVar)));
+		set('makeLuaSprite', makeLuaSprite);
+		set('makeSprite', makeLuaSprite);
+		set('makeAnimatedLuaSprite', makeAnimatedLuaSprite);
+		set('makeAnimatedSprite', makeAnimatedLuaSprite);
+		set('loadGraphic', function(variable:String, image:String, gridX:Int = 0, gridY:Int = 0) {
+			var obj:Dynamic = getObject(variable);
+			if(obj == null || image == null || image.length < 1)
+				return false;
+			obj.loadGraphic(Paths.image(image), (gridX != 0 || gridY != 0), gridX, gridY);
+			return true;
+		});
+		set('loadFrames', function(variable:String, image:String, spriteType:String = 'auto') {
+			var obj:FlxSprite = cast getObject(variable);
+			if(obj == null || image == null || image.length < 1)
+				return false;
+			LuaUtils.loadFrames(obj, image, spriteType);
+			return true;
+		});
+		set('setTileObject', TileFunctions.setTileObject);
+		set('setTiledObject', TileFunctions.setTileObject);
+		set('makeTileObject', TileFunctions.makeTileObject);
+		set('makeTiledLuaSprite', TileFunctions.makeTileObject);
+		set('makeAnimatedTileObject', TileFunctions.makeAnimatedTileObject);
+		set('makeAnimatedTiledLuaSprite', TileFunctions.makeAnimatedTileObject);
+		set('copyTileObject', TileFunctions.copyTileObject);
+		set('setTileVelocity', TileFunctions.setTileVelocity);
+		set('setTileMotion', TileFunctions.setTileMotion);
+		set('setTileAxes', TileFunctions.setTileAxes);
+		set('removeTileObject', TileFunctions.removeTileObject);
+		set('addGridBackdrop', TileFunctions.addGridBackdrop);
+		set('setBackdropVelocity', TileFunctions.setTileVelocity);
+		set('removeBackdrop', TileFunctions.removeTileObject);
+		set('makeGraphic', function(objName:String, width:Int = 256, height:Int = 256, color:String = 'FFFFFF') {
+			var spr:FlxSprite = cast getObject(objName);
+			if(spr == null)
+				return false;
+			spr.makeGraphic(width, height, CoolUtil.colorFromString(color));
+			return true;
+		});
+		var makeVignetteFunc = function(objName:String, width:Int = 0, height:Int = 0, color:String = '000000', strength:Float = 1, radius:Float = 0.55, softness:Float = 0.45) {
+			var spr:FlxSprite = cast getObject(objName);
+			if(spr == null)
+				return false;
+			if(Std.isOfType(spr, objects.VVIESpriteHandler))
+				cast(spr, objects.VVIESpriteHandler).makeVignette(width, height, CoolUtil.colorFromString(color), strength, radius, softness);
+			else
+				spr.loadGraphic(backend.VignetteUtil.makeGraphic(width, height, CoolUtil.colorFromString(color), strength, radius, softness));
+			return true;
+		};
+		set('makeVignette', makeVignetteFunc);
+		set('makeVig', makeVignetteFunc);
+		set('getWindowWidth', function(pixels:Bool = false):Int return pixels ? backend.VignetteUtil.windowPixelWidth() : backend.VignetteUtil.windowWidth());
+		set('getWindowHeight', function(pixels:Bool = false):Int return pixels ? backend.VignetteUtil.windowPixelHeight() : backend.VignetteUtil.windowHeight());
+		set('addLuaSprite', addInstance);
+		set('addInstance', addInstance);
+		set('addLuaAtlas', addInstance);
+		set('addAtlas', addInstance);
+		set('addLuaAtlasSprite', addInstance);
+		set('removeLuaSprite', function(tag:String, destroy:Bool = true, group:String = null) {
+			var obj:Dynamic = getObject(tag);
+			if(obj == null || obj.destroy == null)
+				return false;
+			var groupObj:Dynamic = group == null ? null : getObject(group);
+			if(groupObj != null && groupObj.remove != null)
+				groupObj.remove(obj, true);
+			else
+				targetInstance()?.remove(obj, true);
+			if(destroy)
+			{
+				scriptVariables()?.remove(tag);
+				obj.destroy();
+			}
+			return true;
+		});
+		set('luaSpriteExists', function(tag:String) {
+			var obj:Dynamic = scriptVariables()?.get(tag);
+			return obj != null && (Std.isOfType(obj, ModchartSprite) #if flxanimate || Std.isOfType(obj, ModchartAnimateSprite) #end);
+		});
+		set('addAnimationByPrefix', addAnimByPrefix);
+		set('addAnim', addAnimByPrefix);
+		set('addAnimation', function(obj:String, name:String, frames:Any, framerate:Float = 24, loop:Bool = true)
+			return LuaUtils.addAnimByIndices(obj, name, null, frames, framerate, loop));
+		set('addAnimationByIndices', function(obj:String, name:String, prefix:String, indices:Any, framerate:Float = 24, loop:Bool = false)
+			return LuaUtils.addAnimByIndices(obj, name, prefix, indices, framerate, loop));
+		var playAnimFunction = function(objName:String, name:String, forced:Bool = false, reverse:Bool = false, startFrame:Int = 0) {
+			var obj:Dynamic = getObject(objName);
+			if(obj == null)
+				return false;
+			if(Std.isOfType(obj, objects.Character) && name != null && name.startsWith('sing') && LuaUtils.currentCallbackIsSustainNote())
+				return cast(obj, objects.Character).playSingAnimation(name, true);
+			if(obj.playAnim != null) obj.playAnim(name, forced, reverse, startFrame);
+			else if(obj.anim != null) obj.anim.play(name, forced, reverse, startFrame);
+			else obj.animation.play(name, forced, reverse, startFrame);
+			return true;
+		};
+		set('playAnim', playAnimFunction);
+		set('objectPlayAnimation', playAnimFunction);
+		set('addOffset', function(objName:String, anim:String, x:Float, y:Float) {
+			var obj:Dynamic = getObject(objName);
+			if(obj != null && obj.addOffset != null)
+			{
+				obj.addOffset(anim, x, y);
+				return true;
+			}
+			return false;
+		});
+		set('setScrollFactor', function(objName:String, scrollX:Float = 0, scrollY:Float = 0) {
+			var obj:Dynamic = getObject(objName);
+			if(obj != null)
+			{
+				obj.scrollFactor.set(scrollX, scrollY);
+				return true;
+			}
+			return PlayState.instance != null && PlayState.instance.queueExtraCharacterScroll(objName, scrollX, scrollY);
+		});
+		set('setGraphicSize', function(objName:String, x:Float, y:Float = 0, updateHitbox:Bool = true) {
+			var obj:Dynamic = getObject(objName);
+			if(obj == null)
+				return false;
+			obj.setGraphicSize(x, y);
+			if(updateHitbox) obj.updateHitbox();
+			return true;
+		});
+		set('scaleObject', function(objName:String, x:Float, y:Float, updateHitbox:Bool = true) {
+			var obj:Dynamic = getObject(objName);
+			if(obj == null)
+				return false;
+			obj.scale.set(x, y);
+			if(updateHitbox) obj.updateHitbox();
+			return true;
+		});
+		set('updateHitbox', function(objName:String) {
+			var obj:Dynamic = getObject(objName);
+			if(obj == null)
+				return false;
+			obj.updateHitbox();
+			return true;
+		});
+		set('setObjectCamera', function(objName:String, camera:String = 'game') {
+			var obj:FlxBasic = cast getObject(objName);
+			if(obj == null)
+				return false;
+			obj.cameras = [LuaUtils.cameraFromString(camera)];
+			return true;
+		});
+		set('setBlendMode', function(objName:String, blend:String = '') {
+			var obj:FlxSprite = cast getObject(objName);
+			if(obj == null)
+				return false;
+			obj.blend = LuaUtils.blendModeFromString(blend);
+			return true;
+		});
+		set('screenCenter', function(objName:String, pos:String = 'xy') {
+			var obj:FlxObject = cast getObject(objName);
+			if(obj == null)
+				return false;
+			obj.screenCenter(switch(pos == null ? 'xy' : pos.trim().toLowerCase()) {
+				case 'none': flixel.util.FlxAxes.NONE;
+				case 'x': flixel.util.FlxAxes.X;
+				case 'y': flixel.util.FlxAxes.Y;
+				default: flixel.util.FlxAxes.XY;
+			});
+			return true;
 		});
 		#if VIDEOS_ALLOWED
 		function getVideoObject(tag:String):objects.VideoSprite
@@ -777,7 +1169,19 @@ class HScript extends Iris {
 		set('modVersion', MainMenuState.modVersion.trim());
 		set('modFolder', this.modFolder);
 
-		set('buildTarget', LuaUtils.getBuildTarget());
+		set('actualBuildTarget', LuaUtils.getBuildTarget());
+		set('buildTarget', LuaUtils.getScriptBuildTarget());
+		set('mobileBuild', LuaUtils.isMobileBuild());
+		set('isMobile', LuaUtils.isMobileBuild());
+		set('mobile', LuaUtils.isMobileBuild());
+		set('actualMobileBuild', backend.DeveloperMode.actualMobileBuild());
+		set('simulatedMobile', backend.DeveloperMode.mobileSimulation);
+		set('developerMobile', backend.DeveloperMode.mobileSimulation);
+		set('isMobileBuild', function():Bool return backend.DeveloperMode.isMobileLike());
+		set('isActualMobileBuild', function():Bool return backend.DeveloperMode.actualMobileBuild());
+		set('isMobileSimulation', function():Bool return backend.DeveloperMode.mobileSimulation);
+		set('getRuntimeBuildTarget', function():String return backend.DeveloperMode.getScriptBuildTarget());
+		set('getActualBuildTarget', function():String return backend.DeveloperMode.getActualBuildTarget());
 		set('customSubstate', CustomSubstate.instance);
 		set('customSubstateName', CustomSubstate.name);
 
@@ -797,6 +1201,70 @@ class HScript extends Iris {
 			Iris.print(Std.string(v), pos);
 		}));
 		#end
+	}
+
+	static function normalizeCompatScript(code:String):String
+	{
+		if(code == null)
+			return null;
+
+		// NMV/Codename stages sometimes use spr.scrollFactor(x, y) as shorthand.
+		code = ~/\.scrollFactor\s*\(/g.replace(code, '.scrollFactor.set(');
+		return code;
+	}
+
+	function callInitialCallbacks():Void
+	{
+		if (exists('onLoad'))
+			call('onLoad');
+		if (exists('onCreate'))
+			call('onCreate');
+	}
+
+	static function getCompatZIndex(obj:Dynamic):Int
+	{
+		if(obj == null)
+			return 0;
+
+		var value:Dynamic = null;
+		try value = Reflect.getProperty(obj, 'zIndex') catch(e:Dynamic) {}
+
+		if(value == null && Std.isOfType(obj, FlxBasic))
+		{
+			var basic:FlxBasic = cast obj;
+			if(basic.hasVar('zIndex'))
+				value = basic.getVar('zIndex');
+		}
+
+		if(value == null)
+			return 0;
+		return Std.int(value);
+	}
+
+	static function refreshZTarget(?target:Dynamic = null, ?state:FlxState = null):Dynamic
+	{
+		if(target == null)
+			target = state ?? FlxG.state;
+		if(target == null)
+			return null;
+
+		var members:Dynamic = Reflect.getProperty(target, 'members');
+		if(!Std.isOfType(members, Array))
+			return target;
+
+		var list:Array<Dynamic> = cast members;
+		var indexed:Array<Dynamic> = [];
+		for(i in 0...list.length)
+			indexed.push({index: i, member: list[i]});
+
+		indexed.sort(function(a:Dynamic, b:Dynamic):Int {
+			var z:Int = getCompatZIndex(a.member) - getCompatZIndex(b.member);
+			return z != 0 ? z : Std.int(a.index - b.index);
+		});
+
+		for(i in 0...indexed.length)
+			list[i] = indexed[i].member;
+		return target;
 	}
 	
 	public function getParent():Dynamic {
@@ -947,6 +1415,38 @@ class HScript extends Iris {
 	}
 	#end
 
+	function resolveScriptValue(path:String):Dynamic
+	{
+		if(path == null || interp == null)
+			return null;
+
+		var parts:Array<String> = path.split('.');
+		if(parts.length < 2)
+			return interp.variables.get(path);
+		if(!interp.variables.exists(parts[0]))
+			return null;
+
+		var value:Dynamic = interp.variables.get(parts[0]);
+		for(i in 1...parts.length)
+		{
+			if(value == null)
+				return null;
+			value = Reflect.getProperty(value, parts[i]);
+		}
+		return value;
+	}
+
+	override public function exists(field:String):Bool
+	{
+		if(super.exists(field))
+			return true;
+
+		if(field == null || field.indexOf('.') < 0)
+			return false;
+
+		return Reflect.isFunction(resolveScriptValue(field));
+	}
+
 	override function call(funcToRun:String, ?args:Array<Dynamic>):IrisCall {
 		if (funcToRun == null || interp == null) return null;
 
@@ -958,12 +1458,13 @@ class HScript extends Iris {
 		LuaUtils.lastCalledHScript = this;
 		
 		try {
-			var func:Dynamic = interp.variables.get(funcToRun); // function signature
+			var func:Dynamic = resolveScriptValue(funcToRun); // function signature
 			final ret = Reflect.callMethod(null, func, args ?? []);
 			
 			LuaUtils.lastCalledHScript = null;
 			return {funName: funcToRun, signature: func, returnValue: ret};
 		} catch(e:Dynamic) {
+			LuaUtils.lastCalledHScript = null;
 			catchError(this, e, funcToRun);
 		}
 		
@@ -998,10 +1499,26 @@ class HScript extends Iris {
 	}
 
 	override public function destroy() {
+		#if HSCRIPT_ALLOWED
+		if(LuaUtils.lastCalledHScript == this)
+			LuaUtils.lastCalledHScript = null;
+		#end
+		removeIrisInstanceAlias(filePath);
+		removeIrisInstanceAlias(origin);
+		removeIrisInstanceAlias(name);
 		origin = null;
 		closed = true;
 		#if LUA_ALLOWED parentLua = null; #end
 		super.destroy();
+	}
+
+	public function isReady():Bool
+		return !closed && interp != null;
+
+	function removeIrisInstanceAlias(alias:String):Void
+	{
+		if(alias != null && alias.length > 0 && Iris.instances.get(alias) == this)
+			Iris.instances.remove(alias);
 	}
 
 	function set_varsToBring(values:Any) {
@@ -1102,8 +1619,12 @@ class CustomInterp extends crowplexus.hscript.Interp {
 		if (o == null)
 			error(EInvalidAccess(id));
 		
+		var hadField:Bool = LuaUtils.hasField(o, id);
 		try {
 			Reflect.setProperty(o, id, v);
+			if (!hadField && o is FlxBasic) {
+				cast(o, FlxBasic).setVar(id, v);
+			}
 		} catch (e:Dynamic) {
 			if (o.setVar != null) {
 				o.setVar(id, v);

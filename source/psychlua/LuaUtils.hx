@@ -552,27 +552,13 @@ class LuaUtils
 	}
 
 	public static function getBuildTarget():String
-	{
-		#if windows
-		#if x86_BUILD
-		return 'windows_x86';
-		#else
-		return 'windows';
-		#end
-		#elseif linux
-		return 'linux';
-		#elseif mac
-		return 'mac';
-		#elseif html5
-		return 'browser';
-		#elseif android
-		return 'android';
-		#elseif switch
-		return 'switch';
-		#else
-		return 'unknown';
-		#end
-	}
+		return backend.DeveloperMode.getActualBuildTarget();
+
+	public static function getScriptBuildTarget():String
+		return backend.DeveloperMode.getScriptBuildTarget();
+
+	public static inline function isMobileBuild():Bool
+		return backend.DeveloperMode.isMobileLike();
 	
 	public static function scriptTrace(text:String, ignoreCheck:Bool = false, deprecated:Bool = false, ?color:FlxColor, ?level:LogType) {
 		if (ignoreCheck || getBool('luaDebugMode')) {
@@ -592,6 +578,10 @@ class LuaUtils
 		
 		#if HSCRIPT_ALLOWED
 		if (lastCalledHScript != null) {
+			if (!lastCalledHScript.isReady()) {
+				lastCalledHScript = null;
+				return false;
+			}
 			if (lastCalledHScript.parentLua != null) {
 				luaScript = lastCalledHScript.parentLua;
 			} else {
@@ -612,7 +602,12 @@ class LuaUtils
 		
 		return (result == 'true');
 		#elseif HSCRIPT_ALLOWED
-		return (lastCalledHScript?.get(variable) == true);
+		if(lastCalledHScript == null || !lastCalledHScript.isReady())
+		{
+			lastCalledHScript = null;
+			return false;
+		}
+		return (lastCalledHScript.get(variable) == true);
 		#else
 		return false;
 		#end

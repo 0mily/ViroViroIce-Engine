@@ -3,17 +3,24 @@ Mily_0 :: mily :: Dona, Principal coder e umas coisa aí da viroviro :: https://
 Shiho :: missing_icon :: Co-Owner, shihotastica (inserir algo de verdade depois) :: https://linktr.ee/xdshiho :: ffffff
 
 Contribuidores da Engine
-Emily & Bidu :: missing_icon :: Dropshadow Editor :: https://linktr.ee/xdshiho :: ffffff
-Will :: missing_icon :: neat!!! Sprite :: https://linktr.ee/xdshiho :: ffffff
+Emilly (aka Krystal) :: missing_icon :: Dropshadow Editor :: https://x.com/emillybidu :: ffffff
+Will :: missing_icon :: A definir :: https://linktr.ee/xdshiho :: ffffff
+Ryan_sdjr :: missing_icon :: A definir :: https://x.com/Ryan_sdjr :: ffffff
+Kevin :: missing_icon :: A definir :: https://x.com/KSaint22 :: ffffff
 
 Agradecimentos Especiais!
 emi3 :: vi :: Criou a Psych Engine Mint, o fork de Psych que usamos de base antes de se tornar uma engine própria. Obrigada. :: https://x.com/fnfin3d :: 82CDE3
-DuskieWhy :: duskie :: Criou a Nightmare Vision e é também nossa principal inspiração. :: https://x.com/DuskieWhy :: A8324A
+DuskieWhy :: duskie :: Criou a Nightmare Vision e é também a engine principal da qual estamos derivando. :: https://x.com/DuskieWhy :: A8324A
 Shadow Mario :: shadowmario :: Criou a Psych Engine e toda a API de Lua e os krl, tmj :: https://ko-fi.com/shadowmario :: 444444
 Funkin' Crew :: fnf :: Criou uhm, o jogo, tlgd? :: https://funkin.me/ :: 378FC7
+Mihai Alexandru :: mihai :: Criou o flxgif. :: https://github.com/MAJigsaw77 :: 4287F5
+Polybius Proxy :: poly :: Criou Hxcodec (propósito de creditar) :: https://github.com/polybiusproxy/hxCodec :: 5165F6
 Kenas_ :: kenas :: Compositor de TODAS as músicas originais da engine :3 :: https://linktr.ee/KenasFX :: 4C409A
+Unholywanderer04 :: unholy :: Elu uhm elu tava aqui tb :: https://x.com/Unholy_wanderer :: 82CDE3
 maybeMaru :: missing_icon :: Criador do Moonchart e do Flixel-Animate (I LOVE YOU.) :: https://x.com/maybemaru_ :: 6ede0b
+Stoopid :: potato :: Fez o render original da classificação "Neat!!!" antes do reajuste da Mily :: https://x.com/SillyPotato :: CDCDCD
 Infry :: infry :: o treco dos Lil' Buddies :: https://x.com/Infry20 :: 8d00df
+Paige :: paige :: BUTTONS ARRAY :: https://x.com/paigeypaper :: d8b073
 
 Apoie os originais!
 Psych Engine Mint Discord :: discordmint :: :: https://discord.gg/nGcTH6vNVR :: 5165F6

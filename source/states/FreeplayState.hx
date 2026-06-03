@@ -52,6 +52,7 @@ class FreeplayState extends ScriptedState
 	var bottomBG:FlxSprite;
 
 	var player:MusicPlayer;
+	var mobileDragRemainder:Float = 0;
 
 	function refreshShitScript():Void {
 		var songName:String = (songs != null && songs.length > 0 && curSelected >= 0 && curSelected < songs.length) ? songs[curSelected].songName : null;
@@ -328,6 +329,13 @@ class FreeplayState extends ScriptedState
 				{
 					FlxG.sound.play(Paths.sound('scrollMenu'), 0.2);
 					changeSelection(-shiftMult * FlxG.mouse.wheel, false);
+				}
+
+				var mobileDragChange:Int = consumeMobileSongDrag();
+				if(mobileDragChange != 0)
+				{
+					changeSelection(mobileDragChange, false);
+					holdTime = 0;
 				}
 			}
 
@@ -635,6 +643,32 @@ class FreeplayState extends ScriptedState
 			callOnScripts('onHighlightedPost', [songs[curSelected].songName, curSelected]);
 			callOnScriptsExt('onSelectItemPost', [next], [songs[next], next]);
 		}
+	}
+
+	function consumeMobileSongDrag():Int
+	{
+		if(!backend.DeveloperMode.isMobileLike())
+			return 0;
+
+		if(TouchUtil.justPressed)
+			mobileDragRemainder = 0;
+
+		var change:Int = 0;
+		if(TouchUtil.pressed && Math.abs(TouchUtil.deltaViewY) >= Math.abs(TouchUtil.deltaViewX))
+		{
+			mobileDragRemainder -= TouchUtil.deltaViewY;
+			var threshold:Float = 70;
+			if(Math.abs(mobileDragRemainder) >= threshold)
+			{
+				change = Std.int(mobileDragRemainder / threshold);
+				mobileDragRemainder -= change * threshold;
+			}
+		}
+
+		if(TouchUtil.justReleased)
+			mobileDragRemainder = 0;
+
+		return change;
 	}
 
 	inline private function _updateSongLastDifficulty()

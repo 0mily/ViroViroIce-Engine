@@ -243,6 +243,13 @@ class MusicBeatSubstate extends flixel.FlxSubState {
 	
 	public override function update(elapsed:Float) {
 		ScreenshotUtil.updateInput();
+		DeveloperMode.update();
+
+		if(FlxG.keys.justPressed.F9 && DeveloperMode.openPickerAllowed())
+		{
+			openSubState(new substates.DeveloperModeSubState());
+			return;
+		}
 
 		if(FlxG.keys.justPressed.F12 && FlxG.keys.pressed.CONTROL)
 		{

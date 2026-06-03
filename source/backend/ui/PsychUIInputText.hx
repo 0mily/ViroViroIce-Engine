@@ -381,6 +381,12 @@ class PsychUIInputText extends FlxSpriteGroup
 		focusOn = null;
 
 	public var unfocus:Void->Void;
+	public static function clearInvalidFocus():Void
+	{
+		if(focusOn != null && (!focusOn.exists || !focusOn.active || !focusOn.visible || focusOn.textObj == null || !focusOn.textObj.exists))
+			focusOn = null;
+	}
+
 	public static function set_focusOn(v:PsychUIInputText)
 	{
 		if (focusOn != v && focusOn != null && focusOn.exists) {
@@ -393,14 +399,26 @@ class PsychUIInputText extends FlxSpriteGroup
 		return focusOn = v;
 	}
 
+	public static function getInputCamera(preferred:FlxCamera):FlxCamera
+	{
+		if(preferred != null && preferred.exists && preferred.scroll != null)
+			return preferred;
+		if(FlxG.camera != null && FlxG.camera.exists && FlxG.camera.scroll != null)
+			return FlxG.camera;
+		return null;
+	}
+
 	override function update(elapsed:Float)
 	{
-		super.update(elapsed);
-
-		if(textObj == null || !textObj.exists || behindText == null || !behindText.exists)
+		if(!exists)
 			return;
 
-		var inputCamera:FlxCamera = camera != null ? camera : FlxG.camera;
+		super.update(elapsed);
+
+		if(textObj == null || !textObj.exists || textObj.scrollFactor == null || behindText == null || !behindText.exists || behindText.scrollFactor == null || _boundaries == null)
+			return;
+
+		var inputCamera:FlxCamera = getInputCamera(camera);
 		if(inputCamera == null)
 			return;
 
@@ -413,8 +431,14 @@ class PsychUIInputText extends FlxSpriteGroup
 				focusOn = this;
 				caretIndex = 0;
 				var lastBound:Float = 0;
-				var textObjX:Float = textObj.getScreenPosition(inputCamera).x;
-				var mousePosX:Float = FlxG.mouse.getViewPosition(inputCamera).x;
+				if(textObj.scrollFactor == null || inputCamera.scroll == null || textObj.textField == null)
+					return;
+				var textObjPosition = textObj.getScreenPosition(null, inputCamera);
+				var textObjX:Float = textObjPosition.x;
+				textObjPosition.put();
+				var mousePosition = FlxG.mouse.getViewPosition(inputCamera);
+				var mousePosX:Float = mousePosition.x;
+				mousePosition.put();
 				var txtX:Float = textObjX - textObj.textField.scrollH;
 
 				for (i => bound in _boundaries)

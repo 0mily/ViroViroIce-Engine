@@ -1,0 +1,38 @@
+{
+	"image": "NOTE_assets-future",
+	"fps": 24,
+	"offsets_static": {
+		"left": [0, 0],
+		"down": [0, 0],
+		"up": [0, 0],
+		"right": [0, 0]
+	},
+	"offsets_static_press": {
+		"left": [0, 0],
+		"down": [0, 0],
+		"up": [0, 0],
+		"right": [0, 0]
+	},
+	"offsets_notes": {
+		"left": [0, 0],
+		"down": [0, 0],
+		"up": [0, 0],
+		"right": [0, 0]
+	},
+	"offsets_sustain": {
+		"left": [0, 0],
+		"down": [0, 0],
+		"up": [0, 0],
+		"right": [0, 0]
+	},
+	"offsets_sustain_end": {
+		"left": [0, 0],
+		"down": [0, 0],
+		"up": [0, 0],
+		"right": [0, 0]
+	},
+	"properties": {
+		"allowRGB": true,
+		"antialiasing": true
+	}
+}

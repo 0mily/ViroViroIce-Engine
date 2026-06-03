@@ -49,6 +49,7 @@ class StoryMenuState extends ScriptedState
 	var rightArrow:FlxSprite;
 
 	var loadedWeeks:Array<WeekData> = [];
+	var mobileDragRemainder:Float = 0;
 
 	function setStoryValue(variable:String, value:Dynamic):Void
 	{
@@ -343,6 +344,15 @@ class StoryMenuState extends ScriptedState
 				changeDifficulty();
 			}
 
+			var mobileDragChange:Int = consumeMobileWeekDrag();
+			if(mobileDragChange != 0)
+			{
+				FlxG.sound.play(Paths.sound('scrollMenu'), 0.4);
+				changeWeek(mobileDragChange);
+				changeDifficulty();
+				changeDiff = true;
+			}
+
 			if (controls.UI_RIGHT) {
 				rightArrow.animation.play('press');
 			} else {
@@ -397,6 +407,32 @@ class StoryMenuState extends ScriptedState
 		}
 		
 		postUpdate(elapsed);
+	}
+
+	function consumeMobileWeekDrag():Int
+	{
+		if(!backend.DeveloperMode.isMobileLike())
+			return 0;
+
+		if(TouchUtil.justPressed)
+			mobileDragRemainder = 0;
+
+		var change:Int = 0;
+		if(TouchUtil.pressed && Math.abs(TouchUtil.deltaViewY) >= Math.abs(TouchUtil.deltaViewX))
+		{
+			mobileDragRemainder -= TouchUtil.deltaViewY;
+			var threshold:Float = 80;
+			if(Math.abs(mobileDragRemainder) >= threshold)
+			{
+				change = Std.int(mobileDragRemainder / threshold);
+				mobileDragRemainder -= change * threshold;
+			}
+		}
+
+		if(TouchUtil.justReleased)
+			mobileDragRemainder = 0;
+
+		return change;
 	}
 
 	var movedBack:Bool = false;

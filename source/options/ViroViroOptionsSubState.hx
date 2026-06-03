@@ -42,15 +42,21 @@ class ViroViroOptionsSubState extends BaseOptionsMenu
 			KEYBIND);
 		addOption(option);
 
+		var option:Option = new Option('Multithreaded Loading',
+			'Loads assets on worker threads. FUCKING EXPERIMENTAL.',
+			'multithreadedLoading',
+			BOOL);
+		addOption(option);
+
 		/*var option:Option = new Option('Custom Score',
 			'Disables the default score text and enables the custom one, which can be edited with a Script.lua.',
 			'customScore',
 			BOOL);
 		addOption(option);*/
 
-        var option:Option = new Option('Extra',
-			'Eles estao de olho em nois da silva.',
-			'extra',
+        var option:Option = new Option('Developer Mode',
+			'Enables developer-only tools. Press F9 in any state to restart as PC or Mobile.',
+			'developerMode',
 			BOOL);
 		addOption(option);
 

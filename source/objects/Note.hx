@@ -2,12 +2,16 @@ package objects;
 
 import backend.animation.PsychAnimationController;
 import backend.NoteTypesConfig;
+import backend.PsychCamera;
 
 import shaders.RGBPalette;
 import shaders.RGBPalette.RGBShaderReference;
 
 import objects.StrumNote;
+import objects.NoteSkinData.NoteSkinConfig;
+import objects.NoteSkinData.NoteSkinOffset;
 
+import flixel.group.FlxGroup.FlxTypedGroup;
 import flixel.math.FlxRect;
 
 using StringTools;
@@ -53,7 +57,7 @@ class Note extends FlxSprite
 	public var strumTime:Float = 0;
 	public var noteData:Int = 0;
 
-	public var mustPress:Bool = false;
+	public var mustPress(default, set):Bool = false;
 	public var canBeHit:Bool = false;
 	public var tooLate:Bool = false;
 
@@ -84,6 +88,7 @@ class Note extends FlxSprite
 	public var eventVal2:String = '';
 
 	public var rgbShader:RGBShaderReference;
+	public var useRGBShader(default, set):Bool = true;
 	public static var globalRgbShaders:Array<RGBPalette> = [];
 	public var inEditor:Bool = false;
 	
@@ -99,7 +104,7 @@ class Note extends FlxSprite
 	public static var swagWidth:Float = 160 * 0.7;
 	public static var dirArray:Array<String> = ['left', 'down', 'up', 'right'];
 	public static var colArray:Array<String> = ['purple', 'blue', 'green', 'red'];
-	public static var defaultNoteSkin(default, never):String = 'noteSkins/NOTE_assets';
+	public static var defaultNoteSkin(default, never):String = 'noteskins/notes/NOTE_assets';
 
 	public var noteSplashData:NoteSplashData = {
 		disabled: false,
@@ -132,9 +137,15 @@ class Note extends FlxSprite
 	public var ratingMod:Float = 0; //9 = unknown, 0.25 = shit, 0.5 = bad, 0.75 = good, 1 = sick
 	public var ratingDisabled:Bool = false;
 	public var noteSplash:NoteSplash = null;
+	public var playField(get, never):FlxTypedGroup<StrumNote>;
 	
 	public var loadedTexture:String = null;
 	public var texture(default, set):String = null;
+	public var skinConfig:NoteSkinConfig = null;
+	var skinOffsetX:Float = 0;
+	var skinOffsetY:Float = 0;
+	var skinOffsetAngle:Float = 0;
+	public var rgbOverride:Null<FlxColor> = null;
 
 	public var noAnimation:Bool = false;
 	public var noMissAnimation:Bool = false;
@@ -154,9 +165,67 @@ class Note extends FlxSprite
 			return ClientPrefs.data.hitsoundVolume;
 		return hitsoundForce ? hitsoundVolume : 0.0;
 	}
+
+	function get_playField():FlxTypedGroup<StrumNote>
+	{
+		if(PlayState.instance == null)
+			return null;
+		return mustPress ? PlayState.instance.playerStrums : PlayState.instance.opponentStrums;
+	}
 	public var hitsound:String = 'hitsound';
 	
 	public var section:Int = 0;
+
+	static var nmvNoteSkinCache:Map<String, Dynamic> = new Map();
+
+	public static function resolveNoteSkinPath(skin:String, player:Int = 1):String
+	{
+		return NoteSkinData.resolveNoteSkinPath(skin, player);
+	}
+
+	static function getNMVNoteSkinData(skin:String):Dynamic
+	{
+		var key:String = skin.replace('\\', '/').trim();
+		if(key.startsWith('noteskins/'))
+			key = key.substr('noteskins/'.length);
+		if(key.endsWith('.json'))
+			key = key.substr(0, key.length - '.json'.length);
+		if(key.length < 1)
+			return null;
+
+		if(nmvNoteSkinCache.exists(key))
+			return nmvNoteSkinCache.get(key);
+
+		var data:Dynamic = null;
+		try
+		{
+			var raw:String = Paths.getTextFromFile('noteskins/$key.json');
+			if(raw != null && raw.trim().length > 0)
+				data = tjson.TJSON.parse(raw);
+		}
+		catch(e:Dynamic) {}
+
+		nmvNoteSkinCache.set(key, data);
+		return data;
+	}
+
+	static function readNoteSkinString(data:Dynamic, field:String):String
+	{
+		if(data == null || field == null || !Reflect.hasField(data, field))
+			return null;
+
+		var value:Dynamic = Reflect.field(data, field);
+		return value != null ? Std.string(value) : null;
+	}
+
+	function set_mustPress(value:Bool):Bool
+	{
+		var changed:Bool = mustPress != value;
+		mustPress = value;
+		if(changed && noteData > -1 && texture != null && animation != null)
+			reloadNote(texture);
+		return value;
+	}
 
 	private function set_texture(value:String):String {
 		if(texture != value) {
@@ -176,6 +245,13 @@ class Note extends FlxSprite
 
 	public function defaultRGB()
 	{
+		if (!useRGBShader)
+		{
+			if (rgbShader != null)
+				rgbShader.enabled = false;
+			return;
+		}
+
 		var arr:Array<FlxColor> = ClientPrefs.data.arrowRGB[noteData];
 		if(PlayState.isPixelStage) arr = ClientPrefs.data.arrowRGBPixel[noteData];
 
@@ -191,11 +267,67 @@ class Note extends FlxSprite
 			rgbShader.g = 0xFF00FF00;
 			rgbShader.b = 0xFF0000FF;
 		}
+		rgbShader.enabled = true;
+		applyRGBOverride();
+	}
+
+	public function setRGBOverride(color:Null<FlxColor>):Void
+	{
+		rgbOverride = color;
+		if (rgbOverride == null)
+			defaultRGB();
+		else
+		{
+			useRGBShader = true;
+			applyRGBOverride();
+		}
+	}
+
+	public function applyRGBOverride():Void
+	{
+		if (rgbShader == null)
+			return;
+
+		if (!useRGBShader)
+		{
+			rgbShader.enabled = false;
+			return;
+		}
+
+		if (rgbOverride == null)
+			return;
+
+		rgbShader.enabled = true;
+		rgbShader.r = rgbOverride;
+		rgbShader.g = rgbOverride;
+		rgbShader.b = rgbOverride;
+	}
+
+	function set_useRGBShader(value:Bool):Bool
+	{
+		useRGBShader = value;
+		if (noteSplashData != null)
+			noteSplashData.useRGBShader = value;
+
+		if (rgbShader == null)
+			return value;
+
+		if (!value)
+		{
+			rgbOverride = null;
+			rgbShader.enabled = false;
+		}
+		else if (rgbOverride != null)
+			applyRGBOverride();
+		else
+			defaultRGB();
+
+		return value;
 	}
 
 	private function set_noteType(value:String):String {
 		if(noteData > -1 && noteType != value) {
-			noteSplashData.texture = PlayState.SONG != null ? PlayState.SONG.splashSkin : 'noteSplashes/noteSplashes';
+			noteSplashData.texture = PlayState.SONG != null ? PlayState.SONG.splashSkin : NoteSplash.defaultNoteSplash;
 			defaultRGB();
 			
 			switch(value) {
@@ -213,7 +345,7 @@ class Note extends FlxSprite
 					// splash data and colors
 					noteSplashData.r = 0xFFFF0000;
 					noteSplashData.g = 0xFF101010;
-					noteSplashData.texture = 'noteSplashes/noteSplashes-electric';
+					noteSplashData.texture = NoteSplash.resolveSplashPath('Electric');
 
 					// gameplay data
 					lowPriority = true;
@@ -230,6 +362,7 @@ class Note extends FlxSprite
 					gfNote = true;
 			}
 			if (value != null && value.length > 1) NoteTypesConfig.applyNoteTypeData(this, value);
+			applyNoteSkinProperties();
 			if (hitsound != 'hitsound' && hitsoundVolume > 0) Paths.sound(hitsound); //precache new sound for being idiot-proof
 		}
 		return noteType = value;
@@ -263,7 +396,7 @@ class Note extends FlxSprite
 		if(noteData > -1)
 		{
 			rgbShader = new RGBShaderReference(this, initializeGlobalRGBShader(noteData));
-			if(PlayState.SONG != null && PlayState.SONG.disableNoteRGB) rgbShader.enabled = false;
+			if(PlayState.SONG != null && PlayState.SONG.disableNoteRGB) useRGBShader = false;
 			texture = '';
 			
 			x += swagWidth * (noteData);
@@ -290,9 +423,11 @@ class Note extends FlxSprite
 			if (prevNote.isSustainNote) {
 				prevNote.isSustainEnd = false;
 				prevNote.animation.play(colArray[prevNote.noteData % colArray.length] + 'hold');
+				prevNote.applyNoteSkinOffsets();
 			}
 			
 			isSustainEnd = true;
+			applyNoteSkinOffsets();
 			earlyHitMult = 0;
 		}
 		else if(!isSustainNote)
@@ -340,6 +475,7 @@ class Note extends FlxSprite
 			if (skin == null || skin.length < 1)
 				skin = defaultNoteSkin + postfix;
 		}
+		skin = resolveNoteSkinPath(skin, mustPress ? 1 : 0);
 
 		var animName:String = animation.curAnim?.name;
 		
@@ -363,16 +499,18 @@ class Note extends FlxSprite
 		}
 		
 		if (validSkin != null) {
-			loadedTexture = validSkin;
+			var actualSkin:String = '$validSkin$skinPostfix';
+			loadedTexture = actualSkin;
+			skinConfig = NoteSkinData.getNoteConfigForImage(actualSkin);
 			
 			if (PlayState.isPixelStage) {
 				if(isSustainNote) {
-					loadGraphic(Paths.image('${validSkin}ENDS$skinPostfix'));
+					loadGraphic(Paths.image(getPixelSustainSkinPath(validSkin, skinPostfix)));
 					width = width / 4;
 					height = height / 2;
 					loadGraphic(graphic, true, Math.floor(width), Math.floor(height));
 				} else {
-					loadGraphic(Paths.image('$validSkin$skinPostfix'));
+					loadGraphic(Paths.image(actualSkin));
 					width = width / 4;
 					height = height / 5;
 					loadGraphic(graphic, true, Math.floor(width), Math.floor(height));
@@ -382,7 +520,7 @@ class Note extends FlxSprite
 				
 				scale.set(PlayState.daPixelZoom, PlayState.daPixelZoom);
 			} else {
-				frames = Paths.getSparrowAtlas('$validSkin$skinPostfix');
+				frames = Paths.getSparrowAtlas(actualSkin);
 				loadNoteAnims();
 				if(!isSustainNote)
 				{
@@ -392,10 +530,31 @@ class Note extends FlxSprite
 			}
 			
 			updateHitbox();
+			applyNoteSkinOffsets();
+			applyNoteSkinProperties();
 
 			if (animName != null)
 				animation.play(animName, true);
+			applyRGBOverride();
 		}
+	}
+
+	static function getPixelSustainSkinPath(validSkin:String, skinPostfix:String):String
+	{
+		var candidates:Array<String> = [];
+		candidates.push('${validSkin}ENDS$skinPostfix');
+
+		var slash:Int = validSkin.lastIndexOf('/');
+		var folder:String = slash >= 0 ? validSkin.substr(0, slash + 1) : '';
+		var file:String = slash >= 0 ? validSkin.substr(slash + 1) : validSkin;
+		if (file.startsWith('NOTE_assets-'))
+			candidates.push(folder + 'NOTE_assetsENDS-' + file.substr('NOTE_assets-'.length));
+		candidates.push('${validSkin}ENDS');
+
+		for (candidate in candidates)
+			if (Paths.fileExists('images/$candidate.png', IMAGE))
+				return candidate;
+		return candidates[0];
 	}
 
 	public static function getNoteSkinPostfix()
@@ -412,11 +571,13 @@ class Note extends FlxSprite
 
 		if (isSustainNote)
 		{
-			attemptToAddAnimationByPrefix('purpleholdend', 'pruple end hold', 24, true); // this fixes some retarded typo from the original note .FLA
-			animation.addByPrefix(colArray[noteData] + 'holdend', colArray[noteData] + ' hold end', 24, true);
-			animation.addByPrefix(colArray[noteData] + 'hold', colArray[noteData] + ' hold piece', 24, true);
+			var endFPS:Int = NoteSkinData.getFPS(skinConfig, 'sustain_end', 24);
+			var sustainFPS:Int = NoteSkinData.getFPS(skinConfig, 'sustain', 24);
+			attemptToAddAnimationByPrefix('purpleholdend', 'pruple end hold', endFPS, true); // this fixes some retarded typo from the original note .FLA
+			animation.addByPrefix(colArray[noteData] + 'holdend', colArray[noteData] + ' hold end', endFPS, true);
+			animation.addByPrefix(colArray[noteData] + 'hold', colArray[noteData] + ' hold piece', sustainFPS, true);
 		}
-		else animation.addByPrefix(colArray[noteData] + 'Scroll', colArray[noteData] + '0');
+		else animation.addByPrefix(colArray[noteData] + 'Scroll', colArray[noteData] + '0', NoteSkinData.getFPS(skinConfig, 'notes', 24));
 
 		setGraphicSize(Std.int(width * 0.7));
 		updateHitbox();
@@ -428,9 +589,9 @@ class Note extends FlxSprite
 
 		if(isSustainNote)
 		{
-			animation.add(colArray[noteData] + 'holdend', [noteData + 4], 24, true);
-			animation.add(colArray[noteData] + 'hold', [noteData], 24, true);
-		} else animation.add(colArray[noteData] + 'Scroll', [noteData + 4], 24, true);
+			animation.add(colArray[noteData] + 'holdend', [noteData + 4], NoteSkinData.getFPS(skinConfig, 'sustain_end', 24), true);
+			animation.add(colArray[noteData] + 'hold', [noteData], NoteSkinData.getFPS(skinConfig, 'sustain', 24), true);
+		} else animation.add(colArray[noteData] + 'Scroll', [noteData + 4], NoteSkinData.getFPS(skinConfig, 'notes', 24), true);
 	}
 
 	function attemptToAddAnimationByPrefix(name:String, prefix:String, framerate:Float = 24, doLoop:Bool = true)
@@ -441,6 +602,32 @@ class Note extends FlxSprite
 		if(animFrames.length < 1) return;
 
 		animation.addByPrefix(name, prefix, framerate, doLoop);
+	}
+
+	public function applyNoteSkinOffsets():Void
+	{
+		if (noteData < 0)
+			return;
+
+		offsetX -= skinOffsetX;
+		offsetY -= skinOffsetY;
+		offsetAngle -= skinOffsetAngle;
+
+		var type:String = isSustainNote ? (isSustainEnd ? 'sustain_end' : 'sustain') : 'notes';
+		var skinOffset:NoteSkinOffset = NoteSkinData.getOffset(skinConfig, type, noteData);
+		skinOffsetX = skinOffset.x;
+		skinOffsetY = skinOffset.y;
+		skinOffsetAngle = skinOffset.angle;
+
+		offsetX += skinOffsetX;
+		offsetY += skinOffsetY;
+		offsetAngle += skinOffsetAngle;
+	}
+
+	function applyNoteSkinProperties():Void
+	{
+		NoteSkinData.applyPropertiesToNote(this, skinConfig);
+		applyRGBOverride();
 	}
 
 	override function update(elapsed:Float)
@@ -527,6 +714,18 @@ class Note extends FlxSprite
 			
 			clipRect = clipRect;
 		}
+	}
+
+	override public function isOnScreen(?camera:FlxCamera):Bool
+	{
+		if(camera == null)
+			camera = getDefaultCamera();
+
+		var playState:PlayState = PlayState.instance;
+		if(ClientPrefs.data.downScroll && !inEditor && playState != null && camera == playState.camHUD)
+			return PsychCamera.containsRectWithPadding(camera, getScreenBounds(_rect, camera), playState.getDownscrollNoteCullPadding(this));
+
+		return super.isOnScreen(camera);
 	}
 
 	@:noCompletion

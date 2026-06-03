@@ -160,8 +160,8 @@ class CameraResizeFix
 		if(ResolutionManager.hasCustomResolution())
 		{
 			camera.setSize(baseWidth(), baseHeight());
-			camera.x = 0;
-			camera.y = 0;
+			camera.x = -pegarCentroOFSX(camera); // yeah dw new ppl, i'll change that name later
+			camera.y = -pegarCentroOFSY(camera);
 			aplyCentroOFS(camera);
 			return;
 		}
@@ -174,14 +174,18 @@ class CameraResizeFix
 		if(playState == null)
 			return ResolutionManager.hasCustomResolution();
 
-		return camera == playState.camGame || camera == playState.camHUD || camera == playState.camOther;
+		return camera == playState.camGame || camera == playState.camHUD || camera == playState.camOther || playState.shouldAutoResizeCamera(camera);
 	}
 
 	static function pegarCentroBaseX(camera:FlxCamera):Float
 	{
 		var playState = states.PlayState.instance;
 		if(playState != null && camera == playState.camGame)
+		{
+			if(DeveloperMode.isMobileLike())
+				return BASE_WIDTH;
 			return baseWidth();
+		}
 		return FlxG.width;
 	}
 

@@ -13,10 +13,14 @@ emi3 :: vi :: Created Psych Engine Mint, the psych fork we've forked before beco
 DuskieWhy :: duskie :: Created Nightmare Vision and also is the main engine we are basing of. :: https://x.com/DuskieWhy :: A8324A
 Shadow Mario :: shadowmario :: Created Psych Engine and the whole Lua API thing, tysm :: https://ko-fi.com/shadowmario :: 444444
 Funkin' Crew :: fnf :: Created uhm, the game. Ya' know? :: https://funkin.me/ :: 378FC7
+Mihai Alexandru :: mihai :: Created flxgif. :: https://github.com/MAJigsaw77 :: 4287F5
+Polybius Proxy :: poly :: Created Hxcodec (Credits porpuse) :: https://github.com/polybiusproxy/hxCodec :: 5165F6
 Kenas_ :: kenas :: Composer of ALL the original tracks of the engine :3 :: https://linktr.ee/KenasFX :: 4C409A
+Unholywanderer04 :: unholy :: They uhm yeah they was here too :: https://x.com/Unholy_wanderer :: 82CDE3
 maybeMaru :: missing_icon :: Creator of Moonchart and Flixel-Animate (I LOVE YOU.) :: https://x.com/maybemaru_ :: 6ede0b
-Stoopid :: potato :: Made the original "Neat!!!" Rating render after Mily's re-adjustment :: https://x.com/SillyPotato :: CDCDCD
+Stoopid :: potato :: Made the original "Neat!!!" Rating render before Mily's re-adjustment :: https://x.com/SillyPotato :: CDCDCD
 Infry :: infry :: Lil' Buddies thingie :: https://x.com/Infry20 :: 8d00df
+Paige :: paige :: BUTTONS ARRAY :: https://x.com/paigeypaper :: d8b073
 
 Support the og!
 Psych Engine Mint Discord :: discordmint :: :: https://discord.gg/nGcTH6vNVR :: 5165F6

@@ -45,8 +45,8 @@ class GlobalScriptHandler {
 		FlxG.signals.preUpdate.add(() -> call('onUpdate', [FlxG.elapsed]));
 		FlxG.signals.postUpdate.add(() -> call('onUpdatePost', [FlxG.elapsed]));
 	}
-	public static function refreshScripts(complete:Bool = false):Void {
-		if(!canRunOnCurrentState())
+	public static function refreshScripts(complete:Bool = false, allowEditor:Bool = false):Void {
+		if(!allowEditor && !canRunOnCurrentState())
 		{
 			destroyScripts();
 			return;
@@ -61,6 +61,12 @@ class GlobalScriptHandler {
 
 		#if LUA_ALLOWED
 		FunkinLua.registerFunctions();
+		for (scriptPath in ['data/GeneralState.lua', 'scripts/GeneralState.lua', 'scripts/states/GeneralState.lua']) {
+			for (path in Mods.directoriesWithFile(Paths.getSharedPath(), scriptPath)) {
+				if (findLuaScript(path) != null || initLuaScript(path) != null)
+					trackedLua.push(path);
+			}
+		}
 		for (path in Mods.directoriesWithFile(Paths.getSharedPath(), 'data/global.lua')) {
 			if (findLuaScript(path) != null || initLuaScript(path) != null)
 				trackedLua.push(path);
@@ -68,11 +74,19 @@ class GlobalScriptHandler {
 		#end
 		
 		#if HSCRIPT_ALLOWED
+		for (scriptPath in ['data/GeneralState', 'scripts/GeneralState', 'scripts/states/GeneralState']) {
+			for (extension in HScript.SCRIPT_EXTENSIONS) {
+				for (path in Mods.directoriesWithFile(Paths.getSharedPath(), scriptPath + extension)) {
+					if (findScript(path) != null || initHScript(path) != null)
+						tracked.push(path);
+				}
+			}
+		}
 		for (folder in Mods.directoriesWithFile(Paths.getSharedPath(), 'scripts/global')) {
 			for (file in FileSystem.readDirectory(folder)) {
 				var path:String = '$folder/$file';
 				
-				if (FileSystem.exists(path)) {
+				if (FileSystem.exists(path) && HScript.hasScriptExtension(path)) {
 					if (findScript(path) != null || initHScript(path) != null)
 						tracked.push(path);
 				}
@@ -139,8 +153,8 @@ class GlobalScriptHandler {
 	}
 	#end
 	
-	public static function call(func:String, ?args:Array<Dynamic>, ?excludeValues:Array<Dynamic>):Dynamic {
-		if(!canRunOnCurrentState() || isEditorCallbackTarget(func, args))
+	public static function call(func:String, ?args:Array<Dynamic>, ?excludeValues:Array<Dynamic>, allowEditor:Bool = false):Dynamic {
+		if((!allowEditor && !canRunOnCurrentState()) || (!allowEditor && isEditorCallbackTarget(func, args)))
 			return LuaUtils.Function_Continue;
 
 		var returnVal:Dynamic = callOnHScript(func, args, excludeValues);

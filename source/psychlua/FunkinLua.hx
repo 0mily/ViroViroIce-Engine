@@ -68,6 +68,10 @@ class FunkinLua {
 
 	public var callbacks:Map<String, Dynamic> = [];
 	public static var customFunctions:Map<String, Dynamic> = [];
+	public static var globalFunctions:Map<String, Dynamic> = [];
+	static var globalFunctionOwners:Map<String, FunkinLua> = [];
+	public static var globalValues:Map<String, Dynamic> = [];
+	static var globalValueOwners:Map<String, FunkinLua> = [];
 	
 	public static function initFromFile(file:String, ?parent:FlxState):FunkinLua {
 		var newScript:FunkinLua = null;
@@ -89,6 +93,7 @@ class FunkinLua {
 	public function new(scriptName:String, ?state:FlxState) { // TODO: allat
 		lua = LuaL.newstate();
 		LuaL.openlibs(lua);
+		prepareNamespacedCallbacks();
 
 		//trace('Lua version: ' + Lua.version());
 		//trace("LuaJIT version: " + Lua.versionJIT());
@@ -117,8 +122,19 @@ class FunkinLua {
 		
 		set('screenWidth', FlxG.width);
 		set('screenHeight', FlxG.height);
+		set('windowWidth', backend.VignetteUtil.windowWidth());
+		set('windowHeight', backend.VignetteUtil.windowHeight()); // widescreen problems
+		set('windowPixelWidth', backend.VignetteUtil.windowPixelWidth());
+		set('windowPixelHeight', backend.VignetteUtil.windowPixelHeight()); // (all still pretty buggy tho)
 		
-		set('buildTarget', LuaUtils.getBuildTarget());
+		set('actualBuildTarget', LuaUtils.getBuildTarget());
+		set('buildTarget', LuaUtils.getScriptBuildTarget());
+		set('mobileBuild', LuaUtils.isMobileBuild());
+		set('isMobile', LuaUtils.isMobileBuild());
+		set('mobile', LuaUtils.isMobileBuild());
+		set('actualMobileBuild', backend.DeveloperMode.actualMobileBuild());
+		set('simulatedMobile', backend.DeveloperMode.mobileSimulation);
+		set('developerMobile', backend.DeveloperMode.mobileSimulation);
 		
 		set('modFolder', modFolder);
 		set('scriptName', scriptName);
@@ -142,6 +158,9 @@ class FunkinLua {
 			#end
 		});
 		//
+
+		addLocalCallback('getWindowWidth', function(?pixels:Bool = false):Int return pixels ? backend.VignetteUtil.windowPixelWidth() : backend.VignetteUtil.windowWidth());
+		addLocalCallback('getWindowHeight', function(?pixels:Bool = false):Int return pixels ? backend.VignetteUtil.windowPixelHeight() : backend.VignetteUtil.windowHeight());
 		
 		addLocalCallback('close', function() {
 			closed = true;
@@ -155,10 +174,16 @@ class FunkinLua {
 			if (func != null)
 				Lua_helper.add_callback(lua, name, func);
 		}
+		for (name => func in globalFunctions) {
+			if (func != null)
+				Lua_helper.add_callback(lua, name, func);
+		}
 		for (name => func in registeredFunctions) {
 			if (func != null)
 				Lua_helper.add_callback(lua, name, func);
 		}
+		for (name => value in globalValues)
+			set(name, value);
 
 		try {
 			var isString:Bool = !FileSystem.exists(scriptName);
@@ -184,6 +209,36 @@ class FunkinLua {
 	public var lastCalledFunction:String = '';
 	public var lastCalledArgs:Array<Dynamic> = [];
 	public static var lastCalledScript:FunkinLua = null;
+
+	function prepareNamespacedCallbacks():Void
+	{
+		if(lua != null)
+			LuaL.dostring(lua, 'milymc = milymc or {}');
+	}
+
+	function pushLuaValue(path:String):Int
+	{
+		if(path == null || path.length < 1)
+		{
+			Lua.pushnil(lua);
+			return Lua.LUA_TNIL;
+		}
+
+		var parts:Array<String> = path.split('.');
+		Lua.getglobal(lua, parts[0]);
+
+		for (i in 1...parts.length)
+		{
+			var parentType:Int = Lua.type(lua, -1);
+			if(parentType != Lua.LUA_TTABLE)
+				return parentType;
+
+			Lua.getfield(lua, -1, parts[i]);
+			Lua.remove(lua, -2);
+		}
+
+		return Lua.type(lua, -1);
+	}
 	
 	public function call(func:String, ?args:Array<Dynamic>):Dynamic {
 		if(closed) return LuaUtils.Function_Continue;
@@ -200,8 +255,7 @@ class FunkinLua {
 			lastCalledScript = this;
 			
 			args = lastCalledArgs;
-			Lua.getglobal(lua, func);
-			var type:Int = Lua.type(lua, -1);
+			var type:Int = pushLuaValue(func);
 			
 			if (type != Lua.LUA_TFUNCTION) {
 				if (type > Lua.LUA_TNIL)
@@ -257,8 +311,8 @@ class FunkinLua {
 		if (lua == null)
 			return false;
 		
-		Lua.getglobal(lua, variable);
-		var type:Int = Lua.type(lua, -1);
+		var type:Int = pushLuaValue(variable);
+		Lua.pop(lua, 1);
 		
 		return (type != Lua.LUA_TNONE && type != Lua.LUA_TNIL);
 	}
@@ -281,6 +335,7 @@ class FunkinLua {
 
 	public function stop() {
 		closed = true;
+		unregisterGlobalDataFor(this);
 
 		if(lua == null) {
 			return;
@@ -353,23 +408,34 @@ class FunkinLua {
 	}
 
 	static function findScript(scriptFile:String, ext:String = '.lua') {
-		if(!scriptFile.endsWith(ext)) scriptFile += ext;
-		var path:String = Paths.getPath(scriptFile, TEXT);
-		#if ADDONS_ALLOWED
-		if(FileSystem.exists(path))
-		#else
-		if(Assets.exists(path, TEXT))
+		var candidates:Array<String> = [scriptFile];
+		#if HSCRIPT_ALLOWED
+		if(ext == '.hx')
+			candidates = HScript.withScriptExtensions(scriptFile);
+		else
 		#end
+		if(!scriptFile.endsWith(ext))
+			candidates.push(scriptFile + ext);
+
+		for(candidate in candidates)
 		{
-			return path;
-		}
-		#if ADDONS_ALLOWED
-		else if(FileSystem.exists(scriptFile))
-		#else
-		else if(Assets.exists(scriptFile, TEXT))
-		#end
-		{
-			return scriptFile;
+			var path:String = Paths.getPath(candidate, TEXT);
+			#if ADDONS_ALLOWED
+			if(FileSystem.exists(path))
+			#else
+			if(Assets.exists(path, TEXT))
+			#end
+			{
+				return path;
+			}
+			#if ADDONS_ALLOWED
+			else if(FileSystem.exists(candidate))
+			#else
+			else if(Assets.exists(candidate, TEXT))
+			#end
+			{
+				return candidate;
+			}
 		}
 		return null;
 	}
@@ -395,6 +461,34 @@ class FunkinLua {
 	{
 		callbacks.set(name, myFunction);
 		Lua_helper.add_callback(lua, name, null);
+	}
+
+	static function unregisterGlobalDataFor(owner:FunkinLua):Void
+	{
+		if (owner == null)
+			return;
+
+		var removeFunctions:Array<String> = [];
+		for (name => script in globalFunctionOwners)
+			if (script == owner)
+				removeFunctions.push(name);
+
+		for (name in removeFunctions)
+		{
+			globalFunctionOwners.remove(name);
+			globalFunctions.remove(name);
+		}
+
+		var removeValues:Array<String> = [];
+		for (name => script in globalValueOwners)
+			if (script == owner)
+				removeValues.push(name);
+
+		for (name in removeValues)
+		{
+			globalValueOwners.remove(name);
+			globalValues.remove(name);
+		}
 	}
 
 	#if (!flash && sys)
@@ -477,6 +571,7 @@ class FunkinLua {
 		CustomState.implement();
 		TextFunctions.implement();
 		ClipFunctions.implement(); // o yea
+		TileFunctions.implement();
 		ExtraFunctions.implement();
 		FreeplayLuaFunctions.implement();
 		CustomSubstate.implement();
@@ -491,6 +586,48 @@ class FunkinLua {
 	}
 	
 	public function implementLocal():Void {
+		addLocalCallback('registerLuaFunction', function(name:String, ?funcName:String = null) {
+			if (name == null || name.trim().length < 1)
+				return false;
+
+			name = name.trim();
+			if (funcName == null || funcName.trim().length < 1)
+				funcName = name;
+			funcName = funcName.trim();
+
+			var owner:FunkinLua = this;
+			var callback = Reflect.makeVarArgs(function(args:Array<Dynamic>) {
+				if (owner == null || owner.closed)
+					return null;
+				return owner.call(funcName, args);
+			});
+
+			globalFunctions.set(name, callback);
+			globalFunctionOwners.set(name, owner);
+			Lua_helper.add_callback(lua, name, callback);
+			return true;
+		});
+		addLocalCallback('registerLuaConstant', function(name:String, value:Dynamic) {
+			if (name == null || name.trim().length < 1)
+				return false;
+
+			name = name.trim();
+			globalValues.set(name, value);
+			globalValueOwners.set(name, this);
+			set(name, value);
+			return true;
+		});
+		addLocalCallback('registerLuaValue', function(name:String, value:Dynamic) {
+			if (name == null || name.trim().length < 1)
+				return false;
+
+			name = name.trim();
+			globalValues.set(name, value);
+			globalValueOwners.set(name, this);
+			set(name, value);
+			return true;
+		});
+
 		ShaderFunctions.implementLocal(this);
 		ReflectionFunctions.implementLocal(this);
 		#if HSCRIPT_ALLOWED HScript.implementLocal(this); #end
@@ -659,6 +796,72 @@ class FunkinLua {
 	public static function registerFunction(name:String, func:Dynamic):Void {
 		registeredFunctions.set(name, func);
 	}
+
+	static function registerMobileRuntimeFunctions():Void
+	{
+		registerFunction('isMobileBuild', function():Bool
+			return backend.DeveloperMode.isMobileLike());
+		registerFunction('isActualMobileBuild', function():Bool
+			return backend.DeveloperMode.actualMobileBuild());
+		registerFunction('isMobileSimulation', function():Bool
+			return backend.DeveloperMode.mobileSimulation);
+		registerFunction('getRuntimeBuildTarget', function():String
+			return backend.DeveloperMode.getScriptBuildTarget());
+		registerFunction('getActualBuildTarget', function():String
+			return backend.DeveloperMode.getActualBuildTarget());
+		registerFunction('mobileC', function():Bool
+			return Controls.instance != null && Controls.instance.mobileC);
+		registerFunction('mobileControlsMode', function():String
+			return backend.DeveloperMode.mobileSimulation ? 'simulated' : 'hitbox');
+		registerFunction('touchJustPressed', function():Bool
+			return TouchUtil.justPressed);
+		registerFunction('touchPressed', function():Bool
+			return TouchUtil.pressed);
+		registerFunction('touchJustReleased', function():Bool
+			return TouchUtil.justReleased);
+		registerFunction('touchReleased', function():Bool
+			return TouchUtil.released);
+		registerFunction('touchOverlapsObject', function(object:String, ?camera:String):Bool
+			return touchObjectCheck(object, camera, false, 'touchOverlapsObject'));
+		registerFunction('touchOverlapsObjectComplex', function(object:String, ?camera:String):Bool
+			return touchObjectCheck(object, camera, true, 'touchOverlapsObjectComplex'));
+		registerFunction('touchPressedObject', function(object:String, ?camera:String):Bool
+			return TouchUtil.pressed && touchObjectCheck(object, camera, false, 'touchPressedObject'));
+		registerFunction('touchJustPressedObject', function(object:String, ?camera:String):Bool
+			return TouchUtil.justPressed && touchObjectCheck(object, camera, false, 'touchJustPressedObject'));
+		registerFunction('touchJustReleasedObject', function(object:String, ?camera:String):Bool
+			return TouchUtil.justReleased && touchObjectCheck(object, camera, false, 'touchJustReleasedObject'));
+		registerFunction('touchReleasedObject', function(object:String, ?camera:String):Bool
+			return TouchUtil.released && touchObjectCheck(object, camera, false, 'touchReleasedObject'));
+		registerFunction('touchPressedObjectComplex', function(object:String, ?camera:String):Bool
+			return TouchUtil.pressed && touchObjectCheck(object, camera, true, 'touchPressedObjectComplex'));
+		registerFunction('touchJustPressedObjectComplex', function(object:String, ?camera:String):Bool
+			return TouchUtil.justPressed && touchObjectCheck(object, camera, true, 'touchJustPressedObjectComplex'));
+		registerFunction('touchJustReleasedObjectComplex', function(object:String, ?camera:String):Bool
+			return TouchUtil.justReleased && touchObjectCheck(object, camera, true, 'touchJustReleasedObjectComplex'));
+		registerFunction('touchReleasedObjectComplex', function(object:String, ?camera:String):Bool
+			return TouchUtil.released && touchObjectCheck(object, camera, true, 'touchReleasedObjectComplex'));
+	}
+
+	static function touchObjectCheck(object:String, ?camera:String, complex:Bool = false, traceName:String = 'touchObject'):Bool
+	{
+		var obj:Dynamic = null;
+		try {
+			obj = LuaUtils.getObjectDirectly(object);
+		} catch(e:Dynamic) {
+			obj = null;
+		}
+
+		if(obj == null || !Std.isOfType(obj, FlxObject))
+		{
+			luaTrace('$traceName: $object does not exist.');
+			return false;
+		}
+
+		var cam:FlxCamera = LuaUtils.cameraFromString(camera ?? 'game');
+		return complex ? TouchUtil.overlapsComplex(cast obj, cam) : TouchUtil.overlaps(cast obj, cam);
+	}
+
 	public static function implement():Void {
 		var game:PlayState = PlayState.instance;
 		if (game != null) implementGame(game);
@@ -666,6 +869,8 @@ class FunkinLua {
 		var st:ScriptedSubState = null;
 		if (FlxG.state is ScriptedSubState)
 			st = cast FlxG.state;
+
+		registerMobileRuntimeFunctions();
 
 		registerFunction('addRemixRemover', function(suffix:String) {
 			if (game.bucetaTira == null)
@@ -886,6 +1091,54 @@ class FunkinLua {
 				object.frames = Paths.getMultiAtlas(images);
 		});
 
+		function getOrderContainer(?group:String = null):Dynamic {
+			if (group != null) {
+				var groupOrArray:Dynamic = LuaUtils.getObjectDirectly(group);
+				if (groupOrArray == null)
+					luaTrace('Object order: Group $group doesn\'t exist!', false, false, ERROR);
+				return groupOrArray;
+			}
+
+			return CustomSubstate.instance != null ? CustomSubstate.instance : LuaUtils.getTargetInstance();
+		}
+
+		function moveObjectRelative(obj:String, target:String, behind:Bool = true, ?group:String = null):Bool {
+			var leObj:FlxBasic = LuaUtils.getObjectDirectly(obj);
+			var targetObj:FlxBasic = LuaUtils.getObjectDirectly(target);
+			var groupOrArray:Dynamic = getOrderContainer(group);
+
+			if (leObj == null) {
+				luaTrace('moveObjectRelative: Object $obj doesn\'t exist!', false, false, ERROR);
+				return false;
+			}
+			if (targetObj == null) {
+				luaTrace('moveObjectRelative: Target $target doesn\'t exist!', false, false, ERROR);
+				return false;
+			}
+			if (groupOrArray == null)
+				return false;
+
+			var members:Dynamic = Type.typeof(groupOrArray).match(TClass(Array)) ? groupOrArray : Reflect.getProperty(groupOrArray, 'members');
+			var targetIndex:Int = members.indexOf(targetObj);
+			if (targetIndex < 0) {
+				luaTrace('moveObjectRelative: Target $target is not inside the selected group!', false, false, ERROR);
+				return false;
+			}
+
+			var oldIndex:Int = members.indexOf(leObj);
+			if (oldIndex >= 0 && oldIndex < targetIndex)
+				targetIndex--;
+
+			if (Type.typeof(groupOrArray).match(TClass(Array)))
+				groupOrArray.remove(leObj);
+			else
+				groupOrArray.remove(leObj, true);
+
+			var insertIndex:Int = behind ? targetIndex : targetIndex + 1;
+			groupOrArray.insert(insertIndex, leObj);
+			return true;
+		}
+
 		//shitass stuff for epic coders like me B)  *image of obama giving himself a medal*
 		registerFunction('getObjectOrder', function(obj:String, ?group:String = null) {
 			var leObj:FlxBasic = LuaUtils.getObjectDirectly(obj);
@@ -939,6 +1192,12 @@ class FunkinLua {
 			}
 			
 			luaTrace('setObjectOrder: Object $obj doesn\'t exist!', false, false, ERROR);
+		});
+		registerFunction('setObjectBehind', function(obj:String, target:String, ?group:String = null) {
+			return moveObjectRelative(obj, target, true, group); // AMBOS NÃO ESTÃO funcionando mt bem com objetos por ser em groups e os krl. Dps arrumo isso
+		});
+		registerFunction('setObjectInFront', function(obj:String, target:String, ?group:String = null) {
+			return moveObjectRelative(obj, target, false, group);
 		});
 
 		// gay ass tweens
@@ -1043,6 +1302,47 @@ class FunkinLua {
 		registerFunction('ChangeRes', function(width:Int, height:Int, resizable:Bool = true) return ResolutionManager.changeRes(width, height, resizable));
 		registerFunction('resetRes', function() return ResolutionManager.reset());
 		registerFunction('ResetRes', function() return ResolutionManager.reset());
+		registerFunction('addCamera', function(tag:String, bgColor:String = '00000000', x:Float = 0, y:Float = 0, width:Int = -1, height:Int = -1, zoom:Float = 1, front:Bool = false) {
+			return PlayState.instance != null && PlayState.instance.addCamera(tag, bgColor, x, y, width, height, zoom, front) != null;
+		});
+		registerFunction('removeCamera', function(tag:String, destroy:Bool = true) {
+			return PlayState.instance != null && PlayState.instance.removeCamera(tag, destroy);
+		});
+		registerFunction('setMainCamera', function(tag:String) {
+			return PlayState.instance != null && PlayState.instance.setMainCamera(tag);
+		});
+		registerFunction('setCameraOrder', function(tag:String, index:Int) {
+			return PlayState.instance != null && PlayState.instance.setCameraOrder(tag, index);
+		});
+		registerFunction('tweenRes', function(width:Int, height:Int, duration:Float = 1, ease:String = 'linear', resizable:Bool = true) // never tested btw
+			return ResolutionManager.tweenRes(width, height, duration, LuaUtils.getTweenEaseByString(ease), resizable) != null);
+		registerFunction('TweenRes', function(width:Int, height:Int, duration:Float = 1, ease:String = 'linear', resizable:Bool = true)
+			return ResolutionManager.tweenRes(width, height, duration, LuaUtils.getTweenEaseByString(ease), resizable) != null);
+		registerFunction('tweenResFrom', function(fromWidth:Int, fromHeight:Int, toWidth:Int, toHeight:Int, duration:Float = 1, ease:String = 'linear', resizable:Bool = true)
+			return ResolutionManager.tweenResFrom(fromWidth, fromHeight, toWidth, toHeight, duration, LuaUtils.getTweenEaseByString(ease), resizable) != null);
+		registerFunction('doTweenRes', function(tag:String, width:Int, height:Int, duration:Float, ease:String = 'linear', resizable:Bool = true) {
+			var variables = MusicBeatState.getVariables();
+			var originalTag:String = tag;
+			tag = LuaUtils.formatVariable('tween_$tag');
+			LuaUtils.cancelTween(tag);
+			variables.set(tag, ResolutionManager.tweenRes(width, height, duration, LuaUtils.getTweenEaseByString(ease), resizable, function(twn:FlxTween) {
+				variables.remove(tag);
+				luaCallGlobal('onTweenCompleted', [originalTag, 'resolution']);
+			}));
+			return tag;
+		});
+		registerFunction('doTweenResolution', function(tag:String, width:Int, height:Int, duration:Float, ease:String = 'linear', resizable:Bool = true) {
+			var variables = MusicBeatState.getVariables();
+			var originalTag:String = tag;
+			tag = LuaUtils.formatVariable('tween_$tag');
+			LuaUtils.cancelTween(tag);
+			variables.set(tag, ResolutionManager.tweenRes(width, height, duration, LuaUtils.getTweenEaseByString(ease), resizable, function(twn:FlxTween) {
+				variables.remove(tag);
+				luaCallGlobal('onTweenCompleted', [originalTag, 'resolution']);
+			}));
+			return tag;
+		});
+		registerFunction('cancelTweenRes', function() ResolutionManager.cancelTweenRes());
 
 		//Identical functions
 		registerFunction('FlxColor', function(color:String) return FlxColor.fromString(color));
@@ -1182,6 +1482,19 @@ class FunkinLua {
 			
 			if (spr != null) spr.makeGraphic(width, height, CoolUtil.colorFromString(color));
 		});
+		var makeVignetteFunc = function(obj:String, width:Int = 0, height:Int = 0, color:String = '000000', strength:Float = 1, radius:Float = 0.55, softness:Float = 0.45) {
+			var spr:FlxSprite = LuaUtils.getObjectDirectly(obj);
+			if(spr == null)
+				return false;
+
+			if(Std.isOfType(spr, objects.VVIESpriteHandler))
+				cast(spr, objects.VVIESpriteHandler).makeVignette(width, height, CoolUtil.colorFromString(color), strength, radius, softness);
+			else
+				spr.loadGraphic(backend.VignetteUtil.makeGraphic(width, height, CoolUtil.colorFromString(color), strength, radius, softness));
+			return true;
+		};
+		registerFunction('makeVignette', makeVignetteFunc);
+		registerFunction('makeVig', makeVignetteFunc);
 		var addAnimByPrefix = function(obj:String, name:String, prefix:String, framerate:Float = 24, loop:Bool = true) {
 			var obj:Dynamic = LuaUtils.getObjectDirectly(obj);
 			
@@ -1241,12 +1554,17 @@ class FunkinLua {
 		});
 
 		registerFunction('setScrollFactor', function(obj:String, ?scrollX:Float, ?scrollY:Float) {
-			var obj:Dynamic = LuaUtils.getObjectDirectly(obj);
+			var objectName:String = obj;
+			var obj:Dynamic = LuaUtils.getObjectDirectly(objectName);
 			if (obj != null) {
 				obj.scrollFactor.set(scrollX, scrollY);
 				return;
 			}
-			luaTrace('setScrollFactor: Couldnt find object: ' + obj, false, false, ERROR);
+
+			if (game != null && game.queueExtraCharacterScroll(objectName, scrollX, scrollY))
+				return;
+
+			luaTrace('setScrollFactor: Couldnt find object: ' + objectName, false, false, ERROR);
 		});
 		registerFunction('setGraphicSize', function(obj:String, x:Float, y:Float = 0, updateHitbox:Bool = true) {
 			var obj:Dynamic = LuaUtils.getObjectDirectly(obj);
@@ -1778,6 +2096,15 @@ class FunkinLua {
 		registerFunction('ChangeFocus', function(target:String, ?x:Float = 0, ?y:Float = 0, ?ease:String = 'classic', ?steps:Float = 0) {
 			game.changeFocus(target, x, y, ease, steps);
 		});
+		registerFunction('cameraZoom', function(zoom:Float, ?steps:Float = 0, ?ease:String = 'classic', ?type:String = 'nll') {
+			return game.applyCameraZoom(zoom, steps, ease, type);
+		});
+		registerFunction('CameraZoom', function(zoom:Float, ?steps:Float = 0, ?ease:String = 'classic', ?type:String = 'nll') {
+			return game.applyCameraZoom(zoom, steps, ease, type);
+		});
+		registerFunction('cameraZoomEvent', function(value1:String = '', value2:String = '') {
+			return game.applyCameraZoomEvent(value1, value2);
+		});
 		registerFunction('changeIcon', function(icon:String, ?side:Int = 0) {
 			return game.changeHealthIcon(icon, side);
 		});
@@ -1813,6 +2140,14 @@ class FunkinLua {
 		registerFunction('noteTweenAngle', function(tag:String, note:Int, value:Dynamic, duration:Float, ?ease:String = 'linear') return noteTweenFunction(tag, note, {angle: value}, duration, ease));
 		registerFunction('noteTweenAlpha', function(tag:String, note:Int, value:Dynamic, duration:Float, ?ease:String = 'linear') return noteTweenFunction(tag, note, {alpha: value}, duration, ease));
 		registerFunction('noteTweenDirection', function(tag:String, note:Int, value:Dynamic, duration:Float, ?ease:String = 'linear') return noteTweenFunction(tag, note, {direction: value}, duration, ease));
+
+		// haha, notes (RGB never used and i uhhmmmm theres 3 colors on rgb i'm stupid) PROBABLY SHIHO WILL FIX IT LATER
+		registerFunction('setStrumSkin', function(strum:Dynamic, skinName:String) return game.setStrumSkin(strum, skinName));
+		registerFunction('setPlayerSplash', function(splashName:String) return game.setPlayerSplash(splashName));
+		registerFunction('setStrumRGB', function(strum:Dynamic, colorHex:String) return game.setStrumRGB(strum, colorHex));
+		registerFunction('allowStrumRGB', function(strum:Dynamic, ?enabled:Bool = true) return game.allowStrumRGB(strum, enabled));
+		registerFunction('tweenStrumRGB', function(tag:String, strum:Dynamic, seconds:Float, colorHex:String, ?ease:String = 'linear')
+			return game.tweenStrumRGB(tag, strum, seconds, colorHex, ease));
 	}
 }
 #end
