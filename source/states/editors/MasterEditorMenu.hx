@@ -66,7 +66,7 @@ class MasterEditorMenu extends ScriptedSubState
 			grpTexts.add(leText);
 		}
 		
-		optionFunctions['Chart Editor'] = () -> LoadingState.loadAndSwitchState(new ChartingState(), false);
+		optionFunctions['Chart Editor'] = () -> openSubState(new states.editors.content.CoolNewSongSubState());
 		optionFunctions['Character Editor'] = () -> LoadingState.loadAndSwitchState(new CharacterEditorState(Character.DEFAULT_CHARACTER, false));
 		optionFunctions['Stage Editor'] = () -> LoadingState.loadAndSwitchState(new StageEditorState());
         if (PlayState.SONG != null) optionFunctions['Dropshadow Editor'] =  () -> LoadingState.loadAndSwitchState(new DropShadowEditor(), false);
@@ -148,7 +148,8 @@ class MasterEditorMenu extends ScriptedSubState
 			if (callOnScripts('onAccept', [option], true) != psychlua.LuaUtils.Function_Stop) {
 				if (optionFunc != null) {
 					optionFunc();
-					FlxG.sound.music.volume = 0;
+					if(FlxG.sound.music != null)
+						FlxG.sound.music.volume = 0;
 					FreeplayState.destroyFreeplayVocals();
 				} else {
 					trace('Option "$option" doesn\'t do anything');
@@ -171,8 +172,8 @@ class MasterEditorMenu extends ScriptedSubState
 		var next:Int = FlxMath.wrap(curSelected + change, 0, options.length - 1);
 		
 		if (callOnScripts('onSelectItem', [options[next], next], true) != psychlua.LuaUtils.Function_Stop) {
-			if (change != 0)
-				FlxG.sound.play(Paths.sound('scrollMenu'), .4);
+			if (change != 0 && ClientPrefs.data.editorSFX)
+				FlxG.sound.play(Paths.uiSound('scrollMenu'), .4);
 			curSelected = next;
 		}
 	}
@@ -182,7 +183,8 @@ class MasterEditorMenu extends ScriptedSubState
 		var next:Int = FlxMath.wrap(curDirectory + change, 0, directories.length - 1);
 		curDirectory = next;
 		
-		FlxG.sound.play(Paths.sound('scrollMenu'), .4);
+		if(ClientPrefs.data.editorSFX)
+			FlxG.sound.play(Paths.uiSound('scrollMenu'), .4);
 		
 		WeekData.setDirectoryFromWeek();
 		if (directories[curDirectory] == null || directories[curDirectory].length < 1) {

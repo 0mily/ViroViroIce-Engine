@@ -1,6 +1,0 @@
-{
-  "name": "Camera Module Bop",
-  "description": "Runs repeated camera bops on beats or a 16/32 marker pattern. Use Bop: Off or set Game/HUD to 0 to suppress the default automatic bop.",
-  "layoutType": "cameraBop",
-  "tabs": ["cycle", "pattern"]
-}

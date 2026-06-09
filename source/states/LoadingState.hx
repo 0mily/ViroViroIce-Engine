@@ -264,7 +264,7 @@ class LoadingState extends ScriptedState
 			if(!transitioning && controls.ACCEPT)
 			{
 				shakeMult = 1;
-				FlxG.sound.play(Paths.sound('cancelMenu'));
+				FlxG.sound.play(Paths.uiSound('cancelMenu'));
 				pressedTimes++;
 			}
 			shakeMult = Math.max(0, shakeMult - elapsed * 5);
@@ -276,7 +276,7 @@ class LoadingState extends ScriptedState
 				logo.visible = false;
 				spawnedPessy = true;
 				stateChangeDelay = 5;
-				FlxG.sound.play(Paths.sound('secret'));
+				FlxG.sound.play(Paths.gameSound('eastereggs/secret'));
 
 				pessy = new FlxSprite(700, 140);
 				pessy.frames = Paths.getSparrowAtlas('loading_screen/pessy');
@@ -319,8 +319,21 @@ class LoadingState extends ScriptedState
 	}
 	
 	static function updateJobs():Void {
-		while (futures.length < maxJobs && jobs.length > 0)
+		#if (target.threaded)
+		if(threaded)
+		{
+			while (jobs.length > 0)
+				startJob(jobs.shift());
+			return;
+		}
+		#end
+
+		var availableJobs:Int = Std.int(Math.max(1, maxJobs - futures.length));
+		while (availableJobs > 0 && jobs.length > 0)
+		{
 			startJob(jobs.shift());
+			availableJobs--;
+		}
 	}
 	
 	var finishedLoading:Bool = false;
@@ -337,7 +350,7 @@ class LoadingState extends ScriptedState
 		finishedLoading = true;
 	}
 
-	static function _loaded()
+	static function _loaded(skipTransition:Bool = true)
 	{
 		loaded = 0;
 		loadMax = 0;
@@ -347,7 +360,8 @@ class LoadingState extends ScriptedState
 		jobs.resize(0);
 		
 		StageData.forceNextDirectory = null;
-		FlxTransitionableState.skipNextTransIn = true;
+		if(skipTransition)
+			FlxTransitionableState.skipNextTransIn = true;
 		
 		#if (target.threaded)
 		if (threadPool != null) threadPool.shutdown(); // kill all workers safely
@@ -390,6 +404,14 @@ class LoadingState extends ScriptedState
 		LoadingState.isIntrusive = intrusive;
 		_startPool();
 
+		if(!hasPendingWork())
+		{
+			if (stopMusic && FlxG.sound.music != null)
+				FlxG.sound.music.stop();
+			_loaded(false);
+			return target;
+		}
+
 		if(intrusive)
 			return new LoadingState(target, stopMusic);
 		
@@ -420,6 +442,18 @@ class LoadingState extends ScriptedState
 		#end
 		
 		return target;
+	}
+
+	static function hasPendingWork():Bool
+	{
+		return loadMax > 0
+			|| jobs.length > 0
+			|| futures.length > 0
+			|| imagesToPrepare.length > 0
+			|| soundsToPrepare.length > 0
+			|| musicToPrepare.length > 0
+			|| songsToPrepare.length > 0
+			|| videosToPrepare.length > 0;
 	}
 
 	static var imagesToPrepare:Array<String> = [];
@@ -476,21 +510,12 @@ class LoadingState extends ScriptedState
 
 		_startPool();
 
-		initialThreadCompleted = false;
-		var threadsCompleted:Int = 0;
-		var threadsMax:Int = 0;
-		function completedThread() {
-			threadsCompleted++;
-			if (threadsCompleted == threadsMax) {
-				initialThreadCompleted = true;
-				clearInvalids();
-				startThreads();
-			}
-		}
-
+		initialThreadCompleted = true;
 		var song:SwagSong = PlayState.SONG;
-		var folder:String = Paths.formatToSongPath(Song.loadedSongName);
-		new Future<Bool>(() -> {
+		var loadedSongName:String = (Song.loadedSongName != null && Song.loadedSongName.length > 0) ? Song.loadedSongName : song.song;
+		var folder:String = Paths.formatToSongPath(loadedSongName);
+		try
+		{
 			// LOAD NOTE IMAGE
 			var noteSkin:String = Note.defaultNoteSkin;
 			if(PlayState.SONG.arrowSkin != null && PlayState.SONG.arrowSkin.length > 1) noteSkin = PlayState.SONG.arrowSkin;
@@ -541,9 +566,7 @@ class LoadingState extends ScriptedState
 				}
 			}
 			catch(e:Dynamic) {}
-			return true;
-		}, isIntrusive)
-		.then((_) -> new Future<Bool>(() -> {
+
 			if (song.stage == null || song.stage.length < 1)
 				song.stage = StageData.vanillaSongStage(folder);
 
@@ -606,42 +629,29 @@ class LoadingState extends ScriptedState
 					songsToPrepare.push(prefixVocals);
 			}
 			
-			#if (target.threaded) if (threaded) {
-				threadsMax ++;
-				threadPool.run(() -> { try { preloadCharacter(player1, prefixVocals); } catch (e:Dynamic) {} completedThread(); });
-			} else #end
 			preloadCharacter(player1, prefixVocals);
 			if (player2 != player1) {
-				#if (target.threaded) if (threaded) {
-					threadsMax ++;
-					threadPool.run(() -> { try { preloadCharacter(player2, prefixVocals); } catch (e:Dynamic) {} completedThread(); });
-				} else #end
 				preloadCharacter(player2, prefixVocals);
 			}
 			var hideGirlfriend:Bool = stageData != null && stageData.hide_girlfriend;
 			if (!hideGirlfriend && gfVersion != player2 && gfVersion != player1) {
-				#if (target.threaded) if (threaded) {
-					threadsMax ++;
-					threadPool.run(() -> { try { preloadCharacter(gfVersion); } catch (e:Dynamic) {} completedThread(); });
-				} else #end
 				preloadCharacter(gfVersion, prefixVocals);
 			}
 
 			for(video in collectScriptVideos(folder))
 				if(!videosToPrepare.contains(video))
 					videosToPrepare.push(video);
-			
-			threadsMax ++;
-			completedThread();
-			
-			return true;
-		}, isIntrusive))
-		.onError((err:Dynamic) -> {
+
+			clearInvalids();
+			startThreads();
+		}
+		catch(err:Dynamic)
+		{
 			trace('ERROR! while preparing song: $err');
 			initialThreadCompleted = true;
 			clearInvalids();
 			startThreads();
-		});
+		}
 	}
 
 	public static function clearInvalids()
@@ -746,9 +756,13 @@ class LoadingState extends ScriptedState
 			catch(e:Dynamic) {
 				trace('ERROR! fail on preloading $traceData: $e');
 			}
-			// mutex.acquire();
-			loaded ++;
-			// mutex.release();
+			if(mutex != null)
+			{
+				mutex.acquire();
+				loaded ++;
+				mutex.release();
+			}
+			else loaded ++;
 		});
 	}
 	#end
@@ -915,13 +929,16 @@ class LoadingState extends ScriptedState
 		#end
 		if(OpenFlAssets.exists(file, BINARY))
 		{
-			return OpenFlAssets.loadBytes(file).onComplete(function(_)
+			try
 			{
+				OpenFlAssets.getBytes(file);
 				preloadedVideos.set(file, true);
-			}).onError(function(err)
+				return file;
+			}
+			catch(err:Dynamic)
 			{
 				trace('ERROR! fail on preloading video $file -> $err');
-			});
+			}
 		}
 		else
 		{
@@ -954,17 +971,12 @@ class LoadingState extends ScriptedState
 			
 			} #end
 			
-			return OpenFlAssets.loadSound(file).onComplete(function(sound) {
-				Paths.currentTrackedSounds.set(file, sound);
-				Paths.localTrackedAssets.push(file);
-			}).onError(function(err) {
-				trace('ERROR! fail on preloading sound $file -> $err');
-			});
+			return Paths.returnSound(key, path, modsAllowed, false);
 		}
 		
 		Paths.localTrackedAssets.push(file);
 		
-		return (threaded ? Paths.currentTrackedSounds.get(file) : null);
+		return Paths.currentTrackedSounds.get(file);
 	}
 	
 	static function preloadGraphic(key:String):Dynamic {
@@ -997,19 +1009,12 @@ class LoadingState extends ScriptedState
 			
 			} #end
 			
-			var file:String = Paths.getPath(requestKey, IMAGE);
-			return OpenFlAssets.loadBitmapData(file).onComplete(function(bmd) {
-				Paths.localTrackedAssets.push(file);
-				originalBitmapKeys.set(file, requestKey);
-				requestedBitmaps.set(file, bmd);
-			}).onError(function(err) {
-				trace('ERROR! fail on preloading image $file -> $err');
-			});
+			return Paths.image(key);
 		}
 		
 		Paths.localTrackedAssets.push(file);
 		
-		return (threaded ? Paths.currentTrackedAssets.get(requestKey)?.bitmap : null);
+		return Paths.currentTrackedAssets.get(requestKey);
 	}
 	
 	#if (cpp || hl)

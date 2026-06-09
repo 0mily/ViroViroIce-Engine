@@ -327,6 +327,7 @@ class Note extends FlxSprite
 
 	private function set_noteType(value:String):String {
 		if(noteData > -1 && noteType != value) {
+			var forceNoAnimation:Bool = value == 'No Animation';
 			noteSplashData.texture = PlayState.SONG != null ? PlayState.SONG.splashSkin : NoteSplash.defaultNoteSplash;
 			defaultRGB();
 			
@@ -351,7 +352,7 @@ class Note extends FlxSprite
 					lowPriority = true;
 					missHealth = isSustainNote ? 0.25 : 0.1;
 					hitCausesMiss = true;
-					hitsound = 'cancelMenu';
+					hitsound = 'general/cancelMenu';
 					hitsoundChartEditor = false;
 				case 'Alt Animation':
 					animSuffix = '-alt';
@@ -363,6 +364,11 @@ class Note extends FlxSprite
 			}
 			if (value != null && value.length > 1) NoteTypesConfig.applyNoteTypeData(this, value);
 			applyNoteSkinProperties();
+			if(forceNoAnimation)
+			{
+				noAnimation = true;
+				noMissAnimation = true;
+			}
 			if (hitsound != 'hitsound' && hitsoundVolume > 0) Paths.sound(hitsound); //precache new sound for being idiot-proof
 		}
 		return noteType = value;

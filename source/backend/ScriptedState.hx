@@ -72,7 +72,7 @@ class ScriptedState extends ScriptedSubState {
 		#if ADDONS_ALLOWED
 		if (FlxG.keys.justPressed.TAB && subState == null && MusicBeatState.isMainMenuContext(this))
 		{
-			FlxG.sound.play(Paths.sound('scrollMenu'), 0.6);
+			FlxG.sound.play(Paths.uiSound('scrollMenu'), 0.6);
 			MusicBeatState.switchState(new states.ContentMenuState());
 			return;
 		}

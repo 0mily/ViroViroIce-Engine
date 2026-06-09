@@ -21,6 +21,11 @@ class VVIESpriteHandler extends flixel.FlxSprite
 	var lastVignetteHeight:Int = -1;
 	var lastVignetteX:Float = Math.NaN;
 	var lastVignetteY:Float = Math.NaN;
+	var cameraFitActive:Bool = false;
+	var lastCameraFitWidth:Int = -1;
+	var lastCameraFitHeight:Int = -1;
+	var lastCameraFitX:Float = Math.NaN;
+	var lastCameraFitY:Float = Math.NaN;
 
 	public function makeVignette(width:Int = 0, height:Int = 0, color:FlxColor = FlxColor.BLACK, strength:Float = VignetteUtil.DEFAULT_STRENGTH,
 			radius:Float = VignetteUtil.DEFAULT_RADIUS, softness:Float = VignetteUtil.DEFAULT_SOFTNESS):VVIESpriteHandler
@@ -42,11 +47,29 @@ class VVIESpriteHandler extends flixel.FlxSprite
 			radius:Float = VignetteUtil.DEFAULT_RADIUS, softness:Float = VignetteUtil.DEFAULT_SOFTNESS):VVIESpriteHandler
 		return makeVignette(width, height, color, strength, radius, softness);
 
+	public function fitToCamera(?camera:FlxCamera = null, autoUpdate:Bool = true):VVIESpriteHandler
+	{
+		if(camera != null)
+			cameras = [camera];
+		cameraFitActive = autoUpdate;
+		scrollFactor.set();
+		refreshCameraFit(true);
+		return this;
+	}
+
+	public function stopCameraFit():VVIESpriteHandler
+	{
+		cameraFitActive = false;
+		return this;
+	}
+
 	override public function update(elapsed:Float):Void
 	{
 		super.update(elapsed);
 		if(vignetteActive && vignetteAutoSize)
 			refreshVignette(false);
+		else if(cameraFitActive)
+			refreshCameraFit(false);
 	}
 
 	override public function isOnScreen(?camera:FlxCamera):Bool
@@ -96,5 +119,32 @@ class VVIESpriteHandler extends flixel.FlxSprite
 		if(cameras != null && cameras.length > 0 && cameras[0] != null)
 			return cameras[0];
 		return getDefaultCamera();
+	}
+
+	function refreshCameraFit(force:Bool = false):Void
+	{
+		var camera:FlxCamera = getVignetteCamera();
+		var targetWidth:Int = Std.int(Math.ceil(CameraResizeFix.pegarFSL(camera)));
+		var targetHeight:Int = Std.int(Math.ceil(CameraResizeFix.pegarFSA(camera)));
+		var targetX:Float = CameraResizeFix.pegarFSX(camera);
+		var targetY:Float = CameraResizeFix.pegarFSY(camera);
+
+		targetWidth = Std.int(Math.max(1, targetWidth));
+		targetHeight = Std.int(Math.max(1, targetHeight));
+
+		if(force || targetX != lastCameraFitX || targetY != lastCameraFitY)
+		{
+			setPosition(targetX, targetY);
+			lastCameraFitX = targetX;
+			lastCameraFitY = targetY;
+		}
+
+		if(force || targetWidth != lastCameraFitWidth || targetHeight != lastCameraFitHeight)
+		{
+			setGraphicSize(targetWidth, targetHeight);
+			updateHitbox();
+			lastCameraFitWidth = targetWidth;
+			lastCameraFitHeight = targetHeight;
+		}
 	}
 }

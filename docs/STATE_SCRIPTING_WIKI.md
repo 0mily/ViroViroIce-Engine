@@ -760,7 +760,7 @@ Exemplo:
 
     <intro>
         <beat index="0">
-            <music song="freakyMenu" />
+            <music song="mainMenu" />
         </beat>
 
         <beat index="1">
@@ -830,7 +830,7 @@ Cada `<beat index="N">` roda ações naquele beat.
 
 ### Ações do intro
 
-- `<music song="freakyMenu" />`
+- `<music song="mainMenu" />`
 - `<create lines="linha1|linha2" offset="40" />`
 - `<add text="texto" offset="40" />`
 - `<clear />`

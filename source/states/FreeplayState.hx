@@ -227,7 +227,7 @@ class FreeplayState extends ScriptedState
 		openSubState(stickerSubState);
 		stickerSubState.degenStickers();
 		stickerSubState = null;
-		FlxG.sound.playMusic(Paths.music('freakyMenu'));
+		FlxG.sound.playMusic(Paths.menuMusic('mainMenu'));
 	}
 
 	override function closeSubState()
@@ -262,7 +262,7 @@ class FreeplayState extends ScriptedState
 			return;
 
 		if (FlxG.sound.music == null)
-			FlxG.sound.playMusic(Paths.music('freakyMenu'), 0.7);
+			FlxG.sound.playMusic(Paths.menuMusic('mainMenu'), 0.7);
 		else if (FlxG.sound.music.volume < 0.7)
 			FlxG.sound.music.volume += 0.5 * elapsed;
 
@@ -327,7 +327,7 @@ class FreeplayState extends ScriptedState
 
 				if(FlxG.mouse.wheel != 0)
 				{
-					FlxG.sound.play(Paths.sound('scrollMenu'), 0.2);
+					FlxG.sound.play(Paths.uiSound('scrollMenu'), 0.2);
 					changeSelection(-shiftMult * FlxG.mouse.wheel, false);
 				}
 
@@ -364,13 +364,13 @@ class FreeplayState extends ScriptedState
 				player.playingMusic = false;
 				player.switchPlayMusic();
 
-				FlxG.sound.playMusic(Paths.music('freakyMenu'), 0);
+				FlxG.sound.playMusic(Paths.menuMusic('mainMenu'), 0);
 				FlxTween.tween(FlxG.sound.music, {volume: 1}, 1);
 			}
 			else 
 			{
 				persistentUpdate = false;
-				FlxG.sound.play(Paths.sound('cancelMenu'));
+				FlxG.sound.play(Paths.uiSound('cancelMenu'));
 				MusicBeatState.switchState(new MainMenuState());
 				}
 			}
@@ -496,7 +496,7 @@ class FreeplayState extends ScriptedState
 				missingText.screenCenter(Y);
 				missingText.visible = true;
 				missingTextBG.visible = true;
-				FlxG.sound.play(Paths.sound('cancelMenu'));
+				FlxG.sound.play(Paths.uiSound('cancelMenu'));
 
 				updateTexts(elapsed);
 				super.update(elapsed);
@@ -523,7 +523,7 @@ class FreeplayState extends ScriptedState
 		{
 			persistentUpdate = false;
 			openSubState(new ResetScoreSubState(songs[curSelected].songName, curDifficulty, songs[curSelected].songCharacter));
-			FlxG.sound.play(Paths.sound('scrollMenu'));
+			FlxG.sound.play(Paths.uiSound('scrollMenu'));
 		}
 
 		updateTexts(elapsed);
@@ -598,7 +598,7 @@ class FreeplayState extends ScriptedState
 		if (!blockedFNF) {
 			curSelected = next;
 			_updateSongLastDifficulty();
-			if(playSound) FlxG.sound.play(Paths.sound('scrollMenu'), 0.4);
+			if(playSound) FlxG.sound.play(Paths.uiSound('scrollMenu'), 0.4);
 
 			var newColor:Int = songs[curSelected].color;
 			if(newColor != intendedColor)
@@ -736,7 +736,7 @@ class FreeplayState extends ScriptedState
 
 		FlxG.autoPause = ClientPrefs.data.autoPause;
 		if (!FlxG.sound.music.playing && !stopMusicPlay)
-			FlxG.sound.playMusic(Paths.music('freakyMenu'));
+			FlxG.sound.playMusic(Paths.menuMusic('mainMenu'));
 	}	
 }
 

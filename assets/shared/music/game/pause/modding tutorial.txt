@@ -1,0 +1,24 @@
+Use this structure:
+
+music/game/pause/<pauseMusicName>/<characterName>/music.ogg
+music/game/pause/<pauseMusicName>/<characterName>/<uiName>/music.ogg
+
+Examples:
+
+music/game/pause/breakfast/default/music.ogg
+music/game/pause/breakfast/default/pixel/music.ogg
+music/game/pause/breakfast/pico/music.ogg
+music/game/pause/breakfast/pico/pixel/music.ogg
+music/game/pause/tea-time/default/music.ogg
+
+
+
+
+Pause script callbacks:
+
+onLoad()
+onPause()
+
+Pause script API:
+
+pauseMusic(pauseMusicName, songfile)

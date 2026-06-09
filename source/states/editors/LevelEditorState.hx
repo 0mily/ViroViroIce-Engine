@@ -401,7 +401,7 @@ class LevelEditorState extends MusicBeatState implements PsychUIEventHandler.Psy
 				if(!unsavedProgress)
 				{
 					MusicBeatState.switchState(new states.MainMenuState(true));
-					FlxG.sound.playMusic(Paths.music('freakyMenu'));
+					FlxG.sound.playMusic(Paths.menuMusic('mainMenu'));
 				}
 				else openSubState(new ExitConfirmationPrompt(function() unsavedProgress = false));
 			}
@@ -841,7 +841,8 @@ class WeekEditorFreeplayState extends MusicBeatState implements PsychUIEventHand
 				holdingColorPicker = null;
 				storedPickerColor = getSelectedFreeplayColor();
 				updateColorPicker();
-				FlxG.sound.play(Paths.sound('scrollMenu'), 0.45);
+				if(ClientPrefs.data.editorSFX)
+					FlxG.sound.play(Paths.uiSound('scrollMenu'), 0.45);
 			}
 			else if(FlxG.mouse.pressed && (FlxG.mouse.justMoved || FlxG.mouse.deltaViewX != 0 || FlxG.mouse.deltaViewY != 0))
 				updateColorPickerInput();
@@ -888,7 +889,8 @@ class WeekEditorFreeplayState extends MusicBeatState implements PsychUIEventHand
 		return UI_box.y + UI_box.tabHeight + sprite.y;
 
 	function changeSelection(change:Int = 0) {
-		FlxG.sound.play(Paths.sound('scrollMenu'), 0.4);
+		if(ClientPrefs.data.editorSFX)
+			FlxG.sound.play(Paths.uiSound('scrollMenu'), 0.4);
 
 		curSelected = FlxMath.wrap(curSelected + change, 0, weekFile.songs.length - 1);
 		for (num => item in grpSongs.members)
@@ -927,7 +929,7 @@ class WeekEditorFreeplayState extends MusicBeatState implements PsychUIEventHand
 				if(!LevelEditorState.unsavedProgress)
 				{
 					MusicBeatState.switchState(new MainMenuState(true));
-					FlxG.sound.playMusic(Paths.music('freakyMenu'));
+					FlxG.sound.playMusic(Paths.menuMusic('mainMenu'));
 				}
 				else openSubState(new ExitConfirmationPrompt());
 			}

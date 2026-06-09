@@ -94,7 +94,7 @@ class EditorPlayState extends ScriptedSubState
 
 		cachePopUpScore();
 		guitarHeroSustains = ClientPrefs.data.guitarHeroSustains;
-		if(ClientPrefs.data.hitsoundVolume > 0) Paths.sound('hitsound');
+		if(ClientPrefs.data.hitsoundVolume > 0) Paths.hitsound();
 
 		/* setting up Editor PlayState stuff */
 		bg = new FlxSprite().loadGraphic(Paths.image('menuDesat'));
@@ -799,7 +799,7 @@ class EditorPlayState extends ScriptedSubState
 
 		note.wasGoodHit = true;
 		if (note.hitsoundVolume > 0 && !note.hitsoundDisabled)
-			FlxG.sound.play(Paths.sound(note.hitsound), note.hitsoundVolume);
+			FlxG.sound.play(note.hitsound == 'hitsound' ? Paths.hitsound() : Paths.sound(note.hitsound), note.hitsoundVolume);
 
 		if(note.hitCausesMiss) {
 			noteMiss(note);

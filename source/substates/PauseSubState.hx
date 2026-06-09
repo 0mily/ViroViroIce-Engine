@@ -30,9 +30,21 @@ class PauseSubState extends ScriptedSubState
 	var missingText:FlxText;
 
 	public static var songName:String = null;
+	public static var pauseMusicName:String = null;
+	public static var pauseTrackName:String = 'music';
+	public static var musicCharacterName:String = 'default';
+	public static var instance:PauseSubState;
+
+	public static function setPauseMusic(?name:String = null, ?songfile:String = 'music'):Void
+	{
+		if(name != null && name.trim().length > 0)
+			pauseMusicName = name;
+		pauseTrackName = (songfile != null && songfile.trim().length > 0) ? songfile : 'music';
+	}
 
 	override function create()
 	{
+		instance = this;
 		if(Difficulty.list.length < 2) menuItemsOG.remove('Change Difficulty'); //No need to change difficulty if there is only one!
 		if(PlayState.chartingMode)
 		{
@@ -50,6 +62,10 @@ class PauseSubState extends ScriptedSubState
 			menuItemsOG.insert(3, 'Skip Time');
 		menuItems = menuItemsOG;
 
+		pauseMusicName = getPauseSong();
+		pauseTrackName = 'music';
+		musicCharacterName = (PlayState.instance?.boyfriend?.curCharacter != null && PlayState.instance.boyfriend.curCharacter.trim().length > 0) ? PlayState.instance.boyfriend.curCharacter : 'default';
+
 		for (i in 0...Difficulty.list.length) {
 			var diff:String = Difficulty.getString(i);
 			difficultyChoices.push(diff);
@@ -57,15 +73,17 @@ class PauseSubState extends ScriptedSubState
 		difficultyChoices.push('BACK');
 
 		pauseMusic = new FlxSound();
+		preCreate();
+		loadPauseScripts();
+		callOnScripts('onPause');
+
 		try {
-			var pauseSong:String = getPauseSong();
-			if(pauseSong != null) pauseMusic.loadEmbedded(Paths.music(pauseSong), true, true);
+			if(pauseMusicName != null) pauseMusic.loadEmbedded(Paths.pauseMusic(pauseMusicName, musicCharacterName, PlayState.stageUI, pauseTrackName), true, true);
 		}
 		catch(e:Dynamic) {}
 		pauseMusic.volume = 0;
 		pauseMusic.play(false, FlxG.random.int(0, Std.int(pauseMusic.length / 2)));
 		
-		preCreate();
 		CameraResizeFix.aplyAll();
 		var pauseCamera = FlxG.cameras.list[FlxG.cameras.list.length - 1];
 		var fullScreenX:Float = CameraResizeFix.pegarFSX(pauseCamera);
@@ -157,7 +175,7 @@ function getPauseSong()
 	{
 		if (backend.WeekData.getWeekFileName() == 'week6') // eu nsei oq eu tô fazendo mas parece certo SHIHO ME AJUDA
 		{
-			return 'breakfast-pixel'; //seguindo a minha lógica, supostamente ela vai pegar a musica aqui do breakfast pixel se for a week 6, ent to mt feliz se fuincionar FUNCIOUUUIUU
+			return 'breakfast';
 		} // São 2:14 AM btw
 		var formattedSongName:String = (songName != null ? Paths.formatToSongPath(songName) : '');
 		var formattedPauseMusic:String = Paths.formatToSongPath(ClientPrefs.data.pauseMusic);
@@ -171,6 +189,74 @@ function getPauseSong()
 	// ignora tava me sentindo claustrofóbica
 
 
+
+
+	function refreshPauseScriptVars():Void
+	{
+		setOnScripts('pauseSubstate', this);
+		setOnScripts('pauseMusicSound', pauseMusic);
+		setOnScripts('pauseMusicName', pauseMusicName);
+		setOnScripts('pauseMusicTrack', pauseTrackName);
+		setOnScripts('pauseMusicCharacter', musicCharacterName);
+		setOnScripts('pauseStageUI', PlayState.stageUI);
+	}
+
+	function loadPauseScripts():Void
+	{
+		refreshPauseScriptVars();
+		#if sys
+		var folder:String = resolvePauseScriptFolder();
+		if(folder == null)
+			return;
+
+		var files:Array<String> = FileSystem.readDirectory(folder);
+		files.sort(function(a:String, b:String) return Reflect.compare(a.toLowerCase(), b.toLowerCase()));
+
+		for(file in files)
+		{
+			var path:String = '$folder/$file';
+			if(FileSystem.isDirectory(path))
+				continue;
+
+			#if LUA_ALLOWED
+			if(file.toLowerCase().endsWith('.lua'))
+				initLuaScript(path);
+			#end
+
+			#if HSCRIPT_ALLOWED
+			if(psychlua.HScript.hasScriptExtension(file))
+				initHScript(path);
+			#end
+		}
+
+		refreshPauseScriptVars();
+		#if LUA_ALLOWED
+		callOnLuas('onLoad');
+		#end
+		#end
+	}
+
+	#if sys
+	function resolvePauseScriptFolder():String
+	{
+		if(pauseMusicName == null)
+			return null;
+
+		for(folder in Paths.pauseScriptFolders(pauseMusicName, musicCharacterName, PlayState.stageUI))
+		{
+			#if ADDONS_ALLOWED
+			var modFolder:String = Paths.modFolders(folder);
+			if(FileSystem.exists(modFolder) && FileSystem.isDirectory(modFolder))
+				return modFolder;
+			#end
+
+			var sharedFolder:String = Paths.getSharedPath(folder);
+			if(FileSystem.exists(sharedFolder) && FileSystem.isDirectory(sharedFolder))
+				return sharedFolder;
+		}
+		return null;
+	}
+	#end
 
 
 
@@ -205,13 +291,13 @@ function getPauseSong()
 			case 'Skip Time':
 				if (controls.UI_LEFT_P)
 				{
-					FlxG.sound.play(Paths.sound('scrollMenu'), 0.4);
+					FlxG.sound.play(Paths.uiSound('scrollMenu'), 0.4);
 					curTime -= 1000;
 					holdTime = 0;
 				}
 				if (controls.UI_RIGHT_P)
 				{
-					FlxG.sound.play(Paths.sound('scrollMenu'), 0.4);
+					FlxG.sound.play(Paths.uiSound('scrollMenu'), 0.4);
 					curTime += 1000;
 					holdTime = 0;
 				}
@@ -262,7 +348,7 @@ function getPauseSong()
 						missingText.screenCenter(Y);
 						missingText.visible = true;
 						missingTextBG.visible = true;
-						FlxG.sound.play(Paths.sound('cancelMenu'));
+						FlxG.sound.play(Paths.uiSound('cancelMenu'));
 
 						super.update(elapsed);
 						return;
@@ -320,8 +406,8 @@ function getPauseSong()
 						PlayState.instance.canResync = false;
 						OptionsState.rememberPlayStateContext();
 						MusicBeatState.switchState(new OptionsState());
-						if(ClientPrefs.data.pauseMusic != 'None') {
-							FlxG.sound.playMusic(Paths.music(Paths.formatToSongPath(ClientPrefs.data.pauseMusic)), pauseMusic.volume);
+						if(pauseMusicName != null) {
+							FlxG.sound.playMusic(Paths.pauseMusic(pauseMusicName, musicCharacterName, PlayState.stageUI, pauseTrackName), pauseMusic.volume);
 							FlxTween.tween(FlxG.sound.music, {volume: 1}, 0.8);
 							FlxG.sound.music.time = pauseMusic.time;
 						}
@@ -337,14 +423,14 @@ function getPauseSong()
 								openSubState(new StickerSubState(null, (sticker) -> new StoryMenuState(sticker)));
 							} else {
 								MusicBeatState.switchState(new StoryMenuState());
-			 					FlxG.sound.playMusic(Paths.music('freakyMenu'));
+			 					FlxG.sound.playMusic(Paths.menuMusic('mainMenu'));
 							}
 						} else {
 							if (Mods.modUsesStickerTrans()) {
 								openSubState(new StickerSubState(null, (sticker) -> new FreeplayState(sticker)));
 							} else {
 								MusicBeatState.switchState(new FreeplayState());
-			 					FlxG.sound.playMusic(Paths.music('freakyMenu'));
+			 					FlxG.sound.playMusic(Paths.menuMusic('mainMenu'));
 							}
 						}
 						PlayState.changedDifficulty = false;
@@ -378,9 +464,25 @@ function getPauseSong()
 	
 	public static function restartSong(skipTransition:Bool = false) { PlayState.restartSong(skipTransition); }
 
+	#if LUA_ALLOWED
+	public override function implementLua(lua:psychlua.FunkinLua):Void
+	{
+		lua.set('pauseMusicName', pauseMusicName);
+		lua.set('pauseMusicTrack', pauseTrackName);
+		lua.set('pauseMusicCharacter', musicCharacterName);
+		lua.set('pauseStageUI', PlayState.stageUI);
+		lua.addLocalCallback('pauseMusic', function(?name:String = null, ?songfile:String = 'music') {
+			setPauseMusic(name, songfile);
+			refreshPauseScriptVars();
+		});
+	}
+	#end
+
 	override function destroy()
 	{
-		pauseMusic.destroy();
+		instance = null;
+		if(pauseMusic != null)
+			pauseMusic.destroy();
 		super.destroy();
 	}
 
@@ -405,7 +507,7 @@ function getPauseSong()
 			missingTextBG.visible = false;
 			
 			if (change != 0)
-				FlxG.sound.play(Paths.sound('scrollMenu'), .4);
+				FlxG.sound.play(Paths.uiSound('scrollMenu'), .4);
 			
 			callOnScripts('onSelectItemPost', [grpMenuShit.members[curSelected].text, curSelected]);
 		}

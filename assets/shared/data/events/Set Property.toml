@@ -1,0 +1,11 @@
+name = 'Set Property'
+description = 'Sets a property path to a new value.'
+
+[Property]
+type = 'text'
+width = 170
+advance = false
+
+[Value]
+type = 'text'
+width = 150

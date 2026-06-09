@@ -8,8 +8,10 @@ import flixel.FlxCamera;
 import flixel.FlxG;
 import flixel.FlxSprite;
 import flixel.group.FlxSpriteGroup;
+import flixel.system.FlxAssets.FlxShader;
 import flixel.tweens.FlxTween;
 import flixel.tweens.FlxEase;
+import flixel.util.FlxColor;
 import openfl.Lib;
 import openfl.filters.BitmapFilter;
 import openfl.filters.BlurFilter;
@@ -203,6 +205,55 @@ class ShaderFunctions
 		}
 
 		return null;
+	}
+
+	static function resolveShaderObject(name:String):FlxShader
+	{
+		if (name == null || name.trim().length < 1)
+			return null;
+
+		var obj:Dynamic = MusicBeatState.getVariables().get(LuaUtils.formatVariable(name));
+		if (obj == null)
+			obj = LuaUtils.getObjectDirectly(name);
+
+		if (Std.isOfType(obj, FlxShader))
+			return cast obj;
+
+		if (Std.isOfType(obj, FlxSprite))
+		{
+			var sprite:FlxSprite = cast obj;
+			if (sprite.shader != null && Std.isOfType(sprite.shader, FlxShader))
+				return cast sprite.shader;
+		}
+
+		#if flxanimate
+		var atlas:Dynamic = backend.AtlasUtil.getAtlas(obj);
+		if (atlas != null)
+		{
+			var shader:Dynamic = try Reflect.getProperty(atlas, 'shader') catch(e:Dynamic) null;
+			if (Std.isOfType(shader, FlxShader))
+				return cast shader;
+		}
+		#end
+
+		return null;
+	}
+
+	static function resolveSserafimShader(name:String):shaders.SserafimShader
+	{
+		var shader:FlxShader = resolveShaderObject(name);
+		return Std.isOfType(shader, shaders.SserafimShader) ? cast shader : null;
+	}
+
+	static function colorFromDynamic(value:Dynamic, fallback:FlxColor = FlxColor.WHITE):FlxColor
+	{
+		if (value == null)
+			return fallback;
+		if (Std.isOfType(value, Int))
+			return cast value;
+		if (Std.isOfType(value, Float))
+			return cast Std.int(value);
+		return CoolUtil.colorFromString(Std.string(value));
 	}
 
 	static function getTargetFilters(target:FilterTarget):Array<BitmapFilter>
@@ -539,6 +590,69 @@ class ShaderFunctions
 			FunkinLua.luaTrace("initLuaShader: Platform unsupported for Runtime Shaders!!!!!", false, false, ERROR);
 			return false;
 			#end
+		});
+
+		funk.addLocalCallback("makeSserafimShader", function(tag:String, isCharacter:Bool = false) {
+			if (!ClientPrefs.data.shaders) return false;
+			if (tag == null || tag.trim().length < 1) return false;
+
+			MusicBeatState.getVariables().set(LuaUtils.formatVariable(tag), new shaders.SserafimShader(isCharacter));
+			return true;
+		});
+
+		funk.addLocalCallback("setObjectShaderObject", function(target:String, shaderTag:String) {
+			if (!ClientPrefs.data.shaders) return false;
+
+			var shader:FlxShader = resolveShaderObject(shaderTag);
+			var obj:Dynamic = LuaUtils.getObjectDirectly(target);
+			return shader != null && backend.AtlasUtil.setShader(obj, shader);
+		});
+		funk.addLocalCallback("setLuaObjectShader", function(target:String, shaderTag:String) {
+			if (!ClientPrefs.data.shaders) return false;
+
+			var shader:FlxShader = resolveShaderObject(shaderTag);
+			var obj:Dynamic = LuaUtils.getObjectDirectly(target);
+			return shader != null && backend.AtlasUtil.setShader(obj, shader);
+		});
+		funk.addLocalCallback("copyObjectShader", function(source:String, target:String) {
+			if (!ClientPrefs.data.shaders) return false;
+			return backend.AtlasUtil.copyShader(LuaUtils.getObjectDirectly(source), LuaUtils.getObjectDirectly(target));
+		});
+
+		var setSserafimShader = function(target:String, ?shaderOrIsCharacter:Dynamic = false) {
+			if (!ClientPrefs.data.shaders) return false;
+
+			var shader:shaders.SserafimShader = null;
+			if (Std.isOfType(shaderOrIsCharacter, String))
+				shader = resolveSserafimShader(Std.string(shaderOrIsCharacter));
+			else
+				shader = new shaders.SserafimShader(shaderOrIsCharacter == true);
+
+			var obj:Dynamic = LuaUtils.getObjectDirectly(target);
+			return shader != null && backend.AtlasUtil.setShader(obj, shader);
+		};
+		funk.addLocalCallback("setSserafimShader", setSserafimShader);
+		funk.addLocalCallback("setObjectSserafimShader", setSserafimShader);
+
+		funk.addLocalCallback("setSserafimShaderValues", function(shaderTag:String, ?darken:Null<Float>, ?pulseColor:Dynamic = null,
+			?pulseStrength:Null<Float>, ?truckStrength:Null<Float>, ?isCharacter:Null<Bool>) {
+			var shader:shaders.SserafimShader = resolveSserafimShader(shaderTag);
+			if (shader == null) return false;
+
+			if (darken != null) shader.darkenAmount = darken;
+			if (pulseColor != null) shader.pulseLightColor = colorFromDynamic(pulseColor, shader.pulseLightColor);
+			if (pulseStrength != null) shader.pulseLightStrength = pulseStrength;
+			if (truckStrength != null) shader.truckLightStrength = truckStrength;
+			if (isCharacter != null) shader.isCharacter = isCharacter;
+			return true;
+		});
+
+		funk.addLocalCallback("setSserafimAdjustColor", function(shaderTag:String, brightness:Float = 0, hue:Float = 0, contrast:Float = 0, saturation:Float = 0) {
+			var shader:shaders.SserafimShader = resolveSserafimShader(shaderTag);
+			if (shader == null) return false;
+
+			shader.setAdjustColor(brightness, hue, contrast, saturation);
+			return true;
 		});
 
 /*  =======================================================

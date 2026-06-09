@@ -288,7 +288,7 @@ class StoryMenuState extends ScriptedState
 		openSubState(stickerSubState);
 		stickerSubState.degenStickers();
 		stickerSubState = null;
-		FlxG.sound.playMusic(Paths.music('freakyMenu'));
+		FlxG.sound.playMusic(Paths.menuMusic('mainMenu'));
 	}
 
 	override function closeSubState() {
@@ -304,7 +304,7 @@ class StoryMenuState extends ScriptedState
 		if(WeekData.weeksList.length < 1) {
 			if (controls.BACK && !movedBack && !selectedWeek) {
 				if (callOnScripts('onBack', true) != psychlua.LuaUtils.Function_Stop) {
-					FlxG.sound.play(Paths.sound('cancelMenu'));
+					FlxG.sound.play(Paths.uiSound('cancelMenu'));
 					movedBack = true;
 					MusicBeatState.switchState(new MainMenuState());
 				}
@@ -328,18 +328,18 @@ class StoryMenuState extends ScriptedState
 			var changeDiff = false;
 			if (controls.UI_UP_P) {
 				changeWeek(-1);
-				FlxG.sound.play(Paths.sound('scrollMenu'));
+				FlxG.sound.play(Paths.uiSound('scrollMenu'));
 				changeDiff = true;
 			}
 
 			if (controls.UI_DOWN_P) {
 				changeWeek(1);
-				FlxG.sound.play(Paths.sound('scrollMenu'));
+				FlxG.sound.play(Paths.uiSound('scrollMenu'));
 				changeDiff = true;
 			}
 
 			if(FlxG.mouse.wheel != 0) {
-				FlxG.sound.play(Paths.sound('scrollMenu'), 0.4);
+				FlxG.sound.play(Paths.uiSound('scrollMenu'), 0.4);
 				changeWeek(-FlxG.mouse.wheel);
 				changeDifficulty();
 			}
@@ -347,7 +347,7 @@ class StoryMenuState extends ScriptedState
 			var mobileDragChange:Int = consumeMobileWeekDrag();
 			if(mobileDragChange != 0)
 			{
-				FlxG.sound.play(Paths.sound('scrollMenu'), 0.4);
+				FlxG.sound.play(Paths.uiSound('scrollMenu'), 0.4);
 				changeWeek(mobileDragChange);
 				changeDifficulty();
 				changeDiff = true;
@@ -379,7 +379,7 @@ class StoryMenuState extends ScriptedState
 			} else if(controls.RESET) {
 				persistentUpdate = false;
 				openSubState(new ResetScoreSubState('', curDifficulty, '', getSelectedWeekGlobalIndex()));
-				//FlxG.sound.play(Paths.sound('scrollMenu'));
+				//FlxG.sound.play(Paths.uiSound('scrollMenu'));
 			}
 			else if (controls.ACCEPT)
 				selectWeek();
@@ -388,7 +388,7 @@ class StoryMenuState extends ScriptedState
 		if (controls.BACK && !movedBack && !selectedWeek && !blockedFNFInput) {
 			if (callOnScripts('onBack', true) != psychlua.LuaUtils.Function_Stop) {
 				movedBack = true;
-				FlxG.sound.play(Paths.sound('cancelMenu'));
+				FlxG.sound.play(Paths.uiSound('cancelMenu'));
 				MusicBeatState.switchState(new MainMenuState());
 			}
 		}
@@ -455,10 +455,10 @@ class StoryMenuState extends ScriptedState
 							char.animation.play('confirm');
 					}
 					
-					FlxG.sound.play(Paths.sound('confirmMenu'));
+					FlxG.sound.play(Paths.uiSound('confirmMenu'));
 				}
 			} else {
-				FlxG.sound.play(Paths.sound('cancelMenu'));
+				FlxG.sound.play(Paths.uiSound('cancelMenu'));
 			}
 		}
 	}

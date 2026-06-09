@@ -141,9 +141,9 @@ class PhillyStreets extends BaseStage
 			setupRainShader();
 
 		var _song = PlayState.SONG;
-		if(_song.gameOverSound == null || _song.gameOverSound.trim().length < 1) GameOverSubstate.deathSoundName = 'fnf_loss_sfx-pico';
-		if(_song.gameOverLoop == null || _song.gameOverLoop.trim().length < 1) GameOverSubstate.loopSoundName = 'gameOver-pico';
-		if(_song.gameOverEnd == null || _song.gameOverEnd.trim().length < 1) GameOverSubstate.endSoundName = 'gameOverEnd-pico';
+		if(_song.gameOverSound == null || _song.gameOverSound.trim().length < 1) GameOverSubstate.deathSoundName = 'fnf_loss_sfx';
+		if(_song.gameOverLoop == null || _song.gameOverLoop.trim().length < 1) GameOverSubstate.loopSoundName = 'music';
+		if(_song.gameOverEnd == null || _song.gameOverEnd.trim().length < 1) GameOverSubstate.endSoundName = 'music-end';
 		if(_song.gameOverChar == null || _song.gameOverChar.trim().length < 1) GameOverSubstate.characterName = 'pico-dead';
 		setDefaultGF('nene');
 		
@@ -912,7 +912,7 @@ class PhillyStreets extends BaseStage
 				
 				game.health -= .4;
 				if (game.health <= 0.0 && !game.practiceMode) {
-					GameOverSubstate.deathSoundName = 'fnf_loss_sfx-pico-explode';
+					GameOverSubstate.deathSoundName = 'fnf_loss_sfx';
 					GameOverSubstate.loopSoundName = 'gameOverStart-pico-explode';
 					GameOverSubstate.characterName = 'pico-explosion-dead';
 				}

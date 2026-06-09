@@ -33,6 +33,7 @@
 	},
 	"properties": {
 		"allowRGB": true,
-		"antialiasing": true
+		"antialiasing": true,
+		"pixel_antialiasing": false
 	}
 }

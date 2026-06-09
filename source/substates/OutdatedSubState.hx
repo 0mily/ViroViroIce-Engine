@@ -54,7 +54,7 @@ Thank you for using this engine!',
 			}
 			
 			if (leftState) {
-				FlxG.sound.play(Paths.sound('cancelMenu'));
+				FlxG.sound.play(Paths.uiSound('cancelMenu'));
 				FlxTween.tween(bg, { alpha: 0.0 }, 0.9, { ease: FlxEase.sineOut });
 				FlxTween.tween(warnText, {alpha: 0}, 1, {
 					ease: FlxEase.sineOut,

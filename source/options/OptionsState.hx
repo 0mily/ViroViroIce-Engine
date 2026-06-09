@@ -129,7 +129,7 @@ class OptionsState extends ScriptedState
 
 			if (controls.BACK) {
 				if (callOnScripts('onBack', true) != psychlua.LuaUtils.Function_Stop) {
-					FlxG.sound.play(Paths.sound('cancelMenu'));
+					FlxG.sound.play(Paths.uiSound('cancelMenu'));
 					if(onPlayState) {
 						restorePlayStateContext();
 						StageData.loadDirectory(PlayState.SONG);
@@ -154,7 +154,7 @@ class OptionsState extends ScriptedState
 		blockedFNF = (blockedFNF || callOnScripts('onSelectItem', [options[next], next], true) == psychlua.LuaUtils.Function_Stop);
 		if (!blockedFNF) {
 			if (change != 0)
-				FlxG.sound.play(Paths.sound('scrollMenu'));
+				FlxG.sound.play(Paths.uiSound('scrollMenu'));
 			
 			curSelected = next;
 			updateItemsVisibility();

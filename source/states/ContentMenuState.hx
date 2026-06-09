@@ -7,6 +7,7 @@ import flixel.util.FlxGradient;
 import openfl.display.BitmapData;
 
 // mano, eu genuinamente fiquei com preguiça de continuar
+// i'm still, what the fuck i coed
 
 class ContentMenuState extends MusicBeatState
 {
@@ -254,7 +255,7 @@ class ContentMenuState extends MusicBeatState
 
 		FlxTween.cancelTweensOf(bg);
 		if (!force)
-			FlxG.sound.play(Paths.sound('scrollMenu'), 0.5);
+			FlxG.sound.play(Paths.uiSound('scrollMenu'), 0.5);
 		FlxTween.color(bg, force ? 0.01 : 0.35, bg.color, entry.color);
 
 		loadBanner(entry);
@@ -311,7 +312,7 @@ class ContentMenuState extends MusicBeatState
 			return;
 
 		var changed:Bool = entry.folder != Mods.getSelectedContentDirectory();
-		FlxG.sound.play(Paths.sound('confirmMenu'));
+		FlxG.sound.play(Paths.uiSound('confirmMenu'));
 
 		if (changed)
 		{
@@ -330,6 +331,13 @@ class ContentMenuState extends MusicBeatState
 					quitting = false;
 					FlxG.camera.fade(FlxColor.BLACK, 0.2, true);
 					return;
+				}
+
+				if (FlxG.sound.music != null)
+				{
+					FlxTween.cancelTweensOf(FlxG.sound.music);
+					FlxG.sound.music.stop();
+					FlxG.sound.music = null;
 				}
 
 				TitleState.initialized = false;
@@ -430,7 +438,7 @@ class ContentMenuState extends MusicBeatState
 	function exitToMenu(playSound:Bool = true):Void
 	{
 		if (playSound)
-			FlxG.sound.play(Paths.sound('cancelMenu'));
+			FlxG.sound.play(Paths.uiSound('cancelMenu'));
 		quitting = true;
 		MusicBeatState.switchState(new MainMenuState());
 	}
@@ -479,7 +487,7 @@ class ContentMenuButton extends FlxSprite
 	{
 		var hover:Bool = available && clickable && onClick != null && FlxG.mouse.visible && FlxG.mouse.overlaps(this);
 		if (hover && !wasHover)
-			FlxG.sound.play(Paths.sound('scrollMenu'), 0.45);
+			FlxG.sound.play(Paths.uiSound('scrollMenu'), 0.45);
 
 		var ease:Float = Math.min(1, elapsed * 12);
 		var targetAlpha:Float = available ? (hover ? 1 : idleAlpha) : 0.12;

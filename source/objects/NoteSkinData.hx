@@ -1,6 +1,7 @@
 package objects;
 
 import tjson.TJSON;
+import states.PlayState;
 
 // remind of me from the future: ,AKE THE NOTE SPLASH SYSTEM BETTER HOLY JESUS
 
@@ -198,7 +199,7 @@ class NoteSkinData
 		applyBool(props, 'noteSplashDisabled', value -> note.noteSplashData.disabled = value);
 		applyBool(props, 'useRGBShader', value -> note.useRGBShader = value);
 		applyBool(props, 'allowRGB', value -> note.useRGBShader = value);
-		applyBool(props, 'antialiasing', value -> note.antialiasing = value);
+		applyAntialiasing(props, value -> note.antialiasing = value);
 	}
 
 	public static function applyPropertiesToStrum(strum:StrumNote, config:NoteSkinConfig):Void
@@ -209,7 +210,7 @@ class NoteSkinData
 
 		applyBool(props, 'useRGBShader', value -> strum.setRGBAllowed(value));
 		applyBool(props, 'allowRGB', value -> strum.setRGBAllowed(value));
-		applyBool(props, 'antialiasing', value -> strum.antialiasing = value);
+		applyAntialiasing(props, value -> strum.antialiasing = value);
 	}
 
 	public static function applyStrumOffset(strum:StrumNote, anim:String, config:NoteSkinConfig):Void
@@ -500,6 +501,42 @@ class NoteSkinData
 		if (data == null || !Reflect.hasField(data, field))
 			return;
 		setter(parseBool(Reflect.field(data, field), false));
+	}
+
+	static function applyAntialiasing(data:Dynamic, setter:Bool->Void):Void
+	{
+		if (data == null)
+			return;
+
+		var value:Null<Bool> = readBoolAlias(data, PlayState.isPixelStage ? [
+			'pixelAntialiasing',
+			'pixelAntiAliasing',
+			'pixelAntiAlising',
+			'pixel_antialiasing',
+			'pixel_anti_aliasing',
+			'pixel_anti_alising'
+		] : [
+			'antialiasing',
+			'antiAliasing',
+			'antiAlising',
+			'anti_aliasing',
+			'anti_alising'
+		]);
+
+		if(value != null)
+			setter(value);
+		else if(PlayState.isPixelStage)
+			setter(false);
+	}
+
+	static function readBoolAlias(data:Dynamic, fields:Array<String>):Null<Bool>
+	{
+		for(field in fields)
+		{
+			if(data != null && Reflect.hasField(data, field))
+				return parseBool(Reflect.field(data, field), false);
+		}
+		return null;
 	}
 
 	static function parseBool(value:Dynamic, fallback:Bool):Bool

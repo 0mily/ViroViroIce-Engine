@@ -11,7 +11,7 @@ class ExitConfirmationPrompt extends Prompt
 		{
 			FlxG.mouse.visible = false;
 			MusicBeatState.switchState(new states.MainMenuState(true));
-			FlxG.sound.playMusic(Paths.music('freakyMenu'));
+			FlxG.sound.playMusic(Paths.menuMusic('mainMenu'));
 			if(finishCallback != null) finishCallback();
 		}, 'Exit');
 	}

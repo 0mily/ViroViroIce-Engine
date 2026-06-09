@@ -32,10 +32,21 @@ import sys.io.File;
 import backend.Mods;
 #end
 
+typedef AudioFolderCandidate = {
+	var folder:String;
+	var matchKey:String;
+}
+
 @:access(openfl.display.BitmapData)
 class Paths
 {
+	#if html5
+	inline public static var SOUND_EXT = "mp3";
+	public static final SOUND_EXTENSIONS:Array<String> = ["mp3"];
+	#else
 	inline public static var SOUND_EXT = "ogg";
+	public static final SOUND_EXTENSIONS:Array<String> = ["ogg"];
+	#end
 	inline public static var VIDEO_EXT = "mp4";
 
 	public static function excludeAsset(key:String) {
@@ -43,15 +54,19 @@ class Paths
 			dumpExclusions.push(key);
 	}
 
-	public static var dumpExclusions:Array<String> = ['assets/shared/music/freakyMenu.$SOUND_EXT'];
+	public static var dumpExclusions:Array<String> = [
+		'assets/shared/music/menus/mainMenu/music.$SOUND_EXT',
+		'assets/shared/music/menus/MainMenu/music.$SOUND_EXT'
+	];
 	// haya I love you for the base cache dump I took to the max
 	public static function clearUnusedMemory()
 	{
+		var protectedGfx:Array<FlxGraphic> = collectLiveGraphics();
 		// clear non local assets in the tracked assets list
 		for (key in currentTrackedAssets.keys())
 		{
 			// if it is not currently contained within the used local assets
-			if (!localTrackedAssets.contains(key) && !dumpExclusions.contains(key))
+			if (!localTrackedAssets.contains(key) && !dumpExclusions.contains(key) && !protectedGfx.contains(currentTrackedAssets.get(key)))
 			{
 				destroyGraphic(currentTrackedAssets.get(key)); // get rid of the graphic
 				currentTrackedAssets.remove(key); // and remove the key from local cache map
@@ -68,11 +83,13 @@ class Paths
 	@:access(flixel.system.frontEnds.BitmapFrontEnd._cache)
 	public static function clearStoredMemory()
 	{
+		var protectedGfx:Array<FlxGraphic> = collectLiveGraphics();
 		// clear anything not in the tracked assets list
 		for (key in FlxG.bitmap._cache.keys())
 		{
-			if (!currentTrackedAssets.exists(key))
-				destroyGraphic(FlxG.bitmap.get(key));
+			var graphic:FlxGraphic = FlxG.bitmap.get(key);
+			if (!currentTrackedAssets.exists(key) && !isProtectedCachedGraphic(key, graphic, protectedGfx))
+				destroyGraphic(graphic);
 		}
 
 		// clear all sounds that are cached
@@ -89,44 +106,57 @@ class Paths
 		#if !html5 openfl.Assets.cache.clear("songs"); #end
 	}
 
-	public static function freeGraphicsFromMemory()
+	static function collectLiveGraphics():Array<FlxGraphic>
 	{
 		var protectedGfx:Array<FlxGraphic> = [];
-		function checkForGraphics(spr:Dynamic)
+		function checkForGraphics(spr:Dynamic, depth:Int = 0):Void
 		{
+			if(spr == null || depth > 32)
+				return;
+
+			try
+			{
+				var gfx:FlxGraphic = Reflect.getProperty(spr, 'graphic');
+				if(gfx != null && !protectedGfx.contains(gfx))
+					protectedGfx.push(gfx);
+			}
+			catch(e:Dynamic) {}
+
 			try
 			{
 				var grp:Array<Dynamic> = Reflect.getProperty(spr, 'members');
 				if(grp != null)
-				{
-					//trace('is actually a group');
 					for (member in grp)
-					{
-						checkForGraphics(member);
-					}
-					return;
-				}
+						checkForGraphics(member, depth + 1);
 			}
-
-			//trace('check...');
-			try
-			{
-				var gfx:FlxGraphic = Reflect.getProperty(spr, 'graphic');
-				if(gfx != null)
-				{
-					protectedGfx.push(gfx);
-					//trace('gfx added to the list successfully!');
-				}
-			}
-			//catch(haxe.Exception) {}
+			catch(e:Dynamic) {}
 		}
 
-		for (member in FlxG.state.members)
-			checkForGraphics(member);
+		if(FlxG.state != null)
+		{
+			checkForGraphics(FlxG.state);
+			if(FlxG.state.subState != null)
+				checkForGraphics(FlxG.state.subState);
+		}
+		return protectedGfx;
+	}
 
-		if(FlxG.state.subState != null)
-			for (member in FlxG.state.subState.members)
-				checkForGraphics(member);
+	static function isProtectedCachedGraphic(key:String, graphic:FlxGraphic, protectedGfx:Array<FlxGraphic>):Bool
+	{
+		if(graphic == null || protectedGfx.contains(graphic))
+			return true;
+		if(key == null)
+			return true;
+
+		var normalized:String = StringTools.replace(key, '\\', '/');
+		return StringTools.startsWith(normalized, 'flixel/')
+			|| StringTools.startsWith(normalized, 'openfl/')
+			|| StringTools.startsWith(normalized, 'assets/flixel/');
+	}
+
+	public static function freeGraphicsFromMemory()
+	{
+		var protectedGfx:Array<FlxGraphic> = collectLiveGraphics();
 
 		for (key in currentTrackedAssets.keys())
 		{
@@ -218,19 +248,123 @@ class Paths
 	}
 
 	inline static public function sound(key:String, ?modsAllowed:Bool = true):Sound
-		return returnSound('sounds/$key', modsAllowed);
+		return returnSound('sounds/$key', null, modsAllowed);
 
 	inline static public function music(key:String, ?modsAllowed:Bool = true):Sound
-		return returnSound('music/$key', modsAllowed);
+		return returnSound('music/$key', null, modsAllowed);
+
+	inline static public function uiSound(key:String, ?modsAllowed:Bool = true):Sound
+		return sound('general/$key', modsAllowed);
+
+	inline static public function gameSound(key:String, ?modsAllowed:Bool = true):Sound
+		return sound('game/$key', modsAllowed);
+
+	inline static public function editorSound(key:String, ?modsAllowed:Bool = true):Sound
+		return sound('editors/$key', modsAllowed);
+
+	inline static public function chartEditorSound(key:String, ?modsAllowed:Bool = true):Sound
+		return editorSound('charting/$key', modsAllowed);
+
+	inline static public function hitsound(?modsAllowed:Bool = true):Sound
+		return gameSound('hitsound', modsAllowed);
+
+	inline static public function missnote(index:Int, ?modsAllowed:Bool = true):Sound
+		return gameSound('missnotes/missnote$index', modsAllowed);
+
+	inline static public function missnoteRandom(?modsAllowed:Bool = true):Sound
+		return missnote(FlxG.random.int(1, 3), modsAllowed);
+
+	inline static public function countdownSound(uiName:String, soundName:String, ?modsAllowed:Bool = true):Sound
+		return gameSound('countdown/${normalizeAudioVariant(uiName, "default")}/${normalizeSoundLeaf(soundName, "intro1")}', modsAllowed);
+
+	inline static public function dialogueSound(uiName:String, soundName:String, ?modsAllowed:Bool = true):Sound
+		return gameSound('dialogue/${normalizeAudioVariant(uiName, "default")}/${normalizeSoundLeaf(soundName, "dialogue")}', modsAllowed);
+
+	inline static public function menuMusic(menuName:String, ?track:String = 'music', ?modsAllowed:Bool = true):Sound
+		return music('menus/${resolveMenuFolderName(menuName, modsAllowed)}/${normalizeSoundLeaf(track, "music")}', modsAllowed);
+
+	inline static public function editorMusic(editorName:String, ?track:String = 'music', ?modsAllowed:Bool = true):Sound
+		return music('editors/${normalizePathPart(editorName, "chartingEditor")}/${normalizeSoundLeaf(track, "music")}', modsAllowed);
+
+	public static function pauseMusic(pauseMusicName:String, ?characterName:String = 'default', ?uiName:String = null, ?track:String = 'music', ?modsAllowed:Bool = true):Sound
+	{
+		var musicName:String = formatToSongPath(normalizePathPart(pauseMusicName, 'breakfast'));
+		var character:String = normalizeAudioCharacter(characterName);
+		var ui:String = normalizeAudioVariant(uiName, null);
+		var trackName:String = normalizeSoundLeaf(track, 'music');
+
+		var candidates:Array<String> = [];
+		addAudioCharacterMusicCandidates(candidates, 'music/game/pause/$musicName', character, ui, trackName, modsAllowed);
+		return returnSound(findExistingSoundKey(candidates, null, modsAllowed), null, modsAllowed);
+	}
+
+	public static function gameOverSound(soundName:String, ?characterName:String = 'default', ?modsAllowed:Bool = true, ?beepOnNull:Bool = true, ?includeGeneric:Bool = true):Sound
+	{
+		var sound:String = normalizeSoundLeaf(soundName, 'fnf_loss_sfx');
+		var character:String = normalizeGameOverAudioCharacter(characterName);
+
+		var candidates:Array<String> = [];
+		if(character != 'default')
+		{
+			candidates.push('sounds/game/gameover/$character/$sound');
+			candidates.push('sounds/gameover/$character/$sound');
+		}
+		if(includeGeneric)
+		{
+			candidates.push('sounds/game/gameover/$sound');
+			candidates.push('sounds/gameover/$sound');
+			candidates.push('sounds/$sound');
+		}
+		return returnSound(findExistingSoundKey(candidates, null, modsAllowed), null, modsAllowed, beepOnNull);
+	}
+
+	public static function gameOverMusic(characterName:String, uiName:String, ?track:String = 'music', ?modsAllowed:Bool = true, ?beepOnNull:Bool = true):Sound
+	{
+		var character:String = normalizeGameOverAudioCharacter(characterName);
+		var ui:String = normalizeAudioVariant(uiName, null);
+		var trackNames:Array<String> = gameOverTrackCandidates(track);
+
+		var candidates:Array<String> = [];
+		for(trackName in trackNames)
+			for(root in gameOverMusicRoots())
+				addAudioCharacterMusicCandidates(candidates, root, character, ui, trackName, modsAllowed);
+		return returnSound(findExistingSoundKey(candidates, null, modsAllowed), null, modsAllowed, beepOnNull);
+	}
+
+	public static function gameOverScriptFolders(characterName:String, uiName:String, ?modsAllowed:Bool = true):Array<String>
+	{
+		var character:String = normalizeGameOverAudioCharacter(characterName);
+		var ui:String = normalizeAudioVariant(uiName, null);
+
+		var folders:Array<String> = [];
+		for(root in gameOverMusicRoots())
+		{
+			for(folder in audioCharacterScriptFolders(root, character, ui, modsAllowed))
+				addUniqueString(folders, folder);
+		}
+		return folders;
+	}
+
+	public static function pauseScriptFolders(pauseMusicName:String, characterName:String, uiName:String, ?modsAllowed:Bool = true):Array<String>
+	{
+		var musicName:String = formatToSongPath(normalizePathPart(pauseMusicName, 'breakfast'));
+		var character:String = normalizeAudioCharacter(characterName);
+		var ui:String = normalizeAudioVariant(uiName, null);
+		return audioCharacterScriptFolders('music/game/pause/$musicName', character, ui, modsAllowed);
+	}
 
 	inline static public function inst(song:String, ?modsAllowed:Bool = true):Sound
     	return returnSound('${formatToSongPath(song)}/song/Inst', 'songs', modsAllowed);
 
-	inline static public function voices(song:String, postfix:String = null, ?modsAllowed:Bool = true):Sound
+	static public function voices(song:String, postfix:String = null, ?modsAllowed:Bool = true):Sound
 	{
 		var songKey:String = '${formatToSongPath(song)}/song/Voices';
-		if(postfix != null) songKey += '-' + postfix;
-		return returnSound(songKey, 'songs', modsAllowed, false);
+		if(postfix == null || postfix.trim().length < 1)
+			return returnSound(songKey, 'songs', modsAllowed, false);
+
+		var candidates:Array<String> = [];
+		addVoicePostfixCandidates(candidates, songKey, postfix);
+		return returnSound(findExistingSoundKey(candidates, 'songs', modsAllowed), 'songs', modsAllowed, false);
 	}
 
 	inline static public function soundRandom(key:String, min:Int, max:Int, ?modsAllowed:Bool = true)
@@ -447,6 +581,276 @@ class Paths
 		#end
 	}
 
+	static function normalizePathPart(value:String, fallback:String):String
+	{
+		if(value == null)
+			return fallback;
+
+		value = value.trim().replace('\\', '/');
+		while(value.startsWith('/')) value = value.substr(1);
+		while(value.endsWith('/')) value = value.substr(0, value.length - 1);
+		return value.length > 0 ? value : fallback;
+	}
+
+	static function normalizeSoundLeaf(value:String, fallback:String):String
+	{
+		value = normalizePathPart(value, fallback);
+		var lower:String = value.toLowerCase();
+		for(ext in SOUND_EXTENSIONS)
+		{
+			var suffix:String = '.$ext';
+			if(lower.endsWith(suffix))
+				return value.substr(0, value.length - suffix.length);
+		}
+		return value;
+	}
+
+	static function normalizeAudioVariant(value:String, fallback:String):String
+	{
+		if(value == null)
+			return fallback;
+
+		var variant:String = formatToSongPath(value);
+		if(variant.length < 1 || variant == 'normal')
+			return fallback;
+		if(variant == 'pixel' || variant.endsWith('-pixel'))
+			return 'pixel';
+		return variant;
+	}
+
+	static function normalizeAudioCharacter(value:String):String
+	{
+		var character:String = formatToSongPath(normalizePathPart(value, 'default'));
+		return character.length > 0 ? character : 'default';
+	}
+
+	static function normalizeGameOverAudioCharacter(value:String):String
+	{
+		return normalizeAudioCharacter(value);
+	}
+
+	static function gameOverMusicRoots():Array<String>
+	{
+		return ['music/game/gameover', 'music/gameover'];
+	}
+
+	static function gameOverTrackCandidates(track:String):Array<String>
+	{
+		var trackName:String = normalizeSoundLeaf(track, 'music');
+		var tracks:Array<String> = [];
+		addUniqueString(tracks, trackName);
+
+		var normalized:String = formatToSongPath(trackName);
+		if(normalized.endsWith('-pixel'))
+			normalized = normalized.substr(0, normalized.length - '-pixel'.length);
+
+		switch(normalized)
+		{
+			case 'gameover' | 'game-over':
+				addUniqueString(tracks, 'music');
+			case 'gameoverend' | 'game-over-end' | 'gameover-end':
+				addUniqueString(tracks, 'music-end');
+			case 'gameoverendalt' | 'game-over-end-alt' | 'gameover-end-alt':
+				addUniqueString(tracks, 'music-end-alt');
+			default:
+		}
+		return tracks;
+	}
+
+	static function resolveMenuFolderName(menuName:String, ?modsAllowed:Bool = true):String
+	{
+		var fallback:String = normalizePathPart(menuName, 'mainMenu');
+		var wanted:String = formatToSongPath(fallback);
+
+		for(folder in collectAudioFolderNames('music/menus', modsAllowed))
+			if(formatToSongPath(folder) == wanted)
+				return folder;
+		return fallback;
+	}
+
+	static function addUniqueString(list:Array<String>, value:String):Void
+	{
+		if(value != null && value.length > 0 && !list.contains(value))
+			list.push(value);
+	}
+
+	static function addVoicePostfixCandidates(candidates:Array<String>, songKey:String, postfix:String):Void
+	{
+		var raw:String = normalizeSoundLeaf(postfix, '').trim();
+		if(raw.length < 1)
+			return;
+
+		addUniqueString(candidates, '$songKey-$raw');
+		addUniqueString(candidates, '$songKey-${raw.toLowerCase()}');
+
+		var normalized:String = formatToSongPath(raw);
+		addUniqueString(candidates, '$songKey-$normalized');
+
+		switch(normalized)
+		{
+			case 'player' | 'p1' | 'bf' | 'boyfriend':
+				addUniqueString(candidates, '$songKey-Player');
+				addUniqueString(candidates, '$songKey-player');
+				addUniqueString(candidates, '$songKey-p1'); // god, write "-Player" and "-Opponent" is SO tiring.
+			case 'opponent' | 'opp' | 'dad':
+				addUniqueString(candidates, '$songKey-Opponent');
+				addUniqueString(candidates, '$songKey-opponent');
+				addUniqueString(candidates, '$songKey-opp');
+				addUniqueString(candidates, '$songKey-p2');
+			default:
+		}
+	}
+
+	static function addUniqueAudioFolderCandidate(list:Array<AudioFolderCandidate>, folder:String, matchKey:String):Void
+	{
+		if(folder == null || matchKey == null || matchKey.length < 1)
+			return;
+
+		for(candidate in list)
+			if(candidate.folder == folder && candidate.matchKey == matchKey)
+				return;
+		list.push({folder: folder, matchKey: matchKey});
+	}
+
+	static function collectAudioFolderNames(root:String, ?modsAllowed:Bool = true):Array<String>
+	{
+		var folders:Array<String> = [];
+
+		#if sys
+		var roots:Array<String> = [getSharedPath(root)];
+		#if ADDONS_ALLOWED
+		if(modsAllowed)
+			roots = Mods.directoriesWithFile(getSharedPath(), root, true);
+		#end
+
+		for(rootPath in roots)
+		{
+			if(rootPath == null || !FileSystem.exists(rootPath) || !FileSystem.isDirectory(rootPath))
+				continue;
+
+			for(folder in FileSystem.readDirectory(rootPath))
+			{
+				var path:String = '$rootPath/$folder';
+				if(FileSystem.exists(path) && FileSystem.isDirectory(path))
+					addUniqueString(folders, folder);
+			}
+		}
+		#else
+		var prefix:String = 'assets/shared/$root/';
+		for(asset in OpenFlAssets.list(SOUND))
+		{
+			if(!asset.startsWith(prefix))
+				continue;
+
+			var rest:String = asset.substr(prefix.length);
+			var slash:Int = rest.indexOf('/');
+			if(slash > 0)
+				addUniqueString(folders, rest.substr(0, slash));
+		}
+		#end
+
+		return folders;
+	}
+
+	static function collectAudioSubfolderNames(root:String, folder:String, ?modsAllowed:Bool = true):Array<String>
+		return collectAudioFolderNames('$root/$folder', modsAllowed);
+
+	static function audioFolderHasSubfolder(root:String, folder:String, subfolder:String, ?modsAllowed:Bool = true):Bool
+	{
+		if(subfolder == null || subfolder.length < 1 || subfolder == 'default')
+			return false;
+
+		var wanted:String = formatToSongPath(subfolder);
+		for(candidate in collectAudioSubfolderNames(root, folder, modsAllowed))
+			if(formatToSongPath(candidate) == wanted)
+				return true;
+		return false;
+	}
+
+	static function detectCharacterUiFromFolder(root:String, folder:String, character:String, matchKey:String, ?modsAllowed:Bool = true):String
+	{
+		if(character == null || matchKey == null || !character.startsWith(matchKey + '-'))
+			return null;
+
+		var suffix:String = character.substr(matchKey.length + 1);
+		if(audioFolderHasSubfolder(root, folder, suffix, modsAllowed))
+			return suffix;
+		return null;
+	}
+
+	static function audioCharacterFolderCandidates(root:String, character:String, ui:String, ?modsAllowed:Bool = true):Array<AudioFolderCandidate>
+	{
+		var folders:Array<String> = collectAudioFolderNames(root, modsAllowed);
+		addUniqueString(folders, 'default');
+
+		var candidates:Array<AudioFolderCandidate> = [];
+
+		for(folder in folders)
+		{
+			var folderKey:String = normalizeAudioCharacter(folder);
+			if(folderKey == 'default')
+				continue;
+
+			if(character.startsWith(folderKey))
+				addUniqueAudioFolderCandidate(candidates, folder, folderKey);
+		}
+
+		candidates.sort(function(a:AudioFolderCandidate, b:AudioFolderCandidate)
+		{
+			var aExact:Bool = (a.matchKey == character);
+			var bExact:Bool = (b.matchKey == character);
+			if(aExact != bExact)
+				return aExact ? -1 : 1;
+			if(a.matchKey.length != b.matchKey.length)
+				return b.matchKey.length - a.matchKey.length;
+			return Reflect.compare(a.folder.toLowerCase(), b.folder.toLowerCase());
+		});
+
+		candidates.push({folder: 'default', matchKey: 'default'});
+		return candidates;
+	}
+
+	static function addAudioCharacterMusicCandidates(candidates:Array<String>, root:String, character:String, ui:String, track:String, ?modsAllowed:Bool = true):Void
+	{
+		for(candidate in audioCharacterFolderCandidates(root, character, ui, modsAllowed))
+		{
+			var effectiveUi:String = ui;
+			if(effectiveUi == null || effectiveUi == 'default')
+				effectiveUi = detectCharacterUiFromFolder(root, candidate.folder, character, candidate.matchKey, modsAllowed);
+
+			if(effectiveUi != null && effectiveUi != 'default')
+				addUniqueString(candidates, '$root/${candidate.folder}/$effectiveUi/$track');
+			addUniqueString(candidates, '$root/${candidate.folder}/$track');
+		}
+	}
+
+	static function audioCharacterScriptFolders(root:String, character:String, ui:String, ?modsAllowed:Bool = true):Array<String>
+	{
+		var folders:Array<String> = [];
+		for(candidate in audioCharacterFolderCandidates(root, character, ui, modsAllowed))
+		{
+			var effectiveUi:String = ui;
+			if(effectiveUi == null || effectiveUi == 'default')
+				effectiveUi = detectCharacterUiFromFolder(root, candidate.folder, character, candidate.matchKey, modsAllowed);
+
+			if(effectiveUi != null && effectiveUi != 'default')
+				addUniqueString(folders, '$root/${candidate.folder}/$effectiveUi/scripts');
+			addUniqueString(folders, '$root/${candidate.folder}/scripts');
+		}
+		return folders;
+	}
+
+	static function findExistingSoundKey(candidates:Array<String>, ?path:String = null, ?modsAllowed:Bool = true):String
+	{
+		for(candidate in candidates)
+			if(soundKeyExists(candidate, path, modsAllowed))
+				return candidate;
+		return candidates.length > 0 ? candidates[0] : null;
+	}
+
+	public static function soundKeyExists(key:String, ?path:String, ?modsAllowed:Bool = true):Bool
+		return resolveSoundFile(key, path, modsAllowed) != null;
+
 	inline static public function formatToSongPath(path:String) {
 		final invalidChars = ~/[~&;:<>#\s]/g;
 		final hideChars = ~/[.,'"%?!]/g;
@@ -455,12 +859,39 @@ class Paths
 	}
 
 	public static var currentTrackedSounds:Map<String, Sound> = [];
+	static function resolveSoundFile(key:String, ?path:String, ?modsAllowed:Bool = true):String
+	{
+		for(ext in SOUND_EXTENSIONS)
+		{
+			var file:String = getPath(Language.getFileTranslation(key) + '.$ext', SOUND, path, modsAllowed);
+			#if (ADDONS_ALLOWED && sys)
+			if(FileSystem.exists(file))
+				return file;
+			#else
+			if(OpenFlAssets.exists(file, SOUND))
+				return file;
+			#end
+		}
+		return null;
+	}
+
 	public static function returnSound(key:String, ?path:String, ?modsAllowed:Bool = true, ?beepOnNull:Bool = true)
 	{
-		var file:String = getPath(Language.getFileTranslation(key) + '.$SOUND_EXT', SOUND, path, modsAllowed);
+		var file:String = resolveSoundFile(key, path, modsAllowed);
 
 		//trace('precaching sound: $file');
-		if(!currentTrackedSounds.exists(file))
+		if(file == null)
+		{
+			if(beepOnNull)
+			{
+				trace('SOUND NOT FOUND: $key, PATH: $path');
+				FlxG.log.error('SOUND NOT FOUND: $key, PATH: $path');
+				return FlxAssets.getSoundAddExtension('flixel/sounds/beep');
+			}
+			return null;
+		}
+
+		if(file != null && !currentTrackedSounds.exists(file))
 		{
 			#if (ADDONS_ALLOWED && sys)
 			if(FileSystem.exists(file))

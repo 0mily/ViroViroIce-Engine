@@ -29,9 +29,7 @@ class FlashingState extends ScriptedState
 		add(texts);
 
 		var warnText:FlxText = new FlxText(0, 0, FlxG.width,
-'Hey, watch out!\n
-This Mod may contain flashing lights!\n
-Do you wish to disable them?');
+'forgive me i\' make a flashingState customstate shit');
 		warnText.setFormat(Paths.font("vcr.ttf"), 32, FlxColor.WHITE, CENTER);
 		warnText.screenCenter(Y);
 		texts.add(warnText);
@@ -60,7 +58,7 @@ Do you wish to disable them?');
 		}
 		var back:Bool = controls.BACK;
 		if (controls.UI_LEFT_P || controls.UI_RIGHT_P) {
-			FlxG.sound.play(Paths.sound("scrollMenu"), 0.7);
+			FlxG.sound.play(Paths.uiSound("scrollMenu"), 0.7);
 			isYes = !isYes;
 			updateItems();
 		}
@@ -71,7 +69,7 @@ Do you wish to disable them?');
 			if(!back) {
 				ClientPrefs.data.flashing = !isYes;
 				ClientPrefs.saveSettings();
-				FlxG.sound.play(Paths.sound('confirmMenu'));
+				FlxG.sound.play(Paths.uiSound('confirmMenu'));
 				final button = texts.members[isYes ? 1 : 2];
 				FlxFlicker.flicker(button, 1, 0.1, false, true, function(flk:FlxFlicker) {
 					new FlxTimer().start(0.5, function (tmr:FlxTimer) {
@@ -82,7 +80,7 @@ Do you wish to disable them?');
 				});
 				callOnScripts('onAccept', [isYes]);
 			} else {
-				FlxG.sound.play(Paths.sound('cancelMenu'));
+				FlxG.sound.play(Paths.uiSound('cancelMenu'));
 				FlxTween.tween(texts, {alpha: 0}, 1, {
 					onComplete: (_) -> MusicBeatState.switchState(new TitleState())
 				});

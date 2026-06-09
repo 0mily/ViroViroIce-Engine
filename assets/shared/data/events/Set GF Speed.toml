@@ -1,0 +1,8 @@
+name = 'Set GF Speed'
+description = 'Sets how often GF dances.'
+
+[Speed]
+type = 'stepper'
+default = 1
+min_max = [ 1, 4 ]
+width = 75

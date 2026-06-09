@@ -29,6 +29,9 @@ class VideoSprite extends FlxSpriteGroup {
 	public var skipSprite:FlxPieDial;
 	public var cover:FlxSprite;
 	public var canSkip(default, set):Bool = false;
+	public var readyCallback:Void->Void = null;
+	public var errorCallback:String->Void = null;
+	public var ready(get, never):Bool;
 
 	private var videoName:String;
 
@@ -40,6 +43,7 @@ class VideoSprite extends FlxSpriteGroup {
 	var playTimer:FlxTimer = null;
 	var pendingPlay:Bool = false;
 	var playAttempts:Int = 0;
+	var nativePlayStarted:Bool = false;
 	var textureReady:Bool = false;
 	static inline final MAX_PLAY_ATTEMPTS:Int = 12;
 
@@ -81,9 +85,17 @@ class VideoSprite extends FlxSpriteGroup {
 
 		#if hxvlc
 		videoSprite.load(videoName, shouldLoop ? ['input-repeat=65545'] : null);
+		videoSprite.bitmap.onEncounteredError.add(function(message:String)
+		{
+			notifyError(message);
+		});
 		
 		videoSprite.bitmap.onFormatSetup.add(function()
 		#else
+		videoSprite.bitmap.onEncounteredError.add(function()
+		{
+			notifyError('Video playback error');
+		});
 		videoSprite.bitmap.onTextureSetup.add(function()
 		#end
 		{
@@ -101,6 +113,7 @@ class VideoSprite extends FlxSpriteGroup {
 			videoSprite.updateHitbox();
 			storeBaseVideoScale();
 			applyVideoScale(true);
+			notifyReady();
 		});
 
 		// callbacks
@@ -130,6 +143,8 @@ class VideoSprite extends FlxSpriteGroup {
 		}
 		pendingPlay = false;
 		
+		readyCallback = null;
+		errorCallback = null;
 		finishCallback = null;
 		onSkip = null;
 
@@ -255,8 +270,31 @@ class VideoSprite extends FlxSpriteGroup {
 	public function play()
 	{
 		pendingPlay = true;
+		nativePlayStarted = false;
 		playAttempts = 0;
 		schedulePlayAttempt(0.02);
+	}
+
+	function get_ready():Bool
+		return textureReady;
+
+	function notifyReady():Void
+	{
+		if(readyCallback != null)
+			readyCallback();
+	}
+
+	function notifyError(message:String):Void
+	{
+		pendingPlay = false;
+		nativePlayStarted = false;
+		if(playTimer != null)
+		{
+			playTimer.cancel();
+			playTimer = null;
+		}
+		if(errorCallback != null)
+			errorCallback(message);
 	}
 
 	function schedulePlayAttempt(delay:Float):Void
@@ -275,19 +313,44 @@ class VideoSprite extends FlxSpriteGroup {
 		if(videoSprite == null || alreadyDestroyed)
 			return;
 
-		#if hxvlc videoSprite?.play(); #else videoSprite?.play(videoName, doWeLoop); #end
+		if(nativePlayStarted)
+			return;
+
+		nativePlayStarted = startNativePlayback();
 		playAttempts++;
 
-		if(pendingPlay && !textureReady && playAttempts < MAX_PLAY_ATTEMPTS)
-			schedulePlayAttempt(0.08);
-		else
+		if(pendingPlay && !textureReady && !nativePlayStarted && playAttempts < MAX_PLAY_ATTEMPTS)
+			schedulePlayAttempt(0.25);
+		else if(!nativePlayStarted && !textureReady)
+			notifyError('Video playback failed to start');
+		else if(textureReady)
 			pendingPlay = false;
+	}
+
+	function startNativePlayback():Bool
+	{
+		#if hxvlc
+		return videoSprite != null && videoSprite.play();
+		#else
+		return videoSprite != null && videoSprite.play(videoName, doWeLoop) >= 0;
+		#end
 	}
 
 	public function resume() videoSprite?.resume();
 	public function pause() videoSprite?.pause();
 	#end
 	public function stop() destroy();
+
+	public function muteForPreload():Void
+	{
+		#if hxvlc
+		if(videoSprite != null && videoSprite.bitmap != null)
+			videoSprite.bitmap.volumeAdjust = 0;
+		#elseif hxCodec
+		if(videoSprite != null && videoSprite.bitmap != null)
+			videoSprite.bitmap.volume = 0;
+		#end
+	}
 
 	public function setTime(timeMs:Float):Void
 	{

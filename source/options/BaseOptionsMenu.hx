@@ -175,7 +175,7 @@ class BaseOptionsMenu extends ScriptedSubState
 
 		if (controls.BACK) {
 			close();
-			FlxG.sound.play(Paths.sound('cancelMenu'));
+			FlxG.sound.play(Paths.uiSound('cancelMenu'));
 		}
 
 		if (curOption != null && nextAccept <= 0) {
@@ -185,7 +185,7 @@ class BaseOptionsMenu extends ScriptedSubState
 						var nextValue:Bool = (curOption.getValue() == true ? false : true);
 						if (callOnScripts('onAccept', [curOption], true) != LuaUtils.Function_Stop &&
 							callOnScripts('onChangeItem', [curOption, nextValue, 0, false], true) != LuaUtils.Function_Stop) {
-							FlxG.sound.play(Paths.sound('scrollMenu'));
+							FlxG.sound.play(Paths.uiSound('scrollMenu'));
 							curOption.setValue(nextValue);
 							curOption.change();
 							reloadCheckboxes();
@@ -213,7 +213,7 @@ class BaseOptionsMenu extends ScriptedSubState
 							bindingKey = true;
 							holdingEsc = 0;
 							ClientPrefs.toggleVolumeKeys(false);
-							FlxG.sound.play(Paths.sound('scrollMenu'));
+							FlxG.sound.play(Paths.uiSound('scrollMenu'));
 						}
 					}
 
@@ -265,7 +265,7 @@ class BaseOptionsMenu extends ScriptedSubState
 								}
 								updateTextFrom(curOption);
 								curOption.change();
-								FlxG.sound.play(Paths.sound('scrollMenu'));
+								FlxG.sound.play(Paths.uiSound('scrollMenu'));
 							} else if (curOption.type != STRING) {
 								var mod:Int = (controls.UI_LEFT ? -1 : 1);
 								var change:Float = (elapsed * curOption.scrollSpeed * mod);
@@ -290,7 +290,7 @@ class BaseOptionsMenu extends ScriptedSubState
 						}
 					} else if (controls.UI_LEFT_R || controls.UI_RIGHT_R) {
 						if (holdTime > 0.5)
-							FlxG.sound.play(Paths.sound('scrollMenu'));
+							FlxG.sound.play(Paths.uiSound('scrollMenu'));
 						holdTime = 0;
 					}
 			}
@@ -319,7 +319,7 @@ class BaseOptionsMenu extends ScriptedSubState
 					reloadCheckboxes();
 				}
 				
-				FlxG.sound.play(Paths.sound('cancelMenu'));
+				FlxG.sound.play(Paths.uiSound('cancelMenu'));
 			}
 		}
 
@@ -336,7 +336,7 @@ class BaseOptionsMenu extends ScriptedSubState
 			holdingEsc += elapsed;
 			if(holdingEsc > 0.5)
 			{
-				FlxG.sound.play(Paths.sound('cancelMenu'));
+				FlxG.sound.play(Paths.uiSound('cancelMenu'));
 				closeBinding();
 			}
 		}
@@ -348,7 +348,7 @@ class BaseOptionsMenu extends ScriptedSubState
 				if (!controls.controllerMode) curOption.keys.keyboard = NONE;
 				else curOption.keys.gamepad = NONE;
 				updateBind(!controls.controllerMode ? InputFormatter.getKeyName(NONE) : InputFormatter.getGamepadName(NONE));
-				FlxG.sound.play(Paths.sound('cancelMenu'));
+				FlxG.sound.play(Paths.uiSound('cancelMenu'));
 				closeBinding();
 			}
 		}
@@ -426,7 +426,7 @@ class BaseOptionsMenu extends ScriptedSubState
 				if (callOnScripts('onChangeItem', [curOption, target, 0, false], true) != LuaUtils.Function_Stop) {
 					curOption.setValue(target);
 					updateBind(key);
-					FlxG.sound.play(Paths.sound('confirmMenu'));
+					FlxG.sound.play(Paths.uiSound('confirmMenu'));
 				}
 				closeBinding(); // the state will close regardless of stopping, cant leave the player stuck here!!
 			}
@@ -538,7 +538,7 @@ class BaseOptionsMenu extends ScriptedSubState
 			updateTexts();
 			
 			if (change != 0)
-				FlxG.sound.play(Paths.sound('scrollMenu'));
+				FlxG.sound.play(Paths.uiSound('scrollMenu'));
 			
 			callOnScripts('onSelectItemPost', [curOption, curSelected]);
 		}

@@ -207,6 +207,8 @@ class StrumNote extends FlxSprite
 			}
 			updateHitbox();
 			NoteSkinData.applyPropertiesToStrum(this, skinConfig);
+			if (PlayState.isPixelStage)
+				antialiasing = false;
 
 			if (lastAnim != null)
 				playAnim(lastAnim, true);

@@ -126,12 +126,12 @@ class LanguageSubState extends ScriptedSubState
 				MusicBeatState.resetState();
 			}
 			else close();
-			FlxG.sound.play(Paths.sound('cancelMenu'));
+			FlxG.sound.play(Paths.uiSound('cancelMenu'));
 		}
 
 		if(controls.ACCEPT)
 		{
-			FlxG.sound.play(Paths.sound('confirmMenu'), 0.6);
+			FlxG.sound.play(Paths.uiSound('confirmMenu'), 0.6);
 			ClientPrefs.data.language = languages[curSelected];
 			//trace(ClientPrefs.data.language);
 			ClientPrefs.saveSettings();
@@ -158,7 +158,7 @@ class LanguageSubState extends ScriptedSubState
 			}
 			
 			if (change != 0)
-				FlxG.sound.play(Paths.sound('scrollMenu'), 0.6);
+				FlxG.sound.play(Paths.uiSound('scrollMenu'), 0.6);
 		}
 	}
 	

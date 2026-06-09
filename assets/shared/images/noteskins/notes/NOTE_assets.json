@@ -47,6 +47,7 @@
 	"properties": {
 		"allowRGB": true,
 		"antialiasing": true,
+		"pixel_antialiasing": false,
 		"noAnimation": false,
 		"noMissAnimation": false,
 		"ignoreNote": false,

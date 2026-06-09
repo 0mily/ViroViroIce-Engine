@@ -26,6 +26,7 @@ class HScriptMacro {
 
 import flixel.FlxState;
 import flixel.FlxSubState;
+import flixel.system.FlxAssets.FlxShader;
 import openfl.Lib;
 import openfl.utils.Assets;
 
@@ -59,6 +60,8 @@ class HScript extends Iris {
 	public var modFolder:String;
 	public var returnValue:Dynamic;
 	public var parentState:FlxState = null;
+	public var characterScriptName:String = null;
+	public var characterScriptCharacter:objects.Character = null;
 	
 	public static var globalStatic(default, never):Map<String, Dynamic> = [];
 	public static final SCRIPT_EXTENSIONS:Array<String> = ['.hx', '.hxc', '.hscript'];
@@ -150,6 +153,12 @@ class HScript extends Iris {
 		Iris.proxyImports.set('funkin.objects.SnowEmitter', funkin.objects.SnowEmitter);
 		Iris.proxyImports.set('funkin.objects.shader.OverlayShader', funkin.objects.shader.OverlayShader);
 		Iris.proxyImports.set('funkin.game.shaders.OverlayShader', funkin.objects.shader.OverlayShader);
+		Iris.proxyImports.set('funkin.graphics.shaders.SserafimShader', shaders.SserafimShader);
+		Iris.proxyImports.set('funkin.utils.AtlasUtil', backend.AtlasUtil);
+		//Iris.proxyImports.set('funkin.graphics.FunkinSprite', funkin.graphics.FunkinSprite);
+		#if flxanimate
+		Iris.proxyImports.set('animate.internal.elements.FlxSpriteElement', animate.internal.elements.FlxSpriteElement);
+		#end
 		Iris.proxyImports.set('funkin.utils.CameraUtil', funkin.utils.CameraUtil);
 		Iris.proxyImports.set('funkin.utils.CoolUtil', funkin.utils.CoolUtil);
 		Iris.proxyImports.set('funkin.states.PlayState', states.PlayState);
@@ -332,6 +341,7 @@ class HScript extends Iris {
 		set('FlxG', flixel.FlxG);
 		set('FlxMath', flixel.math.FlxMath);
 		set('FlxSprite', flixel.FlxSprite);
+		set('PerspectiveSprite', objects.PerspectiveSprite);
 		set('FlxBackdrop', flixel.addons.display.FlxBackdrop);
 		set('FlxAxes', {
 			X: flixel.util.FlxAxes.X,
@@ -352,9 +362,36 @@ class HScript extends Iris {
 		set('Countdown', backend.BaseStage.Countdown);
 		set('PlayState', PlayState);
 		set('Paths', Paths);
+		set('GameOverSubstate', substates.GameOverSubstate);
+		set('gameOver', substates.GameOverSubstate.instance);
+		set('gameOverCharacter', substates.GameOverSubstate.characterName);
+		set('gameOverMusicCharacter', substates.GameOverSubstate.musicCharacterName);
+		set('gameOverMusic', function(kind:String = 'loop', track:String = 'music') {
+			substates.GameOverSubstate.setGameOverMusic(kind, track);
+		});
+		set('PauseSubState', substates.PauseSubState);
+		set('pauseSubstate', substates.PauseSubState.instance);
+		set('pauseMusicName', substates.PauseSubState.pauseMusicName);
+		set('pauseMusicTrack', substates.PauseSubState.pauseTrackName);
+		set('pauseMusicCharacter', substates.PauseSubState.musicCharacterName);
+		set('pauseMusic', function(name:String = null, track:String = 'music') {
+			substates.PauseSubState.setPauseMusic(name, track);
+		});
+		set('menuMusic', function(menuName:String = 'mainMenu', track:String = 'music') {
+			return Paths.menuMusic(menuName, track);
+		});
+		set('precacheMenuMusic', function(menuName:String = 'mainMenu', track:String = 'music') {
+			Paths.menuMusic(menuName, track);
+		});
+		set('playMenuMusic', function(menuName:String = 'mainMenu', volume:Float = 1, loop:Bool = false, track:String = 'music') {
+			FlxG.sound.playMusic(Paths.menuMusic(menuName, track), volume, loop);
+		});
 		set('VignetteUtil', backend.VignetteUtil);
 		set('VVIESpriteHandler', objects.VVIESpriteHandler);
 		set('OverlayShader', shaders.OverlayShader);
+		set('SserafimShader', shaders.SserafimShader);
+		set('GradientUtil', backend.GradientUtil);
+		set('AtlasUtil', backend.AtlasUtil);
 		set('DialoguePlus', cutscenes.DialoguePlus);
 		set('DialoguePlusRuntime', cutscenes.DialoguePlusRuntime);
 		set('ResolutionManager', backend.ResolutionManager);
@@ -436,6 +473,7 @@ class HScript extends Iris {
 		set('StringTools', StringTools);
 		#if flxanimate
 		set('FlxAnimate', FlxAnimate);
+		set('FlxSpriteElement', animate.internal.elements.FlxSpriteElement);
 		#end
 		set('controls', Controls.instance);
 		
@@ -565,11 +603,11 @@ class HScript extends Iris {
 				PlayState.instance.clearNotesBefore(Conductor.songPosition);
 			return true;
 		});
-		set('createChar', function(name:String, x:Float = 0, y:Float = 0, noteType:String = '', isPlayer:Bool = false) {
-			return PlayState.instance != null ? PlayState.instance.createChar(name, x, y, noteType, isPlayer) : null;
+		set('createChar', function(name:String, x:Float = 0, y:Float = 0, noteType:String = '', isPlayer:Bool = false, offsetSide:String = null) {
+			return PlayState.instance != null ? PlayState.instance.createChar(name, x, y, noteType, isPlayer, offsetSide) : null;
 		});
-		set('createCharacter', function(name:String, x:Float = 0, y:Float = 0, noteType:String = '', isPlayer:Bool = false) {
-			return PlayState.instance != null ? PlayState.instance.createChar(name, x, y, noteType, isPlayer) : null;
+		set('createCharacter', function(name:String, x:Float = 0, y:Float = 0, noteType:String = '', isPlayer:Bool = false, offsetSide:String = null) {
+			return PlayState.instance != null ? PlayState.instance.createChar(name, x, y, noteType, isPlayer, offsetSide) : null;
 		});
 		set('getCharacterTag', function(name:String) {
 			return PlayState.instance != null ? PlayState.instance.getExtraCharacterTag(name) : null;
@@ -647,6 +685,99 @@ class HScript extends Iris {
 				return null;
 			return LuaUtils.getObjectDirectly(name);
 		};
+		var getOrderContainer = function(?group:String = null):Dynamic {
+			if(group != null)
+				return getObject(group);
+			return targetInstance();
+		};
+		var getOrderMembers = function(container:Dynamic):Array<Dynamic> {
+			if(container == null)
+				return null;
+			if(Type.typeof(container).match(TClass(Array)))
+				return cast container;
+
+			var members:Dynamic = Reflect.getProperty(container, 'members');
+			return members != null ? cast members : null;
+		};
+		var findOrderContainerFor:Dynamic = null;
+		findOrderContainerFor = function(object:FlxBasic, root:Dynamic, depth:Int = 0):Dynamic {
+			if(object == null || root == null || depth > 16)
+				return null;
+
+			var members:Array<Dynamic> = getOrderMembers(root);
+			if(members == null)
+				return null;
+			if(members.indexOf(object) >= 0)
+				return root;
+
+			for(member in members)
+			{
+				if(member == null || member == root || member == object)
+					continue;
+
+				var found:Dynamic = findOrderContainerFor(object, member, depth + 1);
+				if(found != null)
+					return found;
+			}
+			return null;
+		};
+		var removeFromOrderContainer = function(container:Dynamic, object:FlxBasic):Void {
+			if(container == null || object == null)
+				return;
+
+			if(Type.typeof(container).match(TClass(Array)))
+				container.remove(object);
+			else if(Reflect.isFunction(Reflect.field(container, 'remove')))
+				container.remove(object, true);
+			else
+				getOrderMembers(container)?.remove(object);
+		};
+		var insertIntoOrderContainer = function(container:Dynamic, index:Int, object:FlxBasic):Void {
+			if(container == null || object == null)
+				return;
+
+			var members:Array<Dynamic> = getOrderMembers(container);
+			if(members == null)
+				return;
+
+			if(index < 0) index = 0;
+			if(index > members.length) index = members.length;
+			if(Reflect.isFunction(Reflect.field(container, 'insert')))
+				container.insert(index, object);
+			else
+				members.insert(index, object);
+		};
+		var moveObjectRelative = function(obj:String, target:String, behind:Bool = true, ?group:String = null):Bool {
+			var leObj:FlxBasic = cast getObject(obj);
+			var targetObj:FlxBasic = cast getObject(target);
+			var root:Dynamic = getOrderContainer(group);
+
+			if(leObj == null || targetObj == null || root == null)
+				return false;
+
+			var targetContainer:Dynamic = group != null ? root : findOrderContainerFor(targetObj, root);
+			var sourceContainer:Dynamic = group != null ? root : findOrderContainerFor(leObj, root);
+			if(targetContainer == null)
+				return false;
+
+			var members:Array<Dynamic> = getOrderMembers(targetContainer);
+			if(members == null)
+				return false;
+
+			var targetIndex:Int = members.indexOf(targetObj);
+			if(targetIndex < 0)
+				return false;
+
+			var oldIndex:Int = (sourceContainer == targetContainer) ? members.indexOf(leObj) : -1;
+			if(oldIndex >= 0 && oldIndex < targetIndex)
+				targetIndex--;
+
+			if(sourceContainer != null)
+				removeFromOrderContainer(sourceContainer, leObj);
+
+			insertIntoOrderContainer(targetContainer, behind ? targetIndex : targetIndex + 1, leObj);
+			return true;
+		};
 		var makeLuaSprite = function(tag:String, image:String = null, x:Float = 0, y:Float = 0) {
 			if(tag == null)
 				return null;
@@ -670,6 +801,23 @@ class HScript extends Iris {
 			scriptVariables()?.set(tag, spr);
 			spr.active = true;
 			return spr;
+		};
+		var makePerspectiveSprite = function(tag:String, image:String = null, bottomX:Float = 0, bottomY:Float = 0, topX:Float = 0, topY:Float = 0) {
+			if(tag == null)
+				return null;
+			tag = tag.replace('.', '');
+			LuaUtils.destroyObject(tag);
+			var spr:objects.PerspectiveSprite = new objects.PerspectiveSprite();
+			if(image != null && image.length > 0)
+				spr.loadGraphic(Paths.image(image));
+			spr.setPositions(bottomX, bottomY, topX, topY);
+			scriptVariables()?.set(tag, spr);
+			spr.active = true;
+			return spr;
+		};
+		var getPerspectiveSprite = function(objName:String):objects.PerspectiveSprite {
+			var obj:Dynamic = getObject(objName);
+			return Std.isOfType(obj, objects.PerspectiveSprite) ? cast obj : null;
 		};
 		var addInstance = function(objectName:String, inFront:Bool = false) {
 			var obj:Dynamic = getObject(objectName);
@@ -727,8 +875,151 @@ class HScript extends Iris {
 			}
 			return false;
 		};
+		var getShaderObject = function(name:String):FlxShader {
+			var obj:Dynamic = getObject(name);
+			if(Std.isOfType(obj, FlxShader))
+				return cast obj;
+			if(Std.isOfType(obj, FlxSprite))
+			{
+				var spr:FlxSprite = cast obj;
+				if(spr.shader != null && Std.isOfType(spr.shader, FlxShader))
+					return cast spr.shader;
+			}
+			#if flxanimate
+			var atlas:Dynamic = backend.AtlasUtil.getAtlas(obj);
+			if(atlas != null)
+			{
+				var shader:Dynamic = Reflect.getProperty(atlas, 'shader');
+				if(Std.isOfType(shader, FlxShader))
+					return cast shader;
+			}
+			#end
+			return null;
+		};
 		set('getObject', getObject);
 		set('getObjectDirectly', getObject);
+		#if flxanimate
+		var getAtlasFallbackTarget = function():Dynamic {
+			return characterScriptCharacter;
+		};
+		var getAtlasObjectArgument = function(value:Dynamic):Dynamic {
+			if(value == null)
+				return null;
+			if(Std.isOfType(value, String))
+				return getObject(Std.string(value));
+			return value;
+		};
+		var getAtlasTarget = function(objName:Dynamic):Dynamic {
+			if(objName == null || (Std.isOfType(objName, String) && Std.string(objName).length < 1))
+				return getAtlasFallbackTarget();
+			var obj:Dynamic = getAtlasObjectArgument(objName);
+			return obj != null ? obj : getAtlasFallbackTarget();
+		};
+		var atlasArgIsObject = function(objName:Dynamic):Bool {
+			return getAtlasObjectArgument(objName) != null;
+		};
+		set('getAtlasDefaultSymbol', function(objName:Dynamic = null) return backend.AtlasUtil.getDefaultSymbol(getAtlasTarget(objName)));
+		set('getAtlasSymbols', function(objName:Dynamic = null) return backend.AtlasUtil.listSymbols(getAtlasTarget(objName)));
+		set('listAtlasSymbols', function(objName:Dynamic = null) return backend.AtlasUtil.listSymbols(getAtlasTarget(objName)));
+		var addAtlasSpriteElementFunc = function(atlasOrSpriteName:Dynamic, spriteOrKeyword:Dynamic, keyword:String = null, insertIndex:Int = -1, symbolKeyword:String = null, exact:Bool = false, elementActive:Bool = true) {
+			var explicitTarget:Bool = atlasArgIsObject(atlasOrSpriteName) && keyword != null;
+			var atlasTarget:Dynamic = explicitTarget ? getAtlasObjectArgument(atlasOrSpriteName) : getAtlasFallbackTarget();
+			var sprite:Dynamic = explicitTarget ? getAtlasObjectArgument(spriteOrKeyword) : getAtlasObjectArgument(atlasOrSpriteName);
+			var frameKeyword:String = explicitTarget ? keyword : Std.string(spriteOrKeyword);
+			return backend.AtlasUtil.addSpriteElement(atlasTarget, sprite, frameKeyword, insertIndex, symbolKeyword, exact, elementActive);
+		};
+		set('addAtlasSpriteElement', addAtlasSpriteElementFunc);
+		set('addSpriteToAtlasFrames', addAtlasSpriteElementFunc);
+		set('addAtlasSpriteToFrames', addAtlasSpriteElementFunc);
+		var setAtlasLayerVisibleFunc = function(objOrLayer:Dynamic, layerKeyword:String = null, visible:Bool = true, symbolKeyword:String = null, exact:Bool = false) {
+			var explicitTarget:Bool = atlasArgIsObject(objOrLayer) && layerKeyword != null;
+			var target:Dynamic = explicitTarget ? getAtlasObjectArgument(objOrLayer) : getAtlasFallbackTarget();
+			var layer:String = explicitTarget ? layerKeyword : Std.string(objOrLayer);
+			var symbol:String = explicitTarget ? symbolKeyword : layerKeyword;
+			return backend.AtlasUtil.setLayerVisible(target, layer, visible, symbol, exact);
+		};
+		set('setAtlasLayerVisible', setAtlasLayerVisibleFunc);
+		set('setAtlasLayersVisible', setAtlasLayerVisibleFunc);
+		set('hideAtlasLayer', function(objOrLayer:Dynamic, layerKeyword:String = null, symbolKeyword:String = null, exact:Bool = false) {
+			var explicitTarget:Bool = atlasArgIsObject(objOrLayer) && layerKeyword != null;
+			return explicitTarget ? setAtlasLayerVisibleFunc(objOrLayer, layerKeyword, false, symbolKeyword, exact) : setAtlasLayerVisibleFunc(objOrLayer, null, false, layerKeyword, exact);
+		});
+		set('showAtlasLayer', function(objOrLayer:Dynamic, layerKeyword:String = null, symbolKeyword:String = null, exact:Bool = false) {
+			var explicitTarget:Bool = atlasArgIsObject(objOrLayer) && layerKeyword != null;
+			return explicitTarget ? setAtlasLayerVisibleFunc(objOrLayer, layerKeyword, true, symbolKeyword, exact) : setAtlasLayerVisibleFunc(objOrLayer, null, true, layerKeyword, exact);
+		});
+		var setAtlasElementVisibleFunc = function(objOrKeyword:Dynamic, keyword:String = null, visible:Bool = true, exact:Bool = false) {
+			var explicitTarget:Bool = atlasArgIsObject(objOrKeyword) && keyword != null;
+			var target:Dynamic = explicitTarget ? getAtlasObjectArgument(objOrKeyword) : getAtlasFallbackTarget();
+			var elementKeyword:String = explicitTarget ? keyword : Std.string(objOrKeyword);
+			return backend.AtlasUtil.setElementVisible(target, elementKeyword, visible, exact);
+		};
+		set('setAtlasElementVisible', setAtlasElementVisibleFunc);
+		set('setAtlasElementsVisible', setAtlasElementVisibleFunc);
+		set('hideAtlasElement', function(objOrKeyword:Dynamic, keyword:String = null, exact:Bool = false)
+			return setAtlasElementVisibleFunc(objOrKeyword, keyword, false, exact));
+		set('showAtlasElement', function(objOrKeyword:Dynamic, keyword:String = null, exact:Bool = false)
+			return setAtlasElementVisibleFunc(objOrKeyword, keyword, true, exact));
+		set('syncAtlasFrameToSongPosition', function(objName:Dynamic = null, framerate:Float = 24, frameOffset:Int = -1)
+			return backend.AtlasUtil.syncFrameToSongPosition(getAtlasTarget(objName), framerate, frameOffset));
+		set('syncAtlasFrameToSong', function(objName:Dynamic = null, framerate:Float = 24, frameOffset:Int = -1)
+			return backend.AtlasUtil.syncFrameToSongPosition(getAtlasTarget(objName), framerate, frameOffset));
+		set('setAtlasFrame', function(objName:Dynamic = null, frame:Int = 0)
+			return backend.AtlasUtil.setFrame(getAtlasTarget(objName), frame));
+		set('setAtlasCurFrame', function(objName:Dynamic = null, frame:Int = 0)
+			return backend.AtlasUtil.setFrame(getAtlasTarget(objName), frame));
+		set('getAtlasFrame', function(objName:Dynamic = null)
+			return backend.AtlasUtil.getFrame(getAtlasTarget(objName)));
+		set('getAtlasCurFrame', function(objName:Dynamic = null)
+			return backend.AtlasUtil.getFrame(getAtlasTarget(objName)));
+		#end
+		set('makeSserafimShader', function(tag:String, isCharacter:Bool = false) {
+			if(tag == null) return null;
+			tag = tag.replace('.', '');
+			var shader = new shaders.SserafimShader(isCharacter);
+			scriptVariables()?.set(tag, shader);
+			return shader;
+		});
+		set('setObjectShaderObject', function(objName:String, shaderName:String)
+			return backend.AtlasUtil.setShader(getObject(objName), getShaderObject(shaderName)));
+		set('copyObjectShader', function(sourceName:String, targetName:String)
+			return backend.AtlasUtil.copyShader(getObject(sourceName), getObject(targetName)));
+		set('setSserafimShader', function(objName:String, shaderOrIsCharacter:Dynamic = false) {
+			var shader:shaders.SserafimShader = null;
+			if(Std.isOfType(shaderOrIsCharacter, String))
+			{
+				var existing = getShaderObject(Std.string(shaderOrIsCharacter));
+				if(Std.isOfType(existing, shaders.SserafimShader))
+					shader = cast existing;
+			}
+			else
+				shader = new shaders.SserafimShader(shaderOrIsCharacter == true);
+			return shader != null && backend.AtlasUtil.setShader(getObject(objName), shader);
+		});
+		set('getObjectOrder', function(obj:String, ?group:String = null) {
+			var leObj:FlxBasic = cast getObject(obj);
+			var root:Dynamic = getOrderContainer(group);
+			var container:Dynamic = group != null ? root : findOrderContainerFor(leObj, root);
+			var members:Array<Dynamic> = getOrderMembers(container);
+			return members != null ? members.indexOf(leObj) : -1;
+		});
+		set('setObjectOrder', function(obj:String, position:Int, ?group:String = null) {
+			var leObj:FlxBasic = cast getObject(obj);
+			var root:Dynamic = getOrderContainer(group);
+			var sourceContainer:Dynamic = group != null ? root : findOrderContainerFor(leObj, root);
+			var targetContainer:Dynamic = sourceContainer ?? root;
+			if(leObj == null || targetContainer == null)
+				return false;
+
+			if(sourceContainer != null)
+				removeFromOrderContainer(sourceContainer, leObj);
+			insertIntoOrderContainer(targetContainer, position, leObj);
+			return true;
+		});
+		set('setObjectBehind', function(obj:String, target:String, ?group:String = null)
+			return moveObjectRelative(obj, target, true, group));
+		set('setObjectInFront', function(obj:String, target:String, ?group:String = null)
+			return moveObjectRelative(obj, target, false, group));
 		set('getProperty', function(variable:String, allowMaps:Bool = false)
 			return LuaUtils.getPropertyLoop(variable, allowMaps, parentState ?? FlxG.state));
 		set('setProperty', function(variable:String, value:Dynamic, allowMaps:Bool = false)
@@ -739,8 +1030,50 @@ class HScript extends Iris {
 			return LuaUtils.setPropertyLoop(variable, value, allowMaps, Type.resolveClass(classVar)));
 		set('makeLuaSprite', makeLuaSprite);
 		set('makeSprite', makeLuaSprite);
+		set('createSprite', makeLuaSprite);
 		set('makeAnimatedLuaSprite', makeAnimatedLuaSprite);
 		set('makeAnimatedSprite', makeAnimatedLuaSprite);
+		set('createAnimatedSprite', makeAnimatedLuaSprite);
+		set('makePerspectiveSprite', makePerspectiveSprite);
+		set('createPerspectiveSprite', makePerspectiveSprite);
+		set('makeLuaPerspectiveSprite', makePerspectiveSprite);
+		set('setPerspectivePositions', function(objName:String, bottomX:Float, bottomY:Float, topX:Float, topY:Float) {
+			var spr = getPerspectiveSprite(objName);
+			if(spr == null)
+				return false;
+			spr.setPositions(bottomX, bottomY, topX, topY);
+			return true;
+		});
+		set('setPerspectiveWidths', function(objName:String, bottomWidth:Float, topWidth:Float) {
+			var spr = getPerspectiveSprite(objName);
+			if(spr == null)
+				return false;
+			spr.setWidths(bottomWidth, topWidth);
+			return true;
+		});
+		set('setPerspectiveScrollFactors', function(objName:String, bottomX:Float, bottomY:Float, topX:Float, topY:Float) {
+			var spr = getPerspectiveSprite(objName);
+			if(spr == null)
+				return false;
+			spr.setScrollFactors(bottomX, bottomY, topX, topY);
+			return true;
+		});
+		set('updatePerspectiveSprite', function(objName:String, camera:Dynamic = 'game') {
+			var spr = getPerspectiveSprite(objName);
+			if(spr == null)
+				return false;
+			var cam:FlxCamera = Std.isOfType(camera, FlxCamera) ? cast camera : LuaUtils.cameraFromString(Std.string(camera));
+			spr.updateSkew(cam);
+			return true;
+		});
+		set('updatePerspectiveSkew', function(objName:String, camera:Dynamic = 'game') {
+			var spr = getPerspectiveSprite(objName);
+			if(spr == null)
+				return false;
+			var cam:FlxCamera = Std.isOfType(camera, FlxCamera) ? cast camera : LuaUtils.cameraFromString(Std.string(camera));
+			spr.updateSkew(cam);
+			return true;
+		});
 		set('loadGraphic', function(variable:String, image:String, gridX:Int = 0, gridY:Int = 0) {
 			var obj:Dynamic = getObject(variable);
 			if(obj == null || image == null || image.length < 1)
@@ -776,6 +1109,59 @@ class HScript extends Iris {
 			spr.makeGraphic(width, height, CoolUtil.colorFromString(color));
 			return true;
 		});
+		set('makeGradient', function(objName:String, width:Int = 256, height:Int = 256, colors:Dynamic = null, ?alphas:Dynamic = null, rotation:Int = 90,
+			chunkSize:Int = 1, interpolate:Bool = true) {
+			return backend.GradientUtil.applyToSprite(cast getObject(objName), width, height, colors, alphas, rotation, chunkSize, interpolate);
+		});
+		set('applyGradient', get('makeGradient'));
+		var makeGradientSpriteFunc = function(tag:String, width:Int = 256, height:Int = 256, colors:Dynamic = null, ?alphas:Dynamic = null, ?x:Float = 0,
+			?y:Float = 0, rotation:Int = 90, chunkSize:Int = 1, interpolate:Bool = true) {
+			if(tag == null)
+				return null;
+			tag = tag.replace('.', '');
+			LuaUtils.destroyObject(tag);
+			var leSprite:ModchartSprite = new ModchartSprite(x, y);
+			backend.GradientUtil.applyToSprite(leSprite, width, height, colors, alphas, rotation, chunkSize, interpolate);
+			variableMap?.set(tag, leSprite);
+			leSprite.active = true;
+			return leSprite;
+		};
+		set('makeLuaGradient', makeGradientSpriteFunc); // meio sacanagem mas ehh?
+		set('makeGradientSprite', makeGradientSpriteFunc);
+		set('createGradientSprite', makeGradientSpriteFunc);
+		set('setGradientStop', function(objName:String, index:Int, ?color:Dynamic = null, ?alpha:Dynamic = null) {
+			return backend.GradientUtil.setStop(cast getObject(objName), index, color, alpha);
+		});
+		var tweenGradientFunc = function(tag:String, objName:String, colors:Dynamic = null, ?alphas:Dynamic = null, duration:Float = 1, ?ease:String = 'linear') {
+			var obj:FlxSprite = cast getObject(objName);
+			if(obj == null)
+				return null;
+
+			var tweenTag:String = LuaUtils.formatVariable('tween_$tag');
+			LuaUtils.cancelTween(tag);
+			var tween:FlxTween = backend.GradientUtil.tweenSprite(obj, colors, alphas, duration, LuaUtils.getTweenEaseByString(ease), function(twn:FlxTween) {
+				variableMap?.remove(tweenTag);
+			});
+			variableMap?.set(tweenTag, tween);
+			return tween;
+		};
+		set('tweenGradient', tweenGradientFunc);
+		set('doTweenGradient', tweenGradientFunc);
+		var tweenGradientAlphaFunc = function(tag:String, objName:String, alphas:Dynamic = null, duration:Float = 1, ?ease:String = 'linear') {
+			var obj:FlxSprite = cast getObject(objName);
+			if(obj == null)
+				return null;
+
+			var tweenTag:String = LuaUtils.formatVariable('tween_$tag');
+			LuaUtils.cancelTween(tag);
+			var tween:FlxTween = backend.GradientUtil.tweenSpriteAlpha(obj, alphas, duration, LuaUtils.getTweenEaseByString(ease), function(twn:FlxTween) {
+				variableMap?.remove(tweenTag);
+			});
+			variableMap?.set(tweenTag, tween);
+			return tween;
+		};
+		set('tweenGradientAlpha', tweenGradientAlphaFunc);
+		set('doTweenGradientAlpha', tweenGradientAlphaFunc);
 		var makeVignetteFunc = function(objName:String, width:Int = 0, height:Int = 0, color:String = '000000', strength:Float = 1, radius:Float = 0.55, softness:Float = 0.45) {
 			var spr:FlxSprite = cast getObject(objName);
 			if(spr == null)
@@ -790,12 +1176,18 @@ class HScript extends Iris {
 		set('makeVig', makeVignetteFunc);
 		set('getWindowWidth', function(pixels:Bool = false):Int return pixels ? backend.VignetteUtil.windowPixelWidth() : backend.VignetteUtil.windowWidth());
 		set('getWindowHeight', function(pixels:Bool = false):Int return pixels ? backend.VignetteUtil.windowPixelHeight() : backend.VignetteUtil.windowHeight());
+		set('getFullScreenX', function(camera:String = 'other'):Float return backend.CameraResizeFix.pegarFSX(LuaUtils.cameraFromString(camera)));
+		set('getFullScreenY', function(camera:String = 'other'):Float return backend.CameraResizeFix.pegarFSY(LuaUtils.cameraFromString(camera)));
+		set('getFullScreenWidth', function(camera:String = 'other'):Float return backend.CameraResizeFix.pegarFSL(LuaUtils.cameraFromString(camera)));
+		set('getFullScreenHeight', function(camera:String = 'other'):Float return backend.CameraResizeFix.pegarFSA(LuaUtils.cameraFromString(camera)));
 		set('addLuaSprite', addInstance);
 		set('addInstance', addInstance);
+		set('addSprite', addInstance);
+		set('addObject', addInstance);
 		set('addLuaAtlas', addInstance);
 		set('addAtlas', addInstance);
 		set('addLuaAtlasSprite', addInstance);
-		set('removeLuaSprite', function(tag:String, destroy:Bool = true, group:String = null) {
+		var removeSpriteFunc = function(tag:String, destroy:Bool = true, group:String = null) {
 			var obj:Dynamic = getObject(tag);
 			if(obj == null || obj.destroy == null)
 				return false;
@@ -810,11 +1202,17 @@ class HScript extends Iris {
 				obj.destroy();
 			}
 			return true;
-		});
-		set('luaSpriteExists', function(tag:String) {
+		};
+		set('removeLuaSprite', removeSpriteFunc);
+		set('removeSprite', removeSpriteFunc);
+		set('removeObject', removeSpriteFunc);
+		var spriteExistsFunc = function(tag:String) {
 			var obj:Dynamic = scriptVariables()?.get(tag);
 			return obj != null && (Std.isOfType(obj, ModchartSprite) #if flxanimate || Std.isOfType(obj, ModchartAnimateSprite) #end);
-		});
+		};
+		set('luaSpriteExists', spriteExistsFunc);
+		set('spriteExists', spriteExistsFunc);
+		set('objectExists', function(tag:String) return getObject(tag) != null);
 		set('addAnimationByPrefix', addAnimByPrefix);
 		set('addAnim', addAnimByPrefix);
 		set('addAnimation', function(obj:String, name:String, frames:Any, framerate:Float = 24, loop:Bool = true)
@@ -860,6 +1258,32 @@ class HScript extends Iris {
 			if(updateHitbox) obj.updateHitbox();
 			return true;
 		});
+		var fitObjectToCameraFunc = function(objName:String, camera:String = 'other', autoUpdate:Bool = true) {
+			var obj:Dynamic = getObject(objName);
+			var cam:FlxCamera = LuaUtils.cameraFromString(camera);
+			if(obj == null)
+				return false;
+
+			obj.cameras = [cam];
+			if(Std.isOfType(obj, objects.VVIESpriteHandler))
+			{
+				cast(obj, objects.VVIESpriteHandler).fitToCamera(cam, autoUpdate);
+				return true;
+			}
+			if(Std.isOfType(obj, FlxSprite))
+			{
+				var sprite:FlxSprite = cast obj;
+				sprite.scrollFactor.set();
+				sprite.setPosition(backend.CameraResizeFix.pegarFSX(cam), backend.CameraResizeFix.pegarFSY(cam));
+				sprite.setGraphicSize(Std.int(Math.ceil(backend.CameraResizeFix.pegarFSL(cam))), Std.int(Math.ceil(backend.CameraResizeFix.pegarFSA(cam))));
+				sprite.updateHitbox();
+				return true;
+			}
+			return false;
+		};
+		set('fitObjectToCamera', fitObjectToCameraFunc);
+		set('fitObjectToScreen', fitObjectToCameraFunc);
+		set('setObjectFullscreen', fitObjectToCameraFunc);
 		set('scaleObject', function(objName:String, x:Float, y:Float, updateHitbox:Bool = true) {
 			var obj:Dynamic = getObject(objName);
 			if(obj == null)
@@ -1168,6 +1592,20 @@ class HScript extends Iris {
 		set('version', MainMenuState.psychEngineVersion.trim());
 		set('modVersion', MainMenuState.modVersion.trim());
 		set('modFolder', this.modFolder);
+		set('screenWidth', FlxG.width);
+		set('screenHeight', FlxG.height);
+		set('windowWidth', backend.VignetteUtil.windowWidth());
+		set('windowHeight', backend.VignetteUtil.windowHeight());
+		set('windowPixelWidth', backend.VignetteUtil.windowPixelWidth());
+		set('windowPixelHeight', backend.VignetteUtil.windowPixelHeight());
+		set('fullScreenX', backend.CameraResizeFix.pegarFSX(LuaUtils.cameraFromString('other')));
+		set('fullScreenY', backend.CameraResizeFix.pegarFSY(LuaUtils.cameraFromString('other')));
+		set('fullScreenWidth', backend.CameraResizeFix.pegarFSL(LuaUtils.cameraFromString('other')));
+		set('fullScreenHeight', backend.CameraResizeFix.pegarFSA(LuaUtils.cameraFromString('other')));
+		set('fullscreenX', backend.CameraResizeFix.pegarFSX(LuaUtils.cameraFromString('other')));
+		set('fullscreenY', backend.CameraResizeFix.pegarFSY(LuaUtils.cameraFromString('other')));
+		set('fullscreenWidth', backend.CameraResizeFix.pegarFSL(LuaUtils.cameraFromString('other')));
+		set('fullscreenHeight', backend.CameraResizeFix.pegarFSA(LuaUtils.cameraFromString('other')));
 
 		set('actualBuildTarget', LuaUtils.getBuildTarget());
 		set('buildTarget', LuaUtils.getScriptBuildTarget());
@@ -1272,6 +1710,24 @@ class HScript extends Iris {
 	}
 	public function getVariables():Map<String, Dynamic> {
 		return parentState?.extraData;
+	}
+	public function configureCharacterScript(character:objects.Character, characterName:String):Void {
+		if(character == null)
+			return;
+
+		characterScriptCharacter = character;
+		characterScriptName = characterName ?? character.curCharacter;
+		for(alias in ['character', 'char', 'chr', 'c'])
+			set(alias, character);
+
+		if(interp != null && Std.isOfType(interp, CustomInterp))
+			cast(interp, CustomInterp).parentInstance = character;
+	}
+	public function matchesCharacterScript(character:objects.Character):Bool {
+		if(character == null || characterScriptCharacter == null)
+			return false;
+
+		return characterScriptCharacter == character || (characterScriptName != null && characterScriptName == character.curCharacter);
 	}
 
 	#if LUA_ALLOWED

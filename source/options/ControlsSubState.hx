@@ -296,7 +296,7 @@ class ControlsSubState extends MusicBeatSubstate { // TODO: scriptable?
 					binding = true;
 					holdingEsc = 0;
 					ClientPrefs.toggleVolumeKeys(false);
-					FlxG.sound.play(Paths.sound('scrollMenu'));
+					FlxG.sound.play(Paths.uiSound('scrollMenu'));
 				}
 				else
 				{
@@ -307,7 +307,7 @@ class ControlsSubState extends MusicBeatSubstate { // TODO: scriptable?
 					createTexts();
 					curSelected = lastSel;
 					updateText();
-					FlxG.sound.play(Paths.sound('cancelMenu'));
+					FlxG.sound.play(Paths.uiSound('cancelMenu'));
 				}
 			}
 		}
@@ -320,7 +320,7 @@ class ControlsSubState extends MusicBeatSubstate { // TODO: scriptable?
 				holdingEsc += elapsed;
 				if(holdingEsc > 0.5)
 				{
-					FlxG.sound.play(Paths.sound('cancelMenu'));
+					FlxG.sound.play(Paths.uiSound('cancelMenu'));
 					closeBinding();
 				}
 			}
@@ -335,7 +335,7 @@ class ControlsSubState extends MusicBeatSubstate { // TODO: scriptable?
 						ClientPrefs.gamepadBinds.get(curOption[2])[altNum] = NONE;
 					ClientPrefs.clearInvalidKeys(curOption[2]);
 					updateBind(Math.floor(curSelected * 2) + altNum, onKeyboardMode ? InputFormatter.getKeyName(NONE) : InputFormatter.getGamepadName(NONE));
-					FlxG.sound.play(Paths.sound('cancelMenu'));
+					FlxG.sound.play(Paths.uiSound('cancelMenu'));
 					closeBinding();
 				}
 			}
@@ -429,7 +429,7 @@ class ControlsSubState extends MusicBeatSubstate { // TODO: scriptable?
 						}
 						updateBind(Math.floor(curSelected * 2) + n, key);
 					}
-					FlxG.sound.play(Paths.sound('confirmMenu'));
+					FlxG.sound.play(Paths.uiSound('confirmMenu'));
 					closeBinding();
 				}
 			}
@@ -477,7 +477,7 @@ class ControlsSubState extends MusicBeatSubstate { // TODO: scriptable?
 		});
 
 		updateAlt();
-		FlxG.sound.play(Paths.sound('scrollMenu'));
+		FlxG.sound.play(Paths.uiSound('scrollMenu'));
 	}
 
 	function swapMode()
@@ -496,7 +496,7 @@ class ControlsSubState extends MusicBeatSubstate { // TODO: scriptable?
 	{
 		if(doSwap) {
 			curAlt = !curAlt;
-			FlxG.sound.play(Paths.sound('scrollMenu'));
+			FlxG.sound.play(Paths.uiSound('scrollMenu'));
 		}
 		
 		var selectedBG:AttachedSprite = grpBlacks.members[Math.floor(curSelected * 2) + (curAlt ? 1 : 0)];

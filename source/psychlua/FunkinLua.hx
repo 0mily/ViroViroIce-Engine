@@ -26,6 +26,7 @@ import objects.Note;
 import objects.NoteSplash;
 import objects.Character;
 import objects.VideoSprite;
+import objects.PerspectiveSprite;
 
 import states.MainMenuState;
 import states.StoryMenuState;
@@ -61,6 +62,8 @@ class FunkinLua {
 	public var modFolder:String = null;
 	public var parentState:FlxState;
 	public var closed:Bool = false;
+	public var characterScriptName:String = null;
+	public var characterScriptCharacter:Character = null;
 
 	#if HSCRIPT_ALLOWED
 	public var hscript:HScript = null;
@@ -73,13 +76,15 @@ class FunkinLua {
 	public static var globalValues:Map<String, Dynamic> = [];
 	static var globalValueOwners:Map<String, FunkinLua> = [];
 	
-	public static function initFromFile(file:String, ?parent:FlxState):FunkinLua {
+	public static function initFromFile(file:String, ?parent:FlxState, ?onCreateInstance:FunkinLua->Void):FunkinLua {
 		var newScript:FunkinLua = null;
 		
 		try {
 			trace('LOADING LUA: $file');
 			
 			newScript = new FunkinLua(file, parent);
+			if(onCreateInstance != null)
+				onCreateInstance(newScript);
 			
 			newScript.call('onCreate');
 		} catch(e:Dynamic) {
@@ -122,10 +127,7 @@ class FunkinLua {
 		
 		set('screenWidth', FlxG.width);
 		set('screenHeight', FlxG.height);
-		set('windowWidth', backend.VignetteUtil.windowWidth());
-		set('windowHeight', backend.VignetteUtil.windowHeight()); // widescreen problems
-		set('windowPixelWidth', backend.VignetteUtil.windowPixelWidth());
-		set('windowPixelHeight', backend.VignetteUtil.windowPixelHeight()); // (all still pretty buggy tho)
+		refreshScreenVariables();
 		
 		set('actualBuildTarget', LuaUtils.getBuildTarget());
 		set('buildTarget', LuaUtils.getScriptBuildTarget());
@@ -161,6 +163,10 @@ class FunkinLua {
 
 		addLocalCallback('getWindowWidth', function(?pixels:Bool = false):Int return pixels ? backend.VignetteUtil.windowPixelWidth() : backend.VignetteUtil.windowWidth());
 		addLocalCallback('getWindowHeight', function(?pixels:Bool = false):Int return pixels ? backend.VignetteUtil.windowPixelHeight() : backend.VignetteUtil.windowHeight());
+		addLocalCallback('getFullScreenX', function(?camera:String = 'other'):Float return backend.CameraResizeFix.pegarFSX(LuaUtils.cameraFromString(camera)));
+		addLocalCallback('getFullScreenY', function(?camera:String = 'other'):Float return backend.CameraResizeFix.pegarFSY(LuaUtils.cameraFromString(camera)));
+		addLocalCallback('getFullScreenWidth', function(?camera:String = 'other'):Float return backend.CameraResizeFix.pegarFSL(LuaUtils.cameraFromString(camera)));
+		addLocalCallback('getFullScreenHeight', function(?camera:String = 'other'):Float return backend.CameraResizeFix.pegarFSA(LuaUtils.cameraFromString(camera)));
 		
 		addLocalCallback('close', function() {
 			closed = true;
@@ -214,6 +220,28 @@ class FunkinLua {
 	{
 		if(lua != null)
 			LuaL.dostring(lua, 'milymc = milymc or {}');
+	}
+
+	public function refreshScreenVariables(?camera:String = 'other'):Void
+	{
+		if(lua == null || closed)
+			return;
+
+		var cam:FlxCamera = LuaUtils.cameraFromString(camera);
+		set('screenWidth', FlxG.width);
+		set('screenHeight', FlxG.height);
+		set('windowWidth', backend.VignetteUtil.windowWidth());
+		set('windowHeight', backend.VignetteUtil.windowHeight());
+		set('windowPixelWidth', backend.VignetteUtil.windowPixelWidth());
+		set('windowPixelHeight', backend.VignetteUtil.windowPixelHeight());
+		set('fullScreenX', backend.CameraResizeFix.pegarFSX(cam));
+		set('fullScreenY', backend.CameraResizeFix.pegarFSY(cam));
+		set('fullScreenWidth', backend.CameraResizeFix.pegarFSL(cam));
+		set('fullScreenHeight', backend.CameraResizeFix.pegarFSA(cam));
+		set('fullscreenX', backend.CameraResizeFix.pegarFSX(cam));
+		set('fullscreenY', backend.CameraResizeFix.pegarFSY(cam));
+		set('fullscreenWidth', backend.CameraResizeFix.pegarFSL(cam));
+		set('fullscreenHeight', backend.CameraResizeFix.pegarFSA(cam));
 	}
 
 	function pushLuaValue(path:String):Int
@@ -323,6 +351,21 @@ class FunkinLua {
 		
 		Convert.toLua(lua, data);
 		Lua.setglobal(lua, variable);
+	}
+	public function configureCharacterScript(character:Character, characterName:String):Void {
+		if(character == null)
+			return;
+
+		characterScriptCharacter = character;
+		characterScriptName = characterName ?? character.curCharacter;
+		for(alias in ['character', 'char', 'chr', 'c'])
+			set(alias, character);
+	}
+	public function matchesCharacterScript(character:Character):Bool {
+		if(character == null || characterScriptCharacter == null)
+			return false;
+
+		return characterScriptCharacter == character || (characterScriptName != null && characterScriptName == character.curCharacter);
 	}
 	
 	public function get(variable:String):Dynamic {
@@ -1102,10 +1145,70 @@ class FunkinLua {
 			return CustomSubstate.instance != null ? CustomSubstate.instance : LuaUtils.getTargetInstance();
 		}
 
+		function getOrderMembers(container:Dynamic):Array<Dynamic> {
+			if(container == null)
+				return null;
+			if(Type.typeof(container).match(TClass(Array)))
+				return cast container;
+
+			var members:Dynamic = Reflect.getProperty(container, 'members');
+			return members != null ? cast members : null;
+		}
+
+		function findOrderContainerFor(object:FlxBasic, root:Dynamic, depth:Int = 0):Dynamic {
+			if(object == null || root == null || depth > 16)
+				return null;
+
+			var members:Array<Dynamic> = getOrderMembers(root);
+			if(members == null)
+				return null;
+			if(members.indexOf(object) >= 0)
+				return root;
+
+			for(member in members)
+			{
+				if(member == null || member == root || member == object)
+					continue;
+
+				var found:Dynamic = findOrderContainerFor(object, member, depth + 1);
+				if(found != null)
+					return found;
+			}
+			return null;
+		}
+
+		function removeFromOrderContainer(container:Dynamic, object:FlxBasic):Void {
+			if(container == null || object == null)
+				return;
+
+			if(Type.typeof(container).match(TClass(Array)))
+				container.remove(object);
+			else if(Reflect.isFunction(Reflect.field(container, 'remove')))
+				container.remove(object, true);
+			else
+				getOrderMembers(container)?.remove(object);
+		}
+
+		function insertIntoOrderContainer(container:Dynamic, index:Int, object:FlxBasic):Void {
+			if(container == null || object == null)
+				return;
+
+			var members:Array<Dynamic> = getOrderMembers(container);
+			if(members == null)
+				return;
+
+			if(index < 0) index = 0;
+			if(index > members.length) index = members.length;
+			if(Reflect.isFunction(Reflect.field(container, 'insert')))
+				container.insert(index, object);
+			else
+				members.insert(index, object);
+		}
+
 		function moveObjectRelative(obj:String, target:String, behind:Bool = true, ?group:String = null):Bool {
 			var leObj:FlxBasic = LuaUtils.getObjectDirectly(obj);
 			var targetObj:FlxBasic = LuaUtils.getObjectDirectly(target);
-			var groupOrArray:Dynamic = getOrderContainer(group);
+			var root:Dynamic = getOrderContainer(group);
 
 			if (leObj == null) {
 				luaTrace('moveObjectRelative: Object $obj doesn\'t exist!', false, false, ERROR);
@@ -1115,27 +1218,32 @@ class FunkinLua {
 				luaTrace('moveObjectRelative: Target $target doesn\'t exist!', false, false, ERROR);
 				return false;
 			}
-			if (groupOrArray == null)
+			if (root == null)
 				return false;
 
-			var members:Dynamic = Type.typeof(groupOrArray).match(TClass(Array)) ? groupOrArray : Reflect.getProperty(groupOrArray, 'members');
-			var targetIndex:Int = members.indexOf(targetObj);
-			if (targetIndex < 0) {
-				luaTrace('moveObjectRelative: Target $target is not inside the selected group!', false, false, ERROR);
+			var targetContainer:Dynamic = group != null ? root : findOrderContainerFor(targetObj, root);
+			var sourceContainer:Dynamic = group != null ? root : findOrderContainerFor(leObj, root);
+			if (targetContainer == null) {
+				luaTrace('moveObjectRelative: Target $target is not inside the selected state/group!', false, false, ERROR);
 				return false;
 			}
 
-			var oldIndex:Int = members.indexOf(leObj);
+			var members:Array<Dynamic> = getOrderMembers(targetContainer);
+			var targetIndex:Int = members.indexOf(targetObj);
+			if (targetIndex < 0) {
+				luaTrace('moveObjectRelative: Target $target is not inside the selected state/group!', false, false, ERROR);
+				return false;
+			}
+
+			var oldIndex:Int = (sourceContainer == targetContainer) ? members.indexOf(leObj) : -1;
 			if (oldIndex >= 0 && oldIndex < targetIndex)
 				targetIndex--;
 
-			if (Type.typeof(groupOrArray).match(TClass(Array)))
-				groupOrArray.remove(leObj);
-			else
-				groupOrArray.remove(leObj, true);
+			if(sourceContainer != null)
+				removeFromOrderContainer(sourceContainer, leObj);
 
 			var insertIndex:Int = behind ? targetIndex : targetIndex + 1;
-			groupOrArray.insert(insertIndex, leObj);
+			insertIntoOrderContainer(targetContainer, insertIndex, leObj);
 			return true;
 		}
 
@@ -1194,7 +1302,7 @@ class FunkinLua {
 			luaTrace('setObjectOrder: Object $obj doesn\'t exist!', false, false, ERROR);
 		});
 		registerFunction('setObjectBehind', function(obj:String, target:String, ?group:String = null) {
-			return moveObjectRelative(obj, target, true, group); // AMBOS NÃO ESTÃO funcionando mt bem com objetos por ser em groups e os krl. Dps arrumo isso
+			return moveObjectRelative(obj, target, true, group);
 		});
 		registerFunction('setObjectInFront', function(obj:String, target:String, ?group:String = null) {
 			return moveObjectRelative(obj, target, false, group);
@@ -1350,10 +1458,21 @@ class FunkinLua {
 		registerFunction('getColorFromString', function(color:String) return FlxColor.fromString(color));
 		registerFunction('getColorFromHex', function(color:String) return FlxColor.fromString('#$color'));
 
+		function stateScriptsUseMenuMusic():Bool
+		{
+			return Std.isOfType(FlxG.state, ScriptedState) && !Std.isOfType(FlxG.state, PlayState);
+		}
+
+		function resolveScriptMusic(name:String)
+		{
+			return stateScriptsUseMenuMusic() ? Paths.menuMusic(name) : Paths.music(name);
+		}
+
 		// precaching
 		registerFunction('precacheImage', function(name:String, ?allowGPU:Bool = true) Paths.image(name, allowGPU));
 		registerFunction('precacheSound', function(name:String) Paths.sound(name));
-		registerFunction('precacheMusic', function(name:String) Paths.music(name));
+		registerFunction('precacheMusic', function(name:String) resolveScriptMusic(name));
+		registerFunction('precacheMenuMusic', function(name:String, ?track:String = 'music') Paths.menuMusic(name, track));
 		registerFunction('preloadVideo', function(name:String) return LoadingState.preloadVideo(name) != null);
 		registerFunction('precacheVideo', function(name:String) return LoadingState.preloadVideo(name) != null);
 		
@@ -1476,12 +1595,129 @@ class FunkinLua {
 			
 			MusicBeatState.getVariables().set(tag, leSprite);
 		});
+		var makePerspectiveSpriteFunc = function(tag:String, ?image:String = null, ?bottomX:Float = 0, ?bottomY:Float = 0, ?topX:Float = 0, ?topY:Float = 0) {
+			if(tag == null)
+				return false;
+			tag = tag.replace('.', '');
+			LuaUtils.destroyObject(tag);
+			var leSprite:PerspectiveSprite = new PerspectiveSprite();
+
+			if (image != null && image.length > 0)
+				leSprite.loadGraphic(Paths.image(image));
+
+			leSprite.setPositions(bottomX, bottomY, topX, topY);
+			MusicBeatState.getVariables().set(tag, leSprite);
+			leSprite.active = true;
+			return true;
+		};
+		var getPerspectiveSprite = function(tag:String):PerspectiveSprite {
+			var obj:Dynamic = LuaUtils.getObjectDirectly(tag);
+			return Std.isOfType(obj, PerspectiveSprite) ? cast obj : null;
+		};
+		registerFunction('makePerspectiveSprite', makePerspectiveSpriteFunc);
+		registerFunction('makeLuaPerspectiveSprite', makePerspectiveSpriteFunc);
+		registerFunction('setPerspectivePositions', function(tag:String, bottomX:Float, bottomY:Float, topX:Float, topY:Float) {
+			var leSprite = getPerspectiveSprite(tag);
+			if(leSprite == null)
+				return false;
+			leSprite.setPositions(bottomX, bottomY, topX, topY);
+			return true;
+		});
+		registerFunction('setPerspectiveWidths', function(tag:String, bottomWidth:Float, topWidth:Float) {
+			var leSprite = getPerspectiveSprite(tag);
+			if(leSprite == null)
+				return false;
+			leSprite.setWidths(bottomWidth, topWidth);
+			return true;
+		});
+		registerFunction('setPerspectiveScrollFactors', function(tag:String, bottomX:Float, bottomY:Float, topX:Float, topY:Float) {
+			var leSprite = getPerspectiveSprite(tag);
+			if(leSprite == null)
+				return false;
+			leSprite.setScrollFactors(bottomX, bottomY, topX, topY);
+			return true;
+		});
+		registerFunction('updatePerspectiveSprite', function(tag:String, ?camera:String = 'game') {
+			var leSprite = getPerspectiveSprite(tag);
+			if(leSprite == null)
+				return false;
+			leSprite.updateSkew(LuaUtils.cameraFromString(camera));
+			return true;
+		});
+		registerFunction('updatePerspectiveSkew', function(tag:String, ?camera:String = 'game') {
+			var leSprite = getPerspectiveSprite(tag);
+			if(leSprite == null)
+				return false;
+			leSprite.updateSkew(LuaUtils.cameraFromString(camera));
+			return true;
+		});
 
 		registerFunction('makeGraphic', function(obj:String, width:Int = 256, height:Int = 256, color:String = 'FFFFFF') {
 			var spr:FlxSprite = LuaUtils.getObjectDirectly(obj);
 			
 			if (spr != null) spr.makeGraphic(width, height, CoolUtil.colorFromString(color));
 		});
+		registerFunction('makeGradient', function(obj:String, width:Int = 256, height:Int = 256, colors:Dynamic = null, ?alphas:Dynamic = null, rotation:Int = 90,
+			chunkSize:Int = 1, interpolate:Bool = true) {
+			return backend.GradientUtil.applyToSprite(LuaUtils.getObjectDirectly(obj), width, height, colors, alphas, rotation, chunkSize, interpolate);
+		});
+		var makeLuaGradientFunc = function(tag:String, width:Int = 256, height:Int = 256, colors:Dynamic = null, ?alphas:Dynamic = null, ?x:Float = 0,
+			?y:Float = 0, rotation:Int = 90, chunkSize:Int = 1, interpolate:Bool = true) {
+			if(tag == null)
+				return false;
+			tag = tag.replace('.', '');
+			LuaUtils.destroyObject(tag);
+			var leSprite:ModchartSprite = new ModchartSprite(x, y);
+			backend.GradientUtil.applyToSprite(leSprite, width, height, colors, alphas, rotation, chunkSize, interpolate);
+			MusicBeatState.getVariables().set(tag, leSprite);
+			leSprite.active = true;
+			return true;
+		};
+		registerFunction('makeLuaGradient', makeLuaGradientFunc);
+		registerFunction('makeGradientSprite', makeLuaGradientFunc);
+		registerFunction('setGradientStop', function(obj:String, index:Int, ?color:Dynamic = null, ?alpha:Dynamic = null) {
+			return backend.GradientUtil.setStop(LuaUtils.getObjectDirectly(obj), index, color, alpha);
+		});
+		var tweenGradientFunc = function(tag:String, obj:String, colors:Dynamic = null, ?alphas:Dynamic = null, duration:Float = 1, ?ease:String = 'linear') {
+			var spr:FlxSprite = LuaUtils.getObjectDirectly(obj);
+			if(spr == null)
+			{
+				luaTrace('tweenGradient: Couldnt find object: ' + obj, false, false, ERROR);
+				return null;
+			}
+
+			var variables = MusicBeatState.getVariables();
+			var originalTag:String = tag;
+			tag = LuaUtils.formatVariable('tween_$tag');
+			LuaUtils.cancelTween(originalTag);
+			variables.set(tag, backend.GradientUtil.tweenSprite(spr, colors, alphas, duration, LuaUtils.getTweenEaseByString(ease), function(twn:FlxTween) {
+				variables.remove(tag);
+				luaCallGlobal('onTweenCompleted', [originalTag, obj]);
+			}));
+			return tag;
+		};
+		registerFunction('tweenGradient', tweenGradientFunc);
+		registerFunction('doTweenGradient', tweenGradientFunc);
+		var tweenGradientAlphaFunc = function(tag:String, obj:String, alphas:Dynamic = null, duration:Float = 1, ?ease:String = 'linear') {
+			var spr:FlxSprite = LuaUtils.getObjectDirectly(obj);
+			if(spr == null)
+			{
+				luaTrace('tweenGradientAlpha: Couldnt find object: ' + obj, false, false, ERROR);
+				return null;
+			}
+
+			var variables = MusicBeatState.getVariables();
+			var originalTag:String = tag;
+			tag = LuaUtils.formatVariable('tween_$tag');
+			LuaUtils.cancelTween(originalTag);
+			variables.set(tag, backend.GradientUtil.tweenSpriteAlpha(spr, alphas, duration, LuaUtils.getTweenEaseByString(ease), function(twn:FlxTween) {
+				variables.remove(tag);
+				luaCallGlobal('onTweenCompleted', [originalTag, obj]);
+			}));
+			return tag;
+		};
+		registerFunction('tweenGradientAlpha', tweenGradientAlphaFunc);
+		registerFunction('doTweenGradientAlpha', tweenGradientAlphaFunc);
 		var makeVignetteFunc = function(obj:String, width:Int = 0, height:Int = 0, color:String = '000000', strength:Float = 1, radius:Float = 0.55, softness:Float = 0.45) {
 			var spr:FlxSprite = LuaUtils.getObjectDirectly(obj);
 			if(spr == null)
@@ -1575,6 +1811,36 @@ class FunkinLua {
 			}
 			luaTrace('setGraphicSize: Couldnt find object: ' + obj, false, false, ERROR);
 		});
+		var fitObjectToCameraFunc = function(obj:String, camera:String = 'other', autoUpdate:Bool = true) {
+			var object:FlxBasic = LuaUtils.getObjectDirectly(obj);
+			var cam:FlxCamera = LuaUtils.cameraFromString(camera);
+			if(object == null)
+			{
+				luaTrace('fitObjectToCamera: Couldnt find object: ' + obj, false, false, ERROR);
+				return false;
+			}
+
+			object.cameras = [cam];
+			if(Std.isOfType(object, objects.VVIESpriteHandler))
+			{
+				cast(object, objects.VVIESpriteHandler).fitToCamera(cam, autoUpdate);
+				return true;
+			}
+
+			if(Std.isOfType(object, FlxSprite))
+			{
+				var sprite:FlxSprite = cast object;
+				sprite.scrollFactor.set();
+				sprite.setPosition(backend.CameraResizeFix.pegarFSX(cam), backend.CameraResizeFix.pegarFSY(cam));
+				sprite.setGraphicSize(Std.int(Math.ceil(backend.CameraResizeFix.pegarFSL(cam))), Std.int(Math.ceil(backend.CameraResizeFix.pegarFSA(cam))));
+				sprite.updateHitbox();
+				return true;
+			}
+			return false;
+		};
+		registerFunction('fitObjectToCamera', fitObjectToCameraFunc);
+		registerFunction('fitObjectToScreen', fitObjectToCameraFunc);
+		registerFunction('setObjectFullscreen', fitObjectToCameraFunc);
 		registerFunction('scaleObject', function(obj:String, x:Float, y:Float, updateHitbox:Bool = true) {
 			var obj:Dynamic = LuaUtils.getObjectDirectly(obj);
 			if (obj != null) {
@@ -1596,15 +1862,19 @@ class FunkinLua {
 		registerFunction('removeLuaSprite', function(tag:String, destroy:Bool = true, ?group:String = null) {
 			var obj:Dynamic = LuaUtils.getObjectDirectly(tag);
 			if (obj == null || obj.destroy == null)
-				return;
+				return false;
 			
-			var groupObj:Dynamic = LuaUtils.getObjectDirectly(group);
-			groupObj?.remove(obj, true);
+			var groupObj:Dynamic = group == null ? null : LuaUtils.getObjectDirectly(group);
+			if (groupObj != null && groupObj.remove != null)
+				groupObj.remove(obj, true);
+			else
+				LuaUtils.getTargetInstance()?.remove(obj, true);
 			
 			if (destroy) {
 				MusicBeatState.getVariables().remove(tag);
 				obj.destroy();
 			}
+			return true;
 		});
 
 		registerFunction('luaSpriteExists', function(tag:String) {
@@ -1674,7 +1944,8 @@ class FunkinLua {
 				return MusicBeatState.getVariables().get(LuaUtils.formatVariable('sound_$tag'));
 			}
 		}
-		registerFunction('playMusic', function(sound:String, ?volume:Float = 1, ?loop:Bool = false) FlxG.sound.playMusic(Paths.music(sound), volume, loop));
+		registerFunction('playMusic', function(sound:String, ?volume:Float = 1, ?loop:Bool = false) FlxG.sound.playMusic(resolveScriptMusic(sound), volume, loop));
+		registerFunction('playMenuMusic', function(sound:String, ?volume:Float = 1, ?loop:Bool = false, ?track:String = 'music') FlxG.sound.playMusic(Paths.menuMusic(sound, track), volume, loop));
 		registerFunction('playSound', function(sound:String, ?volume:Float = 1, ?tag:String = null, ?loop:Bool = false):String {
 			if (tag != null && tag.length > 0) {
 				var originalTag:String = tag;
@@ -1815,11 +2086,11 @@ class FunkinLua {
 				default: 0;
 			});
 		});
-		registerFunction('createChar', function(name:String, ?x:Float = 0, ?y:Float = 0, ?noteType:String = '', ?isPlayer:Bool = false) {
-			return game.createChar(name, x, y, noteType, isPlayer);
+		registerFunction('createChar', function(name:String, ?x:Float = 0, ?y:Float = 0, ?noteType:String = '', ?isPlayer:Bool = false, ?offsetSide:String = null) {
+			return game.createChar(name, x, y, noteType, isPlayer, offsetSide);
 		});
-		registerFunction('createCharacter', function(name:String, ?x:Float = 0, ?y:Float = 0, ?noteType:String = '', ?isPlayer:Bool = false) {
-			return game.createChar(name, x, y, noteType, isPlayer);
+		registerFunction('createCharacter', function(name:String, ?x:Float = 0, ?y:Float = 0, ?noteType:String = '', ?isPlayer:Bool = false, ?offsetSide:String = null) {
+			return game.createChar(name, x, y, noteType, isPlayer, offsetSide);
 		});
 		registerFunction('getCharacterTag', function(name:String) {
 			return game.getExtraCharacterTag(name);
@@ -1858,13 +2129,13 @@ class FunkinLua {
 				if (skipTransition) {
 					FlxG.switchState(() -> new StoryMenuState());
 					FlxTransitionableState.skipNextTransOut = true;
-					FlxG.sound.playMusic(Paths.music('freakyMenu'));
+					FlxG.sound.playMusic(Paths.menuMusic('mainMenu'));
 				} else {
 					if (Mods.modUsesStickerTrans()) {
 						target.openSubState(new StickerSubState(null, (sticker) -> new StoryMenuState(sticker)));
 					} else {
 						MusicBeatState.switchState(new StoryMenuState());
-						FlxG.sound.playMusic(Paths.music('freakyMenu'));
+						FlxG.sound.playMusic(Paths.menuMusic('mainMenu'));
 					}
 				}
 			}
@@ -1873,13 +2144,13 @@ class FunkinLua {
 				if(skipTransition) {
 					FlxG.switchState(() -> new FreeplayState());
 					FlxTransitionableState.skipNextTransOut = true;
-					FlxG.sound.playMusic(Paths.music('freakyMenu'));
+					FlxG.sound.playMusic(Paths.menuMusic('mainMenu'));
 				} else {
 					if (Mods.modUsesStickerTrans()) {
 						target.openSubState(new StickerSubState(null, (sticker) -> new FreeplayState(sticker)));
 					} else {
 						MusicBeatState.switchState(new FreeplayState());
-						FlxG.sound.playMusic(Paths.music('freakyMenu'));
+						FlxG.sound.playMusic(Paths.menuMusic('mainMenu'));
 					}
 				}
 			}

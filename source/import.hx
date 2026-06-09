@@ -54,6 +54,7 @@ import backend.NativeFileSystem as NativeFileSystem;
 import backend.ArrayTools;
 import backend.MathUtil;
 import backend.Constants;
+import backend.AtlasUtil;
 import backend.Paths;
 import backend.Controls;
 import backend.CoolUtil;
@@ -66,6 +67,7 @@ import backend.ClientPrefs;
 import backend.Conductor;
 import backend.BaseStage;
 import backend.Difficulty;
+import backend.EditorSFX;
 import backend.Mods;
 import backend.Language;
 
@@ -79,6 +81,8 @@ import debug.Log;
 
 import objects.Alphabet;
 import objects.BGSprite;
+import objects.PerspectiveSprite;
+import shaders.SserafimShader;
 
 import states.PlayState;
 import states.LoadingState;

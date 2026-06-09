@@ -1,0 +1,6 @@
+name = 'Lyrics Event'
+description = 'Displays centered lyric text. Use \n for line breaks; empty text hides it.'
+
+[Text]
+type = 'text'
+width = 330

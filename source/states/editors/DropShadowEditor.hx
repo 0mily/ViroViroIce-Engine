@@ -257,12 +257,14 @@ class DropShadowEditor extends ScriptedState implements PsychUIEventHandler.Psyc
 		outputAlpha = 4;
 		if(isError)
 		{
-			FlxG.sound.play(Paths.sound('cancelMenu'), 0.6);
+			if(ClientPrefs.data.editorSFX)
+				FlxG.sound.play(Paths.uiSound('cancelMenu'), 0.6);
 			outputTxt.color = FlxColor.RED;
 		}
 		else
 		{
-			FlxG.sound.play(Paths.sound('scrollMenu'), 0.6);
+			if(ClientPrefs.data.editorSFX)
+				FlxG.sound.play(Paths.uiSound('scrollMenu'), 0.6);
 			outputTxt.color = FlxColor.WHITE;
 		}
 	}
@@ -624,7 +626,8 @@ class DropShadowEditor extends ScriptedState implements PsychUIEventHandler.Psyc
 
         if(FlxG.keys.justPressed.ESCAPE)
         {
-            FlxG.sound.play(Paths.sound('cancelMenu'));
+            if(ClientPrefs.data.editorSFX)
+                FlxG.sound.play(Paths.uiSound('cancelMenu'));
             MusicBeatState.switchState(new MainMenuState());
         }
 

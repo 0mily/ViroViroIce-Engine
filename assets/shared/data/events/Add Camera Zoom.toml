@@ -1,0 +1,19 @@
+name = 'Add Camera Zoom'
+description = 'Adds an instant bump to the game and HUD cameras.'
+
+[Game]
+type = 'stepper'
+default = 0.015
+step = 0.005
+min_max = [ -2, 2 ]
+decimals = 4
+width = 82
+advance = false
+
+[HUD]
+type = 'stepper'
+default = 0.03
+step = 0.005
+min_max = [ -2, 2 ]
+decimals = 4
+width = 82

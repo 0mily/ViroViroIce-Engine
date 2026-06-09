@@ -1,0 +1,11 @@
+name = 'Camera Follow Pos'
+description = 'Forces the game camera follow point. Leave both values empty in classic mode to release it.'
+
+[X]
+type = 'text'
+width = 95
+advance = false
+
+[Y]
+type = 'text'
+width = 95

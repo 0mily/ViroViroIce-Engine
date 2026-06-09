@@ -1,0 +1,10 @@
+name = 'LuaScript Call'
+description = 'Similar to "HScript Call" from CNE.'
+
+[LuaEventCall]
+type = 'text'
+label = 'Lua Event Call'
+group = 1
+part = 1
+width = 250
+textSize = 13

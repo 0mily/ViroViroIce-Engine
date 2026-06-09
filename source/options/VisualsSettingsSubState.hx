@@ -230,7 +230,7 @@ class VisualsSettingsSubState extends BaseOptionsMenu
 		if(ClientPrefs.data.pauseMusic == 'None')
 			FlxG.sound.music.volume = 0;
 		else
-			FlxG.sound.playMusic(Paths.music(Paths.formatToSongPath(ClientPrefs.data.pauseMusic)));
+			FlxG.sound.playMusic(Paths.pauseMusic(ClientPrefs.data.pauseMusic, PlayState.instance?.boyfriend?.curCharacter, PlayState.stageUI));
 
 		changedMusic = true;
 	}
@@ -317,7 +317,7 @@ class VisualsSettingsSubState extends BaseOptionsMenu
 
 	override function destroy()
 	{
-		if(changedMusic && !OptionsState.onPlayState) FlxG.sound.playMusic(Paths.music('freakyMenu'), 1, true);
+		if(changedMusic && !OptionsState.onPlayState) FlxG.sound.playMusic(Paths.menuMusic('mainMenu'), 1, true);
 		Note.globalRgbShaders = [];
 		super.destroy();
 	}

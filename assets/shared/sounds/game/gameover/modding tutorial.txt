@@ -1,0 +1,11 @@
+Use this structure:
+
+sounds/game/gameover/fnf_loss_sfx.ogg
+sounds/game/gameover/<characterName>/fnf_loss_sfx.ogg
+
+Examples:
+
+sounds/game/gameover/fnf_loss_sfx.ogg
+sounds/game/gameover/pico/fnf_loss_sfx.ogg
+
+The root file is the fallback. Character folders only need to exist when you want to override that fallback.

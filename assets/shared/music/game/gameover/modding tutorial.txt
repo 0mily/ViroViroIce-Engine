@@ -1,0 +1,26 @@
+Use this structure:
+
+music/game/gameover/<bfName>/music.ogg
+music/game/gameover/<bfName>/music-end.ogg
+music/game/gameover/<bfName>/<uiName>/music.ogg
+music/game/gameover/<bfName>/<uiName>/music-end.ogg
+
+Examples:
+
+music/game/gameover/default/music.ogg
+music/game/gameover/default/music-end.ogg
+music/game/gameover/default/pixel/music.ogg
+music/game/gameover/default/pixel/music-end.ogg
+music/game/gameover/pico/music.ogg
+music/game/gameover/pico/pixel/music-end-alt.ogg
+
+
+Game over script callbacks:
+
+onLoad()
+onDie()
+onRetry()
+
+Game over script API:
+
+gameOverMusic(kind, songfile)

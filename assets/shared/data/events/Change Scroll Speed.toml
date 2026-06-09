@@ -1,0 +1,19 @@
+name = 'Change Scroll Speed'
+description = 'Changes song scroll speed by multiplier.'
+
+[Multiplier]
+type = 'stepper'
+default = 1
+step = 0.1
+min_max = [ 0.05, 10 ]
+decimals = 3
+width = 85
+advance = false
+
+[Seconds]
+type = 'stepper'
+default = 0
+step = 0.25
+min_max = [ 0, 60 ]
+decimals = 2
+width = 80

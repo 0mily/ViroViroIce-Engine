@@ -458,7 +458,7 @@ class FreeplayLuaFunctions
 				FlxTween.cancelTweensOf(FlxG.sound.music);
 				FlxG.sound.music.fadeOut(fadeOut, 0, function(_) {
 					if (restoreMenuMusic)
-						FlxG.sound.playMusic(Paths.music('freakyMenu'), 0.7, true);
+						FlxG.sound.playMusic(Paths.menuMusic('mainMenu'), 0.7, true);
 					else if (FlxG.sound.music != null)
 						FlxG.sound.music.stop();
 				});
@@ -467,12 +467,12 @@ class FreeplayLuaFunctions
 			{
 				FlxG.sound.music.stop();
 				if (restoreMenuMusic)
-					FlxG.sound.playMusic(Paths.music('freakyMenu'), 0.7, true);
+					FlxG.sound.playMusic(Paths.menuMusic('mainMenu'), 0.7, true);
 			}
 		}
 		else if (restoreMenuMusic)
 		{
-			FlxG.sound.playMusic(Paths.music('freakyMenu'), 0.7, true);
+			FlxG.sound.playMusic(Paths.menuMusic('mainMenu'), 0.7, true);
 		}
 	}
 

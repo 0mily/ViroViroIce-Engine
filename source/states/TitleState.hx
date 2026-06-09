@@ -128,7 +128,7 @@ class TitleState extends ScriptedState
 		persistentUpdate = true;
 		if (!initialized || FlxG.sound.music == null || !FlxG.sound.music.playing)
 		{
-			FlxG.sound.playMusic(Paths.music('freakyMenu'), 0);
+			FlxG.sound.playMusic(Paths.menuMusic('mainMenu'), 0);
 			Conductor.songPosition = 0;
 		}
 
@@ -421,7 +421,7 @@ class TitleState extends ScriptedState
 									case 'newgrounds':
 										registerIntroAction(beat, {action: 'newgrounds', visible: parseTitleBool(actionNode.get('visible'), true)});
 									case 'music':
-										registerIntroAction(beat, {action: 'music', value: actionNode.exists('song') ? actionNode.get('song') : 'freakyMenu'});
+										registerIntroAction(beat, {action: 'music', value: actionNode.exists('song') ? actionNode.get('song') : 'mainMenu'});
 									case 'skipintro':
 										registerIntroAction(beat, {action: 'skipIntro'});
 									default:
@@ -448,7 +448,7 @@ class TitleState extends ScriptedState
 		switch (action.action)
 		{
 			case 'music':
-				FlxG.sound.playMusic(Paths.music(action.value ?? 'freakyMenu'), 0);
+				FlxG.sound.playMusic(Paths.menuMusic(action.value ?? 'mainMenu'), 0);
 				FlxG.sound.music.fadeIn(4, 0, 0.7);
 
 			case 'create':
@@ -770,7 +770,7 @@ class TitleState extends ScriptedState
 				if (titleText != null) titleText.animation.play('press');
 
 				FlxG.camera.flash(ClientPrefs.data.flashing ? FlxColor.WHITE : 0x4CFFFFFF, 1);
-				FlxG.sound.play(Paths.sound('confirmMenu'), 0.7);
+				FlxG.sound.play(Paths.uiSound('confirmMenu'), 0.7);
 
 				transitioning = true;
 				// FlxG.sound.music.stop();
@@ -804,7 +804,7 @@ class TitleState extends ScriptedState
 								FlxG.save.data.psychDevsEasterEgg = word;
 							FlxG.save.flush();
 
-							FlxG.sound.play(Paths.sound('secret'));
+							FlxG.sound.play(Paths.gameSound('eastereggs/secret'));
 
 							var black:FlxSprite = new FlxSprite(0, 0).makeGraphic(1, 1, FlxColor.BLACK);
 							black.scale.set(FlxG.width, FlxG.height);
@@ -917,7 +917,7 @@ class TitleState extends ScriptedState
 				} else {
 					switch (b) {
 						case 0:
-							FlxG.sound.playMusic(Paths.music('freakyMenu'), 0);
+							FlxG.sound.playMusic(Paths.menuMusic('mainMenu'), 0);
 							FlxG.sound.music.fadeIn(4, 0, 0.7);
 						case 1:
 							createCoolText(['ViroViroIce by'], 40);
@@ -999,7 +999,7 @@ class TitleState extends ScriptedState
 						FlxG.camera.flash(FlxColor.WHITE, 2);
 						skippedIntro = true;
 
-						FlxG.sound.playMusic(Paths.music('freakyMenu'), 0);
+						FlxG.sound.playMusic(Paths.menuMusic('mainMenu'), 0);
 						FlxG.sound.music.fadeIn(4, 0, 0.7);
 						return;
 				}
@@ -1021,7 +1021,7 @@ class TitleState extends ScriptedState
 					remove(credGroup);
 					FlxG.camera.flash(FlxColor.WHITE, 3);
 					sound.onComplete = function() {
-						FlxG.sound.playMusic(Paths.music('freakyMenu'), 0);
+						FlxG.sound.playMusic(Paths.menuMusic('mainMenu'), 0);
 						FlxG.sound.music.fadeIn(4, 0, 0.7);
 						transitioning = false;
 						#if ACHIEVEMENTS_ALLOWED

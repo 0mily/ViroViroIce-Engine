@@ -6,6 +6,7 @@ import animate.FlxAnimateFrames.SpritemapInput;
 import backend.Paths;
 import flixel.FlxCamera;
 import flixel.FlxG;
+import flixel.FlxSprite;
 import flixel.graphics.FlxGraphic;
 import flixel.graphics.frames.FlxAtlasFrames;
 import flixel.graphics.frames.FlxFrame.FlxFrameAngle;
@@ -13,9 +14,18 @@ import flixel.math.FlxPoint;
 import flixel.math.FlxRect; // quanto import novo mds </3
 import flixel.system.FlxAssets.FlxGraphicAsset;
 import haxe.Json;
+import animate.internal.Frame;
+import animate.internal.Layer;
+import animate.internal.SymbolItem;
+import animate.internal.Timeline;
+import animate.internal.elements.AtlasInstance;
+import animate.internal.elements.Element;
+import animate.internal.elements.FlxSpriteElement;
+import animate.internal.elements.SymbolInstance;
 
 using StringTools;
 
+@:access(animate.FlxAnimateFrames)
 class PsychFlxAnimate extends OriginalFlxAnimate
 {
 	public var showPivot:Bool = false;
@@ -234,6 +244,252 @@ class PsychFlxAnimate extends OriginalFlxAnimate
 		return findAtlasSymbolName(symbol) != null;
 	}
 
+	public function getAtlasDefaultSymbol():String
+	{
+		if(library == null) return '';
+		if(anim != null)
+		{
+			try
+			{
+				var curAnim:Dynamic = anim.curAnim;
+				var timeline:Timeline = curAnim != null ? cast Reflect.field(curAnim, 'timeline') : null;
+				if(timeline != null && timeline.name != null && timeline.name.length > 0)
+					return timeline.name;
+			}
+			catch(e:Dynamic) {}
+		}
+
+		try
+		{
+			var timeline:Dynamic = Reflect.field(library, 'timeline');
+			var name:String = timeline != null ? Reflect.field(timeline, 'name') : null;
+			if(name != null && name.length > 0) return name;
+		}
+		catch(e:Dynamic) {}
+		var names:Array<String> = getAtlasSymbolNames();
+		return names.length > 0 ? names[0] : '';
+	}
+
+	public function listAtlasSymbolNames():Array<String>
+		return getAtlasSymbolNames();
+
+	public function getAtlasFramesWithKeyword(keyword:String, ?symbolKeyword:String = null, exact:Bool = false):Array<Frame>
+	{
+		var found:Array<Frame> = [];
+		if(keyword == null || library == null) return found;
+
+		for(symbolName in getAtlasSymbolNames())
+		{
+			var symbolItem:SymbolItem = getAtlasSymbol(symbolName);
+			if(symbolItem == null || !matchesAtlasName(symbolItem.name, symbolKeyword, false))
+				continue;
+
+			var symbolMatches:Bool = matchesAtlasName(symbolItem.name, keyword, exact);
+			for(layer in symbolItem.timeline.layers)
+			{
+				var layerMatches:Bool = matchesAtlasName(layer.name, keyword, exact);
+				for(frame in layer.frames)
+				{
+					if(symbolMatches || layerMatches || frameMatchesAtlasKeyword(frame, keyword, exact))
+						if(!found.contains(frame))
+							found.push(frame);
+				}
+			}
+		}
+		return found;
+	}
+
+	public function addSpriteElementToAtlasFrames(sprite:FlxSprite, keyword:String, insertIndex:Int = -1, ?symbolKeyword:String = null, exact:Bool = false, elementActive:Bool = true):Int
+	{
+		if(sprite == null || keyword == null || library == null) return 0;
+
+		var changed:Int = 0;
+		for(frame in getAtlasFramesWithKeyword(keyword, symbolKeyword, exact))
+		{
+			var element = new FlxSpriteElement(sprite);
+			element.active = elementActive;
+			if(insertIndex >= 0 && insertIndex < frame.elements.length)
+				frame.insert(insertIndex, element);
+			else
+				frame.add(element);
+			frame.setDirty();
+			changed++;
+		}
+		return changed;
+	}
+
+	public function applyAtlasSettings(settings:Dynamic):Bool
+	{
+		if(settings == null || library == null)
+			return false;
+
+		var changed:Bool = false;
+		var onSymbolCreate:Dynamic = Reflect.field(settings, 'onSymbolCreate');
+		if(Reflect.isFunction(onSymbolCreate))
+		{
+			for(symbolName in getAtlasSymbolNames())
+			{
+				var symbolItem:SymbolItem = getAtlasSymbol(symbolName);
+				if(symbolItem == null) continue;
+
+				Reflect.callMethod(settings, onSymbolCreate, [symbolItem]);
+				markAtlasTimelineDirty(symbolItem.timeline);
+				changed = true;
+			}
+		}
+
+		changed = applyAtlasSettingsLayerList(settings, 'hideLayers', false) || changed;
+		changed = applyAtlasSettingsLayerList(settings, 'hiddenLayers', false) || changed;
+		changed = applyAtlasSettingsLayerList(settings, 'showLayers', true) || changed;
+		changed = applyAtlasSettingsLayerList(settings, 'visibleLayers', true) || changed;
+		return changed;
+	}
+
+	public function setAtlasLayersVisible(symbolKeyword:String, layerKeyword:String, visible:Bool, exact:Bool = false):Int
+	{
+		if(layerKeyword == null || library == null) return 0;
+
+		var changed:Int = 0;
+		for(symbolName in getAtlasSymbolNames())
+		{
+			var symbolItem:SymbolItem = getAtlasSymbol(symbolName);
+			if(symbolItem == null || !matchesAtlasName(symbolItem.name, symbolKeyword, false))
+				continue;
+
+			for(layer in symbolItem.timeline.layers)
+			{
+				if(layer != null && matchesAtlasName(layer.name, layerKeyword, exact))
+				{
+					layer.visible = visible;
+					for(frame in layer.frames)
+						frame.setDirty();
+					changed++;
+				}
+			}
+		}
+		return changed;
+	}
+
+	public function setAtlasElementsVisible(keyword:String, visible:Bool, exact:Bool = false):Int
+	{
+		if(keyword == null || library == null) return 0;
+
+		var changed:Int = 0;
+		for(symbolName in getAtlasSymbolNames())
+		{
+			var symbolItem:SymbolItem = getAtlasSymbol(symbolName);
+			if(symbolItem == null) continue;
+
+			for(layer in symbolItem.timeline.layers)
+			{
+				for(frame in layer.frames)
+				{
+					for(element in frame.elements)
+					{
+						if(matchesAtlasName(getElementName(element), keyword, exact))
+						{
+							element.visible = visible;
+							frame.setDirty();
+							changed++;
+						}
+					}
+				}
+			}
+		}
+		return changed;
+	}
+
+	public function setAtlasCurFrameFromTime(timeMs:Float, fps:Float = 24, frameOffset:Int = -1):Int
+	{
+		var frame:Int = Math.floor((timeMs / 1000) * fps) + frameOffset;
+		return setAtlasCurFrame(Std.int(Math.max(0, frame)));
+	}
+
+	function getAtlasSymbol(symbol:String):SymbolItem
+	{
+		if(symbol == null || library == null) return null;
+		try return cast library.getSymbol(symbol)
+		catch(e:Dynamic) return null;
+	}
+
+	function matchesAtlasName(name:String, keyword:String, exact:Bool):Bool
+	{
+		if(keyword == null || keyword.length < 1) return true;
+		if(name == null) return false;
+		return exact ? name == keyword : name.contains(keyword);
+	}
+
+	function getElementName(element:Element):String
+	{
+		if(element == null) return null;
+		if(Std.isOfType(element, SymbolInstance))
+			return cast(element, SymbolInstance).symbolName;
+		if(Std.isOfType(element, AtlasInstance))
+		{
+			var atlasInstance:AtlasInstance = cast element;
+			return atlasInstance.frame != null ? atlasInstance.frame.name : null;
+		}
+		if(Std.isOfType(element, FlxSpriteElement))
+		{
+			var spriteElement:FlxSpriteElement = cast element;
+			return spriteElement.basic != null ? Type.getClassName(Type.getClass(spriteElement.basic)) : null;
+		}
+		return Std.string(element.elementType);
+	}
+
+	function frameMatchesAtlasKeyword(frame:Frame, keyword:String, exact:Bool):Bool
+	{
+		if(frame == null) return false;
+		if(matchesAtlasName(frame.name, keyword, exact))
+			return true;
+		if(frame.layer != null && matchesAtlasName(frame.layer.name, keyword, exact))
+			return true;
+		for(element in frame.elements)
+			if(matchesAtlasName(getElementName(element), keyword, exact))
+				return true;
+		return false;
+	}
+
+	function applyAtlasSettingsLayerList(settings:Dynamic, field:String, visible:Bool):Bool
+	{
+		var value:Dynamic = Reflect.field(settings, field);
+		if(value == null)
+			return false;
+
+		var changed:Int = 0;
+		if(Std.isOfType(value, String))
+		{
+			for(layer in Std.string(value).split(','))
+			{
+				layer = layer.trim();
+				if(layer.length > 0)
+					changed += setAtlasLayersVisible(null, layer, visible);
+			}
+		}
+		else if(Std.isOfType(value, Array))
+		{
+			for(layer in cast(value, Array<Dynamic>))
+			{
+				var layerName:String = Std.string(layer).trim();
+				if(layerName.length > 0)
+					changed += setAtlasLayersVisible(null, layerName, visible);
+			}
+		}
+		return changed > 0;
+	}
+
+	function markAtlasTimelineDirty(timeline:Timeline):Void
+	{
+		if(timeline == null || timeline.layers == null)
+			return;
+
+		for(layer in timeline.layers)
+			if(layer != null && layer.frames != null)
+				for(frame in layer.frames)
+					if(frame != null)
+						frame.setDirty();
+	}
+
 	function findAtlasSymbolName(symbol:String):String
 	{
 		if(symbol == null || library == null) return null;
@@ -278,7 +534,7 @@ class PsychFlxAnimate extends OriginalFlxAnimate
 
 		try
 		{
-			var dictionary:Map<String, Dynamic> = cast Reflect.field(library, 'dictionary');
+			var dictionary:Map<String, SymbolItem> = cast Reflect.field(library, 'dictionary');
 			if(dictionary != null)
 				for(name in dictionary.keys())
 					if(!names.contains(name))
@@ -288,11 +544,13 @@ class PsychFlxAnimate extends OriginalFlxAnimate
 
 		try
 		{
-			var symbolDictionary:Array<Dynamic> = cast Reflect.field(library, '_symbolDictionary');
+			var symbolDictionary:Dynamic = Reflect.field(library, '_symbolDictionary');
 			if(symbolDictionary != null)
 			{
-				for(symbolData in symbolDictionary)
+				var length:Int = Reflect.getProperty(symbolDictionary, 'length');
+				for(i in 0...length)
 				{
+					var symbolData:Dynamic = Reflect.getProperty(symbolDictionary, Std.string(i));
 					var name:String = Reflect.field(symbolData, 'SN');
 					if(name != null && !names.contains(name))
 						names.push(name);

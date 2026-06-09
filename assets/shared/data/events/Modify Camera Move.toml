@@ -1,0 +1,30 @@
+name = 'Modify Camera Move'
+description = 'Changes note-reactive camera move settings during the song. Blank numeric fields keep their current value.'
+
+[Enabled]
+type = 'dropdown'
+group = 1
+part = 1
+default = 'keep'
+options = [ 'keep', 'on', 'off' ]
+width = 110
+advance = false
+
+[Intensity]
+type = 'text'
+group = 1
+part = 2
+width = 90
+
+[Speed]
+type = 'text'
+group = 2
+part = 1
+width = 90
+advance = false
+
+[Offset]
+type = 'text'
+group = 2
+part = 2
+width = 90

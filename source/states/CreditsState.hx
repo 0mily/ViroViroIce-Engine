@@ -157,7 +157,7 @@ class CreditsState extends ScriptedState
 				
 				if(FlxG.mouse.wheel != 0)
 				{
-					FlxG.sound.play(Paths.sound('scrollMenu'), .2);
+					FlxG.sound.play(Paths.uiSound('scrollMenu'), .2);
 					changeSelection(-FlxG.mouse.wheel);
 				}
 			}
@@ -172,7 +172,7 @@ class CreditsState extends ScriptedState
 			if (controls.BACK)
 			{
 				if (callOnScripts('onBack', true) != psychlua.LuaUtils.Function_Stop) {
-					FlxG.sound.play(Paths.sound('cancelMenu'));
+					FlxG.sound.play(Paths.uiSound('cancelMenu'));
 					MusicBeatState.switchState(new MainMenuState());
 					quitting = true;
 				}
@@ -204,7 +204,7 @@ class CreditsState extends ScriptedState
 	var moveTween:FlxTween = null;
 	function changeSelection(change:Int = 0)
 	{
-		FlxG.sound.play(Paths.sound('scrollMenu'), 0.4);
+		FlxG.sound.play(Paths.uiSound('scrollMenu'), 0.4);
 		var max:Int = creditsStuff.length;
 		var oldSelected:Int = curSelected;
 		do {

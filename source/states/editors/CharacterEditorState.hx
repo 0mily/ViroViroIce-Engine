@@ -560,7 +560,8 @@ class CharacterEditorState extends ScriptedState implements PsychUIEventHandler.
 			healthIconPreviewBump = 1;
 			healthIcon.setIconFrame(healthIconPreviewFrame);
 			layoutHealthIconPanel();
-			FlxG.sound.play(Paths.sound('scrollMenu'), 0.45);
+			if(ClientPrefs.data.editorSFX)
+				FlxG.sound.play(Paths.uiSound('scrollMenu'), 0.45);
 		}
 		else if(!draggingHealthIconPanel && healthColorPreview != null && FlxG.mouse.justPressed && FlxG.mouse.overlaps(healthColorPreview, camHUD))
 			openHealthColorPicker();
@@ -861,7 +862,8 @@ class CharacterEditorState extends ScriptedState implements PsychUIEventHandler.
 			else
 			{
 				reloadCharacterDropDown();
-				FlxG.sound.play(Paths.sound('cancelMenu'));
+				if(ClientPrefs.data.editorSFX)
+					FlxG.sound.play(Paths.uiSound('cancelMenu'));
 			}
 		});
 		reloadCharacterDropDown();
@@ -1505,6 +1507,8 @@ class CharacterEditorState extends ScriptedState implements PsychUIEventHandler.
 		character.animation.destroyAnimations();
 		character.color = FlxColor.WHITE;
 		character.alpha = 1;
+		character.visible = true;
+		character.active = true;
 
 		if(Paths.isAnimateAtlas(character.imageFile))
 		{
@@ -1538,9 +1542,20 @@ class CharacterEditorState extends ScriptedState implements PsychUIEventHandler.
 
 		if(anims.length > 0)
 		{
-			if(lastAnim != '') character.playAnim(lastAnim, true);
-			else character.dance();
+			if(lastAnim != null && lastAnim.length > 0 && character.hasAnimation(lastAnim))
+				character.playAnim(lastAnim, true);
+			else
+			{
+				character.dance(true);
+				if(character.isAnimationNull() && character.animationsArray.length > 0)
+					character.playAnim(character.animationsArray[0].anim, true);
+			}
 		}
+		#if flxanimate
+		if(character.isAnimateAtlas)
+			character.copyAtlasValues();
+		#end
+		character.updateHitbox();
 	}
 
 	function reloadCharacterOptions() {
@@ -1789,7 +1804,7 @@ class CharacterEditorState extends ScriptedState implements PsychUIEventHandler.
 				if(!unsavedProgress)
 				{
 					MusicBeatState.switchState(new states.MainMenuState(true));
-					FlxG.sound.playMusic(Paths.music('freakyMenu'));
+					FlxG.sound.playMusic(Paths.menuMusic('mainMenu'));
 				}
 				else openSubState(new ExitConfirmationPrompt());
 			}
@@ -2304,7 +2319,8 @@ class CharacterHealthColorPicker extends MusicBeatSubstate
 				if(mouseOverSprite(presetSprites[i]))
 				{
 					setColor(presets[i]);
-					FlxG.sound.play(Paths.sound('scrollMenu'), 0.45);
+					if(ClientPrefs.data.editorSFX)
+						FlxG.sound.play(Paths.uiSound('scrollMenu'), 0.45);
 					return;
 				}
 			}
@@ -2329,7 +2345,8 @@ class CharacterHealthColorPicker extends MusicBeatSubstate
 				holdingColorPicker = null;
 				storedPickerColor = selectedColor;
 				updateColorPicker();
-				FlxG.sound.play(Paths.sound('scrollMenu'), 0.45);
+				if(ClientPrefs.data.editorSFX)
+					FlxG.sound.play(Paths.uiSound('scrollMenu'), 0.45);
 			}
 			else if(FlxG.mouse.pressed && (FlxG.mouse.justMoved || FlxG.mouse.deltaViewX != 0 || FlxG.mouse.deltaViewY != 0))
 				updateColorPickerInput();

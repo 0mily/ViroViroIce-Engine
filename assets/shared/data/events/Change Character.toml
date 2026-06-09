@@ -1,0 +1,14 @@
+name = 'Change Character'
+description = 'Changes dad, boyfriend, or girlfriend to another character.'
+
+[Character]
+type = 'dropdown'
+default = 'dad'
+options = [ 'dad', 'bf', 'gf' ]
+includeExtraCharacters = true
+width = 130
+advance = false
+
+[New]
+type = 'text'
+width = 170

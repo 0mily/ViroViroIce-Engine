@@ -15,6 +15,9 @@ class PsychUIButton extends FlxSpriteGroup
 	public var onClick:Void->Void;
 	var _buttonWidth:Int = 1;
 	var _buttonHeight:Int = 1;
+	var _lastBgColor:FlxColor = 0x00000000;
+	var _lastBgAlpha:Float = -1;
+	var _lastTextColor:FlxColor = 0x00000000;
 	
 	public var clickStyle:UIStyleData = {
 		bgColor: HaxeUITheme.PURPLE_DARK,
@@ -96,6 +99,7 @@ class PsychUIButton extends FlxSpriteGroup
 	{
 		_buttonWidth = width;
 		_buttonHeight = height;
+		_lastBgAlpha = -1;
 		applyStyle(normalStyle);
 		text.fieldWidth = width;
 		text.x = bg.x;
@@ -104,8 +108,18 @@ class PsychUIButton extends FlxSpriteGroup
 
 	function applyStyle(style:UIStyleData)
 	{
-		HaxeUITheme.drawRoundedBox(bg, _buttonWidth, _buttonHeight, style.bgColor, style.bgAlpha);
-		text.color = style.textColor;
+		if(_lastBgColor != style.bgColor || _lastBgAlpha != style.bgAlpha)
+		{
+			HaxeUITheme.drawRoundedBox(bg, _buttonWidth, _buttonHeight, style.bgColor, style.bgAlpha);
+			_lastBgColor = style.bgColor;
+			_lastBgAlpha = style.bgAlpha;
+		}
+
+		if(_lastTextColor != style.textColor)
+		{
+			text.color = style.textColor;
+			_lastTextColor = style.textColor;
+		}
 	}
 
 	function set_label(v:String)

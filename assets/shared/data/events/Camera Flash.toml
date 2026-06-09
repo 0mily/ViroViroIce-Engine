@@ -1,0 +1,23 @@
+name = 'Camera Flash'
+description = 'Flashes a selected camera with a custom color and duration.'
+
+[Camera]
+type = 'dropdown'
+default = 'game'
+options = [ 'game', 'hud', 'other' ]
+width = 145
+advance = false
+
+[Seconds]
+type = 'stepper'
+default = 1
+step = 0.5
+min_max = [ 0, 30 ]
+decimals = 2
+width = 72
+advance = false
+
+[Color]
+type = 'color'
+default = 'FFFFFF'
+width = 120

@@ -1,0 +1,50 @@
+name = 'Focus Camera'
+description = 'Moves camera focus to a character with optional X/Y offsets and tween easing.'
+
+[Target]
+type = 'dropdown'
+group = 1
+part = 1
+default = 'dad'
+options = [ 'dad', 'bf', 'gf' ]
+includeExtraCharacters = true
+width = 140
+advance = false
+
+[X]
+type = 'stepper'
+group = 1
+part = 2
+default = 0
+min_max = [ -9999, 9999 ]
+decimals = 2
+width = 72
+advance = false
+
+[Y]
+type = 'stepper'
+group = 1
+part = 3
+default = 0
+min_max = [ -9999, 9999 ]
+decimals = 2
+width = 72
+
+[Ease]
+type = 'dropdown'
+group = 2
+part = 1
+default = 'classic'
+options = [ 'classic', 'instant', 'linear', 'quadIn', 'quadOut', 'quadInOut', 'cubeIn', 'cubeOut', 'cubeInOut', 'sineIn', 'sineOut', 'sineInOut', 'expoIn', 'expoOut', 'expoInOut', 'backIn', 'backOut', 'backInOut', 'elasticOut', 'bounceOut' ]
+width = 170
+advance = false
+
+[Steps]
+type = 'stepper'
+group = 2
+part = 2
+default = 0
+step = 0.25
+min_max = [ 0, 999 ]
+decimals = 2
+width = 72

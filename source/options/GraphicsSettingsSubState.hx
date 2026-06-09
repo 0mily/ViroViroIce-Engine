@@ -2,6 +2,15 @@ package options;
 
 import objects.Character;
 
+#if nape
+import nape.geom.Vec2;
+import nape.phys.Body;
+import nape.phys.BodyType;
+import nape.phys.Material;
+import nape.shape.Polygon;
+import nape.space.Space;
+#end
+
 class GraphicsSettingsSubState extends BaseOptionsMenu
 {
 	static inline final BOYFRIEND_GRAVITY:Float = 1500;
@@ -25,6 +34,11 @@ class GraphicsSettingsSubState extends BaseOptionsMenu
 	var mouseVelocityX:Float = 0;
 	var mouseVelocityY:Float = 0;
 	var boyfriendAngleVelocity:Float = 0;
+	#if nape
+	var napeSpace:Space = null;
+	var boyfriendBody:Body = null;
+	var napeWalls:Body = null;
+	#end
 
 	public function new() {
 		super(Language.getPhrase('graphics_menu', 'Graphics Settings'), 'Graphics Settings Menu');
@@ -35,7 +49,9 @@ class GraphicsSettingsSubState extends BaseOptionsMenu
 		boyfriend.dance(true);
 		boyfriend.animation.onFinish.add((_) -> boyfriend.dance(true));
 		boyfriend.visible = false;
+		#if !nape
 		boyfriend.acceleration.y = BOYFRIEND_GRAVITY;
+		#end
 		boyfriend.origin.set(BOYFRIEND_PIVOT_X, BOYFRIEND_PIVOT_Y);
 
 		//I'd suggest using "Low Quality" as an example for making your own option since it is the simplest here
@@ -149,6 +165,19 @@ class GraphicsSettingsSubState extends BaseOptionsMenu
 	override function destroy()
 	{
 		FlxG.mouse.visible = previousMouseVisible;
+		#if nape
+		if(boyfriendBody != null)
+		{
+			boyfriendBody.space = null;
+			boyfriendBody = null;
+		}
+		if(napeWalls != null)
+		{
+			napeWalls.space = null;
+			napeWalls = null;
+		}
+		napeSpace = null;
+		#end
 		super.destroy();
 	}
 
@@ -161,11 +190,19 @@ class GraphicsSettingsSubState extends BaseOptionsMenu
 			FlxG.random.float(520, Math.max(520, FlxG.width - boyfriend.width - 40)),
 			FlxG.random.float(35, Math.max(35, FlxG.height - BOYFRIEND_FLOOR_MARGIN - boyfriend.height))
 		);
+		boyfriend.angle = FlxG.random.float(-18, 18);
+		boyfriendAngleVelocity = FlxG.random.float(-170, 170);
+		#if nape
+		resetBoyfriendBody(
+			FlxG.random.float(-260, 260),
+			FlxG.random.float(-80, 220),
+			boyfriendAngleVelocity
+		);
+		#else
 		boyfriend.velocity.set(FlxG.random.float(-260, 260), FlxG.random.float(-80, 220));
 		boyfriend.acceleration.set(0, BOYFRIEND_GRAVITY);
-		boyfriend.angle = FlxG.random.float(-18, 18);
-		boyfriend.angularVelocity = FlxG.random.float(-170, 170);
-		boyfriendAngleVelocity = boyfriend.angularVelocity;
+		boyfriend.angularVelocity = boyfriendAngleVelocity;
+		#end
 		lastMouseX = FlxG.mouse.x;
 		lastMouseY = FlxG.mouse.y;
 		boyfriend.dance(true);
@@ -182,6 +219,11 @@ class GraphicsSettingsSubState extends BaseOptionsMenu
 		mouseVelocityY = (mouseY - lastMouseY) / elapsed;
 		lastMouseX = mouseX;
 		lastMouseY = mouseY;
+
+		#if nape
+		updateBoyfriendNapePreview(elapsed, mouseX, mouseY);
+		return;
+		#end
 
 		if(FlxG.mouse.justPressed)
 		{
@@ -230,6 +272,150 @@ class GraphicsSettingsSubState extends BaseOptionsMenu
 			bounceBoyfriendPreview();
 		}
 	}
+
+	#if nape
+	function ensureNapeSpace():Void
+	{
+		if(napeSpace == null)
+		{
+			napeSpace = new Space(new Vec2());
+			napeSpace.gravity.setxy(0, BOYFRIEND_GRAVITY);
+		}
+
+		rebuildNapeWalls();
+	}
+
+	function rebuildNapeWalls():Void
+	{
+		if(napeSpace == null)
+			return;
+
+		if(napeWalls != null)
+			napeWalls.space = null;
+
+		var thickness:Float = 120;
+		var material:Material = new Material(BOYFRIEND_BOUNCE, 0.25, 0.45, 1, 0.001);
+		napeWalls = new Body(BodyType.STATIC);
+		napeWalls.shapes.add(new Polygon(Polygon.rect(-thickness, -thickness, thickness, FlxG.height + thickness * 2)));
+		napeWalls.shapes.add(new Polygon(Polygon.rect(FlxG.width, -thickness, thickness, FlxG.height + thickness * 2)));
+		napeWalls.shapes.add(new Polygon(Polygon.rect(-thickness, -thickness, FlxG.width + thickness * 2, thickness)));
+		napeWalls.shapes.add(new Polygon(Polygon.rect(-thickness, FlxG.height, FlxG.width + thickness * 2, thickness)));
+		napeWalls.setShapeMaterials(material);
+		napeWalls.space = napeSpace;
+	}
+
+	function resetBoyfriendBody(velocityX:Float = 0, velocityY:Float = 0, angularVelocityDegrees:Float = 0):Void
+	{
+		ensureNapeSpace();
+
+		if(boyfriendBody != null)
+			boyfriendBody.space = null;
+
+		boyfriendBody = new Body(BodyType.DYNAMIC, Vec2.weak(boyfriendPhysicsX(), boyfriendPhysicsY()));
+		boyfriendBody.shapes.add(new Polygon(Polygon.rect(
+			-boyfriendPhysicsOriginX(),
+			-boyfriendPhysicsOriginY(),
+			Math.max(16, boyfriend.width),
+			Math.max(16, boyfriend.height)
+		)));
+		boyfriendBody.setShapeMaterials(new Material(BOYFRIEND_BOUNCE, 0.3, 0.45, 1, 0.001));
+		boyfriendBody.rotation = boyfriend.angle * Math.PI / 180;
+		boyfriendBody.velocity.setxy(velocityX, velocityY);
+		boyfriendBody.angularVel = angularVelocityDegrees * Math.PI / 180;
+		boyfriendBody.space = napeSpace;
+	}
+
+	function updateBoyfriendNapePreview(elapsed:Float, mouseX:Float, mouseY:Float):Void
+	{
+		if(boyfriendBody == null)
+			resetBoyfriendBody();
+
+		if(FlxG.mouse.justPressed)
+		{
+			boyfriendGrabbed = true;
+			boyfriendAngleVelocity = boyfriendBody.angularVel * 180 / Math.PI;
+			boyfriendBody.velocity.setxy(0, 0);
+			boyfriendBody.angularVel = 0;
+		}
+
+		if(boyfriendGrabbed)
+		{
+			if(FlxG.mouse.pressed)
+			{
+				var follow:Float = FlxMath.bound(BOYFRIEND_FOLLOW_SMOOTH * elapsed * 60, 0, 1);
+				boyfriendBody.position.x += (mouseX - boyfriendBody.position.x) * follow;
+				boyfriendBody.position.y += (mouseY - boyfriendBody.position.y) * follow;
+				boyfriendBody.velocity.setxy(0, 0);
+
+				var targetAngle:Float = FlxMath.bound(mouseVelocityX * BOYFRIEND_DRAG_INFLUENCE, -BOYFRIEND_MAX_ANGLE, BOYFRIEND_MAX_ANGLE);
+				var verticalKick:Float = FlxMath.bound(mouseVelocityY * 0.015, -10, 10);
+				var currentAngle:Float = boyfriendBody.rotation * 180 / Math.PI;
+				var torque:Float = ((targetAngle - currentAngle) * 8) - (currentAngle * BOYFRIEND_RETURN_GRAVITY * elapsed) + verticalKick;
+				boyfriendAngleVelocity += torque * elapsed * 60;
+				boyfriendAngleVelocity *= Math.pow(BOYFRIEND_DAMPING, elapsed * 60);
+				boyfriendBody.rotation += (boyfriendAngleVelocity * Math.PI / 180) * elapsed;
+				keepBoyfriendBodyInBounds();
+			}
+			else
+			{
+				boyfriendGrabbed = false;
+				boyfriendBody.velocity.setxy(
+					FlxMath.bound(mouseVelocityX * 0.35, -BOYFRIEND_MAX_SPEED, BOYFRIEND_MAX_SPEED),
+					FlxMath.bound(mouseVelocityY * 0.35, -BOYFRIEND_MAX_SPEED, BOYFRIEND_MAX_SPEED)
+				);
+				boyfriendBody.angularVel = FlxMath.bound(boyfriendAngleVelocity, -720, 720) * Math.PI / 180;
+			}
+		}
+		else
+		{
+			napeSpace.step(elapsed, 10, 10);
+			boyfriendBody.angularVel *= Math.max(0, 1 - elapsed * 0.75);
+			boyfriendAngleVelocity = boyfriendBody.angularVel * 180 / Math.PI;
+		}
+
+		syncBoyfriendFromBody();
+	}
+
+	function keepBoyfriendBodyInBounds():Void
+	{
+		if(boyfriendBody == null)
+			return;
+
+		var minX:Float = boyfriendPhysicsOriginX();
+		var maxX:Float = Math.max(minX, FlxG.width - boyfriend.width + boyfriendPhysicsOriginX());
+		var minY:Float = boyfriendPhysicsOriginY();
+		var maxY:Float = Math.max(minY, FlxG.height - boyfriend.height + boyfriendPhysicsOriginY());
+
+		boyfriendBody.position.x = FlxMath.bound(boyfriendBody.position.x, minX, maxX);
+		boyfriendBody.position.y = FlxMath.bound(boyfriendBody.position.y, minY, maxY);
+	}
+
+	function syncBoyfriendFromBody():Void
+	{
+		if(boyfriendBody == null)
+			return;
+
+		setBoyfriendVisualPosition(
+			boyfriendBody.position.x - boyfriendPhysicsOriginX(),
+			boyfriendBody.position.y - boyfriendPhysicsOriginY()
+		);
+		boyfriend.angle = boyfriendBody.rotation * 180 / Math.PI;
+		boyfriend.velocity.set(boyfriendBody.velocity.x, boyfriendBody.velocity.y);
+		boyfriend.angularVelocity = boyfriendBody.angularVel * 180 / Math.PI;
+	}
+
+	function boyfriendPhysicsOriginX():Float
+		return boyfriend.origin.x * Math.abs(boyfriend.scale.x);
+
+	function boyfriendPhysicsOriginY():Float
+		return boyfriend.origin.y * Math.abs(boyfriend.scale.y);
+
+	function boyfriendPhysicsX():Float
+		return boyfriendVisualX() + boyfriendPhysicsOriginX();
+
+	function boyfriendPhysicsY():Float
+		return boyfriendVisualY() + boyfriendPhysicsOriginY();
+	#end
 
 	function setBoyfriendVisualPosition(visualX:Float, visualY:Float):Void
 	{

@@ -1,0 +1,55 @@
+name = 'Camera Angle'
+description = 'Rotates a selected camera instantly or with a step-based tween.'
+
+[Camera]
+type = 'dropdown'
+group = 1
+part = 1
+default = 'game'
+options = [ 'game', 'hud', 'other' ]
+width = 140
+advance = false
+
+[Angle]
+type = 'stepper'
+group = 1
+part = 2
+default = 0
+min_max = [ -360, 360 ]
+decimals = 2
+width = 72
+advance = false
+
+[Mode]
+type = 'dropdown'
+group = 1
+part = 3
+default = 'set'
+options = [ 'set', 'add', 'subtract', 'reset' ]
+width = 140
+
+[Ease]
+type = 'dropdown'
+group = 2
+part = 1
+default = 'instant'
+options = [ 'instant', 'linear', 'quadIn', 'quadOut', 'quadInOut', 'cubeIn', 'cubeOut', 'cubeInOut', 'sineIn', 'sineOut', 'sineInOut', 'expoIn', 'expoOut', 'expoInOut', 'backIn', 'backOut', 'backInOut', 'elasticOut', 'bounceOut' ]
+width = 170
+advance = false
+
+[Steps]
+type = 'stepper'
+group = 2
+part = 2
+default = 0
+step = 0.25
+min_max = [ 0, 999 ]
+decimals = 2
+width = 72
+advance = false
+
+[RotateSprite]
+type = 'checkerL'
+label = 'Rotate Sprite'
+default = false
+width = 150

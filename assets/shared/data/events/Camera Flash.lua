@@ -4,7 +4,7 @@ local function clean(value, fallback)
     return value
 end
 
-function onEvent(name, value1, value2, strumTime, value3)
+function onEvent(name, value1, value2, value3)
     if name ~= 'Camera Flash' then return end
 
     local camera = clean(value1, 'game')

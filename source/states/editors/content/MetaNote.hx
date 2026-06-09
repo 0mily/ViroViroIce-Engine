@@ -550,6 +550,7 @@ class EventNoteGui extends FlxSpriteGroup {
 					}
 					
 					charter.addUndoAction(DELETE_EVENT, {events: [selection]});
+					EditorSFX.playChartSound('note_delete', 0.75);
 					
 					charter.updateSelectedEvents();
 					charter.resetSelectedNotes();

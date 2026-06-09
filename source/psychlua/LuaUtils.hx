@@ -40,6 +40,8 @@ class LuaUtils
 		{
 			case 'goodNoteHit' | 'goodNoteHitPre' | 'opponentNoteHit' | 'opponentNoteHitPre' | 'noteMiss' | 'noteMissPre': // é preciso os misses mesmo? Só por precaução memo sla
 				return luaScript.lastCalledArgs[3] == true;
+			case 'characterNoteHit':
+				return luaScript.lastCalledArgs.length > 4 && luaScript.lastCalledArgs[4] == true;
 		}
 		return false;
 	}

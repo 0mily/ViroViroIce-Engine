@@ -43,7 +43,7 @@ class ViroViroOptionsSubState extends BaseOptionsMenu
 		addOption(option);
 
 		var option:Option = new Option('Multithreaded Loading',
-			'Loads assets on worker threads. FUCKING EXPERIMENTAL.',
+			'Loads song assets on worker threads, improving loading times on PC.',
 			'multithreadedLoading',
 			BOOL);
 		addOption(option);

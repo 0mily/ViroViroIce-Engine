@@ -242,6 +242,7 @@ class MusicBeatSubstate extends flixel.FlxSubState {
 	}
 	
 	public override function update(elapsed:Float) {
+		EditorSFX.update();
 		ScreenshotUtil.updateInput();
 		DeveloperMode.update();
 

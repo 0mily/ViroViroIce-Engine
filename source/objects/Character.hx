@@ -64,6 +64,7 @@ class Character extends FlxSprite
 	public var debugMode:Bool = false;
 
 	public var isPlayer:Bool = false;
+	public var usePlayerOffsetsOverride:Null<Bool> = null;
 	public var curCharacter:String = DEFAULT_CHARACTER;
 
 	public var holdTimer:Float = 0;
@@ -1212,7 +1213,8 @@ class Character extends FlxSprite
 			if (anim == null || anim.anim == null) continue;
 
 			var useOffsets:Array<Int>;
-			if (isPlayer && anim.offsets_player != null && anim.offsets_player.length > 1)
+			var usePlayerOffsets:Bool = usePlayerOffsetsOverride != null ? usePlayerOffsetsOverride : isPlayer;
+			if (usePlayerOffsets && anim.offsets_player != null && anim.offsets_player.length > 1)
 				useOffsets = anim.offsets_player;
 			else if (anim.offsets != null && anim.offsets.length > 1)
 				useOffsets = anim.offsets;

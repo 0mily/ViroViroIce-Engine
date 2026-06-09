@@ -1,0 +1,40 @@
+name = 'Camera Zoom'
+description = 'Sets, adds, or subtracts the default game camera zoom instantly or over steps.'
+
+[Zoom]
+type = 'stepper'
+group = 1
+part = 1
+default = 1
+step = 0.05
+min_max = [ 0, 5 ]
+decimals = 3
+width = 82
+advance = false
+
+[Steps]
+type = 'stepper'
+group = 1
+part = 2
+default = 0
+step = 0.25
+min_max = [ 0, 999 ]
+decimals = 2
+width = 72
+
+[Ease]
+type = 'dropdown'
+group = 2
+part = 1
+default = 'OG'
+options = [ 'OG', 'instant', 'linear', 'quadIn', 'quadOut', 'quadInOut', 'cubeIn', 'cubeOut', 'cubeInOut', 'sineIn', 'sineOut', 'sineInOut', 'expoIn', 'expoOut', 'expoInOut', 'backIn', 'backOut', 'backInOut', 'elasticOut', 'bounceOut' ]
+width = 160
+advance = false
+
+[Mode]
+type = 'dropdown'
+group = 2
+part = 2
+default = 'nll'
+options = [ 'nll', 'mr', 'lss' ]
+width = 90

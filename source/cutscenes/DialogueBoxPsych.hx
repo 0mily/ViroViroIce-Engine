@@ -57,8 +57,8 @@ class DialogueBoxPsych extends FlxSpriteGroup {
 		super();
 
 		//precache sounds
-		Paths.sound('dialogue');
-		Paths.sound('dialogueClose');
+		Paths.dialogueSound(PlayState.stageUI, 'dialogue');
+		Paths.dialogueSound(PlayState.stageUI, 'dialogueClose');
 
 		if(song != null && song != '') {
 			FlxG.sound.playMusic(Paths.music(song), 0);
@@ -377,7 +377,7 @@ class DialogueBoxPsych extends FlxSpriteGroup {
 		} else {
 			startNextDialog();
 		}
-		FlxG.sound.play(Paths.sound(closeSound), closeVolume);
+		FlxG.sound.play(Paths.dialogueSound(PlayState.stageUI, closeSound), closeVolume);
 	}
 	
 	public function finishDialog():Void {

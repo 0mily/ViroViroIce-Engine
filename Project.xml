@@ -135,6 +135,7 @@
 
 	<haxelib name="flixel" />
 	<haxelib name="flixel-addons" />
+	<haxelib name="nape-haxe4" /> <!-- bf doin -->
 	<haxelib name="extension-haptics" if="mobile" />
 	<haxelib name="extension-androidtools" if="android" />
 	<haxelib name="tjson" />
@@ -189,10 +190,10 @@
 	<!--Shuts Flixel up-->
 	<haxedef name="FLX_COVERAGE_TEST" />
 	
-	<!--Used for Izzy Engine's crash handler-->
-	<haxedef name="HXCPP_CHECK_POINTER" if="CRASH_HANDLER" />
-	<haxedef name="HXCPP_STACK_LINE" if="CRASH_HANDLER" />
-	<haxedef name="HXCPP_STACK_TRACE" if="CRASH_HANDLER" />
+	<!-- i'm cumming btw -->
+	<haxedef name="HXCPP_CHECK_POINTER" if="HXCPP_HEAVY_CRASH_DIAGNOSTICS" />
+	<haxedef name="HXCPP_STACK_LINE" if="HXCPP_HEAVY_CRASH_DIAGNOSTICS" />
+	<haxedef name="HXCPP_STACK_TRACE" if="HXCPP_HEAVY_CRASH_DIAGNOSTICS" />
 	
 	<!--Disable deprecated warnings-->
 	<haxedef name='no-deprecation-warnings' />

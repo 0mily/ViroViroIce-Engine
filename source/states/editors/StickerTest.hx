@@ -76,7 +76,7 @@ class StickerTest extends MusicBeatState {
                 ClientPrefs.toggleVolumeKeys(true);
 
                 if(controls.BACK){
-                    FlxG.sound.playMusic(Paths.music('freakyMenu'));
+                    FlxG.sound.playMusic(Paths.menuMusic('mainMenu'));
                     FlxG.mouse.visible = false;
                     MusicBeatState.startTransition(new MainMenuState());
                 }

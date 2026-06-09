@@ -1,0 +1,5 @@
+function onLoad()
+{
+	if (FlxG.random.bool(20))
+		gameOverMusic('end', 'music-end-alt');
+}

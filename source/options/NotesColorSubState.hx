@@ -134,7 +134,7 @@ class NotesColorSubState extends ScriptedSubState
 
 		spawnNotes();
 		updateNotes(true);
-		FlxG.sound.play(Paths.sound('scrollMenu'), 0.6);
+		FlxG.sound.play(Paths.uiSound('scrollMenu'), 0.6);
 
 		var tipX = 20;
 		var tipY = 660;
@@ -179,7 +179,7 @@ class NotesColorSubState extends ScriptedSubState
 		
 		if (controls.BACK) {
 			FlxG.mouse.visible = false;
-			FlxG.sound.play(Paths.sound('cancelMenu'));
+			FlxG.sound.play(Paths.uiSound('cancelMenu'));
 			close();
 			return;
 		}
@@ -241,7 +241,7 @@ class NotesColorSubState extends ScriptedSubState
 			onPixel = !onPixel;
 			spawnNotes();
 			updateNotes(true);
-			FlxG.sound.play(Paths.sound('scrollMenu'), 0.6);
+			FlxG.sound.play(Paths.uiSound('scrollMenu'), 0.6);
 		}
 
 		if(hexTypeNum > -1)
@@ -287,7 +287,7 @@ class NotesColorSubState extends ScriptedSubState
 					centerHexTypeLine();
 					hexTypeLine.visible = true;
 				}
-				FlxG.sound.play(Paths.sound('scrollMenu'), 0.6);
+				FlxG.sound.play(Paths.uiSound('scrollMenu'), 0.6);
 			}
 			if(!end) hexTypeLine.visible = Math.floor(hexTypeVisibleTimer * 2) % 2 == 0;
 		}
@@ -330,7 +330,7 @@ class NotesColorSubState extends ScriptedSubState
 			if(generalPressed)
 			{
 				Clipboard.text = getShaderColor().toHexString(false, false);
-				FlxG.sound.play(Paths.sound('scrollMenu'), 0.6);
+				FlxG.sound.play(Paths.uiSound('scrollMenu'), 0.6);
 				trace('copied: ' + Clipboard.text);
 			}
 			hexTypeNum = -1;
@@ -346,12 +346,12 @@ class NotesColorSubState extends ScriptedSubState
 				if(newColor != null && formattedText.length == 6)
 				{
 					setShaderColor(newColor);
-					FlxG.sound.play(Paths.sound('scrollMenu'), 0.6);
+					FlxG.sound.play(Paths.uiSound('scrollMenu'), 0.6);
 					_storedColor = getShaderColor();
 					updateColors();
 				}
 				else //errored
-					FlxG.sound.play(Paths.sound('cancelMenu'), 0.6);
+					FlxG.sound.play(Paths.uiSound('cancelMenu'), 0.6);
 			}
 			hexTypeNum = -1;
 		}
@@ -369,7 +369,7 @@ class NotesColorSubState extends ScriptedSubState
 						curSelectedMode = note.ID;
 						onModeColumn = true;
 						updateNotes();
-						FlxG.sound.play(Paths.sound('scrollMenu'), 0.6);
+						FlxG.sound.play(Paths.uiSound('scrollMenu'), 0.6);
 					}
 				});
 			}
@@ -384,7 +384,7 @@ class NotesColorSubState extends ScriptedSubState
 						bigNote.rgbShader.parent = Note.globalRgbShaders[note.ID];
 						bigNote.shader = Note.globalRgbShaders[note.ID].shader;
 						updateNotes();
-						FlxG.sound.play(Paths.sound('scrollMenu'), 0.6);
+						FlxG.sound.play(Paths.uiSound('scrollMenu'), 0.6);
 					}
 				});
 			}
@@ -400,7 +400,7 @@ class NotesColorSubState extends ScriptedSubState
 				setShaderColor(colorPalette.pixels.getPixel32(
 					Std.int((pointerX() - colorPalette.x) / colorPalette.scale.x), 
 					Std.int((pointerY() - colorPalette.y) / colorPalette.scale.y)));
-				FlxG.sound.play(Paths.sound('scrollMenu'), 0.6);
+				FlxG.sound.play(Paths.uiSound('scrollMenu'), 0.6);
 				updateColors();
 			}
 			else if (pointerOverlaps(skinNote))
@@ -408,7 +408,7 @@ class NotesColorSubState extends ScriptedSubState
 				onPixel = !onPixel;
 				spawnNotes();
 				updateNotes(true);
-				FlxG.sound.play(Paths.sound('scrollMenu'), 0.6);
+				FlxG.sound.play(Paths.uiSound('scrollMenu'), 0.6);
 			}
 			else if(pointerY() >= hexTypeLine.y && pointerY() < hexTypeLine.y + hexTypeLine.height &&
 					Math.abs(pointerX() - 1000) <= 84)
@@ -433,7 +433,7 @@ class NotesColorSubState extends ScriptedSubState
 				holdingOnObj = null;
 				_storedColor = getShaderColor();
 				updateColors();
-				FlxG.sound.play(Paths.sound('scrollMenu'), 0.6);
+				FlxG.sound.play(Paths.uiSound('scrollMenu'), 0.6);
 			}
 			else if (generalMoved || generalPressed)
 			{
@@ -484,7 +484,7 @@ class NotesColorSubState extends ScriptedSubState
 				}
 			}
 			setShaderColor(!onPixel ? ClientPrefs.defaultData.arrowRGB[curSelectedNote][curSelectedMode] : ClientPrefs.defaultData.arrowRGBPixel[curSelectedNote][curSelectedMode]);
-			FlxG.sound.play(Paths.sound('cancelMenu'), 0.6);
+			FlxG.sound.play(Paths.uiSound('cancelMenu'), 0.6);
 			updateColors();
 		}
 		
@@ -540,7 +540,7 @@ class NotesColorSubState extends ScriptedSubState
 		modeBG.visible = true;
 		notesBG.visible = false;
 		updateNotes();
-		FlxG.sound.play(Paths.sound('scrollMenu'));
+		FlxG.sound.play(Paths.uiSound('scrollMenu'));
 	}
 	function changeSelectionNote(change:Int = 0) {
 		curSelectedNote += change;
@@ -554,7 +554,7 @@ class NotesColorSubState extends ScriptedSubState
 		bigNote.rgbShader.parent = Note.globalRgbShaders[curSelectedNote];
 		bigNote.shader = Note.globalRgbShaders[curSelectedNote].shader;
 		updateNotes();
-		FlxG.sound.play(Paths.sound('scrollMenu'));
+		FlxG.sound.play(Paths.uiSound('scrollMenu'));
 	}
 
 	// alphabets

@@ -335,8 +335,8 @@ class MainMenuState extends ScriptedState
 	{
 		preUpdate(elapsed);
 		
-		if (FlxG.sound.music == null)
-			FlxG.sound.playMusic(Paths.music('freakyMenu'), 0.8);
+		if (FlxG.sound.music == null || !FlxG.sound.music.playing)
+			FlxG.sound.playMusic(Paths.menuMusic('mainMenu'), 0.8);
 		else if (FlxG.sound.music.volume < 0.8)
 			FlxG.sound.music.volume = Math.min(FlxG.sound.music.volume + 0.5 * elapsed, 0.8);
 
@@ -418,7 +418,7 @@ class MainMenuState extends ScriptedState
 
 			if (controls.BACK) {
 				if (callOnScripts('onBack', true) != psychlua.LuaUtils.Function_Stop) {
-					FlxG.sound.play(Paths.sound('cancelMenu'));
+					FlxG.sound.play(Paths.uiSound('cancelMenu'));
 					MusicBeatState.switchState(new TitleState());
 				}
 			}
@@ -433,7 +433,7 @@ class MainMenuState extends ScriptedState
 				var blockedFNF:Bool = (callOnScriptsExt('onSelected', [item.name, curSelected, curColumn], [item, curSelected, curColumn], true) == psychlua.LuaUtils.Function_Stop);
 				blockedFNF = (blockedFNF || callOnScriptsExt('onAccept', [curSelected], [item, curSelected], true) == psychlua.LuaUtils.Function_Stop);
 				if (!blockedFNF) {
-					FlxG.sound.play(Paths.sound('confirmMenu'));
+					FlxG.sound.play(Paths.uiSound('confirmMenu'));
 					selectedSomethin = true;
 					FlxG.mouse.visible = false;
 					
@@ -522,7 +522,7 @@ class MainMenuState extends ScriptedState
 			selectedItem = newSelectedItem;
 			
 			if (change != 0 || curColumn != oldColumn)
-				FlxG.sound.play(Paths.sound('scrollMenu'));
+				FlxG.sound.play(Paths.uiSound('scrollMenu'));
 			
 			if (leftItem != null) {
 				FlxTween.cancelTweensOf(leftItem.scrollFactor, ['x']);

@@ -23,7 +23,7 @@ using StringTools;
 	public var neatWindow:Float = 22.0;
 	public var sustainAlpha:Float = 1;
 	public var opaqueSustains:Bool = true; // isso não deveria ser strums ao invés de sustains?? -Shiho
-	public var multithreadedLoading:Bool = false;
+	public var multithreadedLoading:Bool = #if (desktop || cpp || hl) true #else false #end;
 	public var screenshots:Bool = true;
 	public var screenshotKey:Dynamic = {keyboard: 'F10', gamepad: 'NONE'}; // dps eu faço melhor // ah eu
 
@@ -117,6 +117,13 @@ using StringTools;
 	public var discordRPC:Bool = true;
 	public var loadingScreen:Bool = true;
 	public var language:String = 'en-US';
+
+	public var editorSFX:Bool = true;
+	public var chartEditorMusic:Bool = true;
+	public var chartEditorMusicVolume:Float = 0.35;
+	public var chartEditorLegacyAutosave:Bool = false;
+	public var chartEditorDefaultConverter:String = '';
+	public var chartEditorDefaultConverterDifficulty:String = 'normal';
 }
 
 class ClientPrefs {

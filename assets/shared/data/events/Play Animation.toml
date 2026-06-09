@@ -1,0 +1,14 @@
+name = 'Play Animation'
+description = 'Plays an animation on dad, boyfriend, or girlfriend.'
+
+[Animation]
+type = 'text'
+width = 150
+advance = false
+
+[Character]
+type = 'dropdown'
+default = 'dad'
+options = [ 'dad', 'bf', 'gf' ]
+includeExtraCharacters = true
+width = 130

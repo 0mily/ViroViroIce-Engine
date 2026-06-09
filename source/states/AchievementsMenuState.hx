@@ -218,7 +218,7 @@ class AchievementsMenuState extends ScriptedState
 
 		if (controls.BACK && !blockedFNFInput) {
 			if (callOnScripts('onBack', true) != psychlua.LuaUtils.Function_Stop) {
-				FlxG.sound.play(Paths.sound('cancelMenu'));
+				FlxG.sound.play(Paths.uiSound('cancelMenu'));
 				MusicBeatState.switchState(new MainMenuState());
 				goingBack = true;
 			}
@@ -238,7 +238,7 @@ class AchievementsMenuState extends ScriptedState
 			return;
 		}
 
-		FlxG.sound.play(Paths.sound('scrollMenu'));
+		FlxG.sound.play(Paths.uiSound('scrollMenu'));
 		var hasProgress = options[curSelected].maxProgress > 0;
 		nameText.text = options[curSelected].displayName;
 		descText.text = options[curSelected].description;
@@ -357,7 +357,7 @@ class ResetAchievementSubstate extends MusicBeatSubstate
 		if(controls.BACK)
 		{
 			close();
-			FlxG.sound.play(Paths.sound('cancelMenu'));
+			FlxG.sound.play(Paths.uiSound('cancelMenu'));
 			return;
 		}
 
@@ -395,7 +395,7 @@ class ResetAchievementSubstate extends MusicBeatSubstate
 				Achievements.save();
 				FlxG.save.flush();
 
-				FlxG.sound.play(Paths.sound('cancelMenu'));
+				FlxG.sound.play(Paths.uiSound('cancelMenu'));
 			}
 			close();
 			return;
@@ -411,7 +411,7 @@ class ResetAchievementSubstate extends MusicBeatSubstate
 		yesText.scale.set(scales[confirmInt], scales[confirmInt]);
 		noText.alpha = alphas[1 - confirmInt];
 		noText.scale.set(scales[1 - confirmInt], scales[1 - confirmInt]);
-		FlxG.sound.play(Paths.sound('scrollMenu'));
+		FlxG.sound.play(Paths.uiSound('scrollMenu'));
 	}
 }
 #end

@@ -129,7 +129,7 @@ class ModsMenuState extends MusicBeatState
 			}
 			updateModDisplayData();
 			checkToggleButtons();
-			FlxG.sound.play(Paths.sound('scrollMenu'), 0.6);
+			FlxG.sound.play(Paths.uiSound('scrollMenu'), 0.6);
 		});
 		buttonEnableAll.bg.color = FlxColor.GREEN;
 		buttonEnableAll.focusChangeCallback = function(focus:Bool) if(!focus) buttonEnableAll.bg.color = FlxColor.GREEN;
@@ -149,7 +149,7 @@ class ModsMenuState extends MusicBeatState
 			}
 			updateModDisplayData();
 			checkToggleButtons();
-			FlxG.sound.play(Paths.sound('scrollMenu'), 0.6);
+			FlxG.sound.play(Paths.uiSound('scrollMenu'), 0.6);
 		});
 		buttonDisableAll.bg.color = 0xFFFF6666;
 		buttonDisableAll.focusChangeCallback = function(focus:Bool) if(!focus) buttonDisableAll.bg.color = 0xFFFF6666;
@@ -254,7 +254,7 @@ class ModsMenuState extends MusicBeatState
 			if(curMod.mustRestart) waitingToRestart = true;
 			updateModDisplayData();
 			checkToggleButtons();
-			FlxG.sound.play(Paths.sound('scrollMenu'), 0.6);
+			FlxG.sound.play(Paths.uiSound('scrollMenu'), 0.6);
 		}, 54, 54);
 		buttonToggle.icon.animation.add('icon', [4]);
 		buttonToggle.icon.animation.play('icon', true);
@@ -388,7 +388,7 @@ class ModsMenuState extends MusicBeatState
 		{
 			saveMods();
 
-			FlxG.sound.play(Paths.sound('cancelMenu'));
+			FlxG.sound.play(Paths.uiSound('cancelMenu'));
 			if(waitingToRestart)
 			{
 				//MusicBeatState.switchState(new TitleState());
@@ -664,7 +664,7 @@ class ModsMenuState extends MusicBeatState
 			bgButtons.alpha = 0.8;
 		}
 
-		FlxG.sound.play(Paths.sound('scrollMenu'), 0.6);
+		FlxG.sound.play(Paths.uiSound('scrollMenu'), 0.6);
 	}
 
 	function getButton()
@@ -729,7 +729,7 @@ class ModsMenuState extends MusicBeatState
 		holdingElapsed = 0;
 		gottaClickAgain = true;
 		updateModDisplayData();
-		FlxG.sound.play(Paths.sound('scrollMenu'), 0.6);
+		FlxG.sound.play(Paths.uiSound('scrollMenu'), 0.6);
 		
 		if(hoveringOnMods)
 		{
@@ -842,7 +842,7 @@ class ModsMenuState extends MusicBeatState
 			var curMod:ModItem = modsGroup.members[curSelectedMod];
 			if(curMod != null) curMod.selectBg.visible = false;
 		}
-		FlxG.sound.play(Paths.sound('scrollMenu'), 0.6);
+		FlxG.sound.play(Paths.uiSound('scrollMenu'), 0.6);
 	}
 
 	function checkToggleButtons()

@@ -1,0 +1,15 @@
+name = 'Play Sound'
+description = 'Plays a sound from the sounds folder.'
+
+[Sound]
+type = 'text'
+width = 165
+advance = false
+
+[Volume]
+type = 'stepper'
+default = 1
+step = 0.05
+min_max = [ 0, 1 ]
+decimals = 2
+width = 80

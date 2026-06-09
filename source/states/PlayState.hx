@@ -113,6 +113,7 @@ class PlayState extends ScriptedState
 	public var extraCharacterGroups:Map<String, FlxSpriteGroup> = new Map<String, FlxSpriteGroup>(); // XIXI COCO BUCETA. NUM FUNFA
 	public var extraCharacterNoteTypes:Map<String, String> = new Map<String, String>();
 	var extraCharacterIsPlayer:Map<String, Bool> = new Map<String, Bool>();
+	var extraCharacterUsePlayerOffsets:Map<String, Null<Bool>> = new Map<String, Null<Bool>>();
 	var pendingExtraCharacterScroll:Map<String, Array<Float>> = new Map<String, Array<Float>>();
 	
 
@@ -353,6 +354,9 @@ class PlayState extends ScriptedState
 	public var scriptedCameraBopHUD:Float = 0.03;
 	public var scriptedCameraBopPattern:Array<Int> = null;
 	public var scriptedCameraBopBlocksDefault:Bool = false;
+	var camGameBaseZoom:Float = 1.05;
+	var camGameBopZoom:Float = 0;
+	var camHUDBopZoom:Float = 0;
 
 	/**
 	 * How frequently the speakers (middle) character should bop every beat.
@@ -787,9 +791,9 @@ class PlayState extends ScriptedState
 		#if HSCRIPT_ALLOWED startHScriptsNamed('data/stages/' + curStage + '.hx'); #end
 
 		// CHARACTER SCRIPTS
-		if(gf != null) startCharacterScripts(gf.curCharacter);
-		startCharacterScripts(dad.curCharacter);
-		startCharacterScripts(boyfriend.curCharacter);
+		if(gf != null) startCharacterScripts(gf);
+		startCharacterScripts(dad);
+		startCharacterScripts(boyfriend);
 		#end
 
         // Dropshadow 
@@ -855,6 +859,9 @@ class PlayState extends ScriptedState
 
 		FlxG.camera.follow(camFollow, LOCKON, 0);
 		FlxG.camera.zoom = defaultCamZoom;
+		camGameBaseZoom = defaultCamZoom;
+		camGameBopZoom = 0;
+		camHUDBopZoom = 0;
 		FlxG.camera.snapToTarget();
 
 		FlxG.worldBounds.set(0, 0, FlxG.width, FlxG.height);
@@ -971,8 +978,8 @@ class PlayState extends ScriptedState
 		var holdSplash:SustainSplash = new SustainSplash();
 		holdSplash.alpha = 0.0001;
 		
-		if (ClientPrefs.data.hitsoundVolume > 0) Paths.sound('hitsound');
-		if (!ghostTapping) for (i in 1...4) Paths.sound('missnote$i');	
+		if (ClientPrefs.data.hitsoundVolume > 0) Paths.hitsound();
+		if (!ghostTapping) for (i in 1...4) Paths.missnote(i);
 		Paths.image('alphabet');
 		
 		cacheCountdown();
@@ -985,9 +992,9 @@ class PlayState extends ScriptedState
 		FlxG.stage.addEventListener(KeyboardEvent.KEY_UP, onKeyRelease);
 		
 		if (PauseSubState.songName != null)
-			Paths.music(PauseSubState.songName);
+			Paths.pauseMusic(PauseSubState.songName, boyfriend?.curCharacter, stageUI);
 		else if(Paths.formatToSongPath(ClientPrefs.data.pauseMusic) != 'none')
-			Paths.music(Paths.formatToSongPath(ClientPrefs.data.pauseMusic));
+			Paths.pauseMusic(ClientPrefs.data.pauseMusic, boyfriend?.curCharacter, stageUI);
 		
 		resetRPC();
 		
@@ -1680,7 +1687,7 @@ class PlayState extends ScriptedState
 					boyfriendGroup.add(newBoyfriend);
 					startCharacterPos(newBoyfriend);
 					newBoyfriend.alpha = 0.00001;
-					startCharacterScripts(newBoyfriend.curCharacter);
+					startCharacterScripts(newBoyfriend);
 				}
 
 			case 1:
@@ -1690,7 +1697,7 @@ class PlayState extends ScriptedState
 					dadGroup.add(newDad);
 					startCharacterPos(newDad, true);
 					newDad.alpha = 0.00001;
-					startCharacterScripts(newDad.curCharacter);
+					startCharacterScripts(newDad);
 				}
 
 			case 2:
@@ -1701,7 +1708,7 @@ class PlayState extends ScriptedState
 					gfGroup.add(newGf);
 					startCharacterPos(newGf);
 					newGf.alpha = 0.00001;
-					startCharacterScripts(newGf.curCharacter);
+					startCharacterScripts(newGf);
 				}
 		}
 	}
@@ -1801,6 +1808,36 @@ class PlayState extends ScriptedState
 		}
 	}
 
+	function parseExtraCharacterOffsetSide(value:String):Null<Bool>
+	{
+		if(value == null)
+			return null;
+
+		switch(value.toLowerCase().trim())
+		{
+			case '' | 'default' | 'auto' | 'normal':
+				return null;
+			case 'player' | 'bf' | 'boyfriend' | 'p1' | 'true' | '1':
+				return true;
+			case 'opponent' | 'opp' | 'dad' | 'p2' | 'false' | '0':
+				return false;
+			default:
+				return null;
+		}
+	}
+
+	function applyExtraCharacterOffsetSide(character:Character, usePlayerOffsets:Null<Bool>):Void
+	{
+		if(character == null)
+			return;
+
+		character.usePlayerOffsetsOverride = usePlayerOffsets;
+		character.refreshOffsets();
+		var anim:String = character.getAnimationName();
+		if(anim != null && character.hasAnimation(anim))
+			character.playAnim(anim, true);
+	}
+
 	function assignExtraCharacterToNote(note:Note):Void
 	{
 		if(note == null || note.noteType == null)
@@ -1838,7 +1875,7 @@ class PlayState extends ScriptedState
 					note.character = character;
 	}
 
-	public function createChar(characterName:String, x:Float = 0, y:Float = 0, noteType:String = '', isPlayer:Bool = false):String
+	public function createChar(characterName:String, x:Float = 0, y:Float = 0, noteType:String = '', isPlayer:Bool = false, offsetSide:String = null):String
 	{
 		var tag:String = extraCharacterTag(characterName);
 		if(tag == null)
@@ -1866,11 +1903,14 @@ class PlayState extends ScriptedState
 		if(oldCharacter != null)
 			group.remove(oldCharacter, true);
 
+		var usePlayerOffsets:Null<Bool> = parseExtraCharacterOffsetSide(offsetSide);
 		var character:Character = new Character(0, 0, characterName, isPlayer);
+		applyExtraCharacterOffsetSide(character, usePlayerOffsets);
 		startCharacterPos(character);
 		group.add(character);
 		extraCharacterMap.set(tag, character);
 		extraCharacterIsPlayer.set(tag, isPlayer);
+		extraCharacterUsePlayerOffsets.set(tag, usePlayerOffsets);
 		if(noteType != null && noteType.length > 0)
 			extraCharacterNoteTypes.set(tag, noteType);
 		else
@@ -1878,7 +1918,7 @@ class PlayState extends ScriptedState
 
 		variables.set(tag + 'Character', character);
 		setVar(tag + 'Character', character);
-		startCharacterScripts(character.curCharacter);
+		startCharacterScripts(character);
 		assignExtraCharacterToExistingNotes(tag);
 		setOnScripts('extraCharacterNames', [for(tag in extraCharacterMap.keys()) tag]);
 		return tag;
@@ -1895,11 +1935,13 @@ class PlayState extends ScriptedState
 		var alpha:Float = oldCharacter != null ? oldCharacter.alpha : 1;
 		var shader = oldCharacter != null ? oldCharacter.shader : null;
 		var isPlayer:Bool = extraCharacterIsPlayer.exists(tag) ? extraCharacterIsPlayer.get(tag) : false;
+		var usePlayerOffsets:Null<Bool> = extraCharacterUsePlayerOffsets.exists(tag) ? extraCharacterUsePlayerOffsets.get(tag) : null;
 
 		if(oldCharacter != null)
 			group.remove(oldCharacter, true);
 
 		var character:Character = new Character(0, 0, newCharacter, isPlayer);
+		applyExtraCharacterOffsetSide(character, usePlayerOffsets);
 		startCharacterPos(character);
 		character.alpha = alpha;
 		character.shader = shader;
@@ -1907,7 +1949,7 @@ class PlayState extends ScriptedState
 		extraCharacterMap.set(tag, character);
 		variables.set(tag + 'Character', character);
 		setVar(tag + 'Character', character);
-		startCharacterScripts(character.curCharacter);
+		startCharacterScripts(character);
 		assignExtraCharacterToExistingNotes(tag);
 		return true;
 	}
@@ -1939,8 +1981,12 @@ class PlayState extends ScriptedState
 			camGame.snapToTarget();
 	}
 
-	@:dox(hide) function startCharacterScripts(name:String)
+	@:dox(hide) function startCharacterScripts(character:Character)
 	{
+		if(character == null)
+			return;
+
+		var name:String = character.curCharacter;
 		// Lua
 		#if LUA_ALLOWED
 		var doPush:Bool = false;
@@ -1953,11 +1999,23 @@ class PlayState extends ScriptedState
 			{
 				if(script.scriptName == luaFile)
 				{
+					script.configureCharacterScript(character, name);
+					callCharacterScriptPostCreate(script, character);
 					doPush = false;
 					break;
 				}
 			}
-			if(doPush) initLuaScript(luaFile);
+			if(doPush)
+			{
+				var lua:FunkinLua = FunkinLua.initFromFile(luaFile, this, function(script:FunkinLua) {
+					script.configureCharacterScript(character, name);
+				});
+				if(lua != null)
+				{
+					luaArray.push(lua);
+					callCharacterScriptPostCreate(lua, character);
+				}
+			}
 		}
 		#end
 
@@ -1969,12 +2027,64 @@ class PlayState extends ScriptedState
 
 		if(doPush)
 		{
-			if(crowplexus.iris.Iris.instances.exists(scriptFile))
+			var existing:HScript = cast crowplexus.iris.Iris.instances.get(scriptFile);
+			if(existing != null)
+			{
+				existing.configureCharacterScript(character, name);
+				callCharacterScriptPostCreate(existing, character);
 				doPush = false;
+			}
 
-			if(doPush) initHScript(scriptFile);
+			if(doPush)
+			{
+				var script:HScript = HScript.initFromFileWithVars(scriptFile, this, null, null, function(script:HScript) {
+					script.configureCharacterScript(character, name);
+				});
+				if(script != null)
+				{
+					hscriptArray.push(script);
+					callCharacterScriptPostCreate(script, character);
+				}
+			}
 		}
 		#end
+	}
+
+	@:dox(hide) function callCharacterScriptPostCreate(script:Dynamic, character:Character):Void
+	{
+		if(script == null || character == null)
+			return;
+
+		try
+		{
+			#if HSCRIPT_ALLOWED
+			if(Std.isOfType(script, HScript))
+			{
+				var hscript:HScript = cast script;
+				if(hscript.exists('getAtlasSettings'))
+				{
+					var call = hscript.call('getAtlasSettings');
+					backend.AtlasUtil.applySettings(character, call != null ? call.returnValue : null);
+				}
+				if(hscript.exists('postCreate'))
+					hscript.call('postCreate');
+				return;
+			}
+			#end
+
+			#if LUA_ALLOWED
+			if(Std.isOfType(script, FunkinLua))
+			{
+				var lua:FunkinLua = cast script;
+				if(lua.exists('postCreate'))
+					lua.call('postCreate');
+			}
+			#end
+		}
+		catch(e:Dynamic)
+		{
+			trace('Error while calling character postCreate for ${character.curCharacter}: $e');
+		}
 	}
 
 	function getCharacterScriptPath(name:String, extension:String):String
@@ -2044,6 +2154,32 @@ class PlayState extends ScriptedState
 		if(note != null)
 			padding = Math.max(padding, Math.abs(note.distance) + note.frameHeight + getDownscrollNoteSpawnExtraDistance());
 		return padding;
+	}
+
+	public function refreshScreenScriptVariables(?camera:FlxCamera):Void
+	{
+		if(camera == null)
+			camera = camOther != null ? camOther : FlxG.camera;
+
+		var fullX:Float = backend.CameraResizeFix.pegarFSX(camera);
+		var fullY:Float = backend.CameraResizeFix.pegarFSY(camera);
+		var fullWidth:Float = backend.CameraResizeFix.pegarFSL(camera);
+		var fullHeight:Float = backend.CameraResizeFix.pegarFSA(camera);
+
+		setOnScripts('screenWidth', FlxG.width);
+		setOnScripts('screenHeight', FlxG.height);
+		setOnScripts('windowWidth', backend.VignetteUtil.windowWidth());
+		setOnScripts('windowHeight', backend.VignetteUtil.windowHeight());
+		setOnScripts('windowPixelWidth', backend.VignetteUtil.windowPixelWidth());
+		setOnScripts('windowPixelHeight', backend.VignetteUtil.windowPixelHeight());
+		setOnScripts('fullScreenX', fullX);
+		setOnScripts('fullScreenY', fullY);
+		setOnScripts('fullScreenWidth', fullWidth);
+		setOnScripts('fullScreenHeight', fullHeight);
+		setOnScripts('fullscreenX', fullX);
+		setOnScripts('fullscreenY', fullY);
+		setOnScripts('fullscreenWidth', fullWidth);
+		setOnScripts('fullscreenHeight', fullHeight);
 	}
 	
 	/**
@@ -2166,6 +2302,13 @@ class PlayState extends ScriptedState
 				vars.remove(tag);
 			callOnScripts('onVideoSkipped', [tag, name]);
 		};
+		video.errorCallback = function(message:String)
+		{
+			if(vars.get(tag) == video)
+				vars.remove(tag);
+			callOnScripts('onVideoError', [tag, name, message]);
+			video.destroy();
+		};
 
 		if(playOnLoad)
 			video.play();
@@ -2282,6 +2425,7 @@ class PlayState extends ScriptedState
 			videoCutscene.pauseWithGame = pauseWithGame;
 			videoCutscene.syncWithSong = forMidSong;
 			if(forMidSong) videoCutscene.setPlaybackRate(playbackRate);
+			var curVideo:VideoSprite = videoCutscene;
 			// Finish callback
 			if (!forMidSong)
 			{
@@ -2299,10 +2443,19 @@ class PlayState extends ScriptedState
 				}
 				videoCutscene.finishCallback = onVideoEnd;
 				videoCutscene.onSkip = onVideoEnd;
+				videoCutscene.errorCallback = function(message:String)
+				{
+					trace('WARNING! Video failed to play: $fileName -> $message');
+					if(videoCutscene == curVideo)
+						videoCutscene = null;
+					curVideo.destroy();
+					canPause = true;
+					inCutscene = false;
+					startAndEnd();
+				};
 			}
 			else
 			{
-				var curVideo:VideoSprite = videoCutscene;
 				function onMidSongVideoEnd()
 				{
 					if(videoCutscene == curVideo)
@@ -2310,6 +2463,13 @@ class PlayState extends ScriptedState
 				}
 				videoCutscene.finishCallback = onMidSongVideoEnd;
 				videoCutscene.onSkip = onMidSongVideoEnd;
+				videoCutscene.errorCallback = function(message:String)
+				{
+					trace('WARNING! Mid-song video failed to play: $fileName -> $message');
+					if(videoCutscene == curVideo)
+						videoCutscene = null;
+					curVideo.destroy();
+				};
 			}
 			if (GameOverSubstate.instance != null && isDead) GameOverSubstate.instance.add(videoCutscene);
 			else add(videoCutscene);
@@ -2380,14 +2540,14 @@ class PlayState extends ScriptedState
 				openSubState(new StickerSubState(null, (sticker) -> new StoryMenuState(sticker)));
 			} else {
 				MusicBeatState.switchState(new StoryMenuState());
-			 	FlxG.sound.playMusic(Paths.music('freakyMenu'));
+				FlxG.sound.playMusic(Paths.menuMusic('mainMenu'));
 			}
 		} else {
 			if (Mods.modUsesStickerTrans()) {
 				openSubState(new StickerSubState(null, (sticker) -> new FreeplayState(sticker)));
 			} else {
 				MusicBeatState.switchState(new FreeplayState());
-			 	FlxG.sound.playMusic(Paths.music('freakyMenu'));
+				FlxG.sound.playMusic(Paths.menuMusic('mainMenu'));
 			}
 		}
 		PlayState.instance.canResync = false;
@@ -2610,10 +2770,10 @@ class PlayState extends ScriptedState
 		var introAlts:Array<String> = introAssets.get(stageUI);
 		for (asset in introAlts) Paths.image(asset);
 
-		Paths.sound('intro3' + introSoundsSuffix);
-		Paths.sound('intro2' + introSoundsSuffix);
-		Paths.sound('intro1' + introSoundsSuffix);
-		Paths.sound('introGo' + introSoundsSuffix);
+		Paths.countdownSound(stageUI, 'intro3');
+		Paths.countdownSound(stageUI, 'intro2');
+		Paths.countdownSound(stageUI, 'intro1');
+		Paths.countdownSound(stageUI, 'introGo');
 	}
 
 	/**
@@ -2685,19 +2845,19 @@ class PlayState extends ScriptedState
 		
 		var counter:Int = switch (tick) {
 			case THREE:
-				FlxG.sound.play(Paths.sound('intro3$introSoundsSuffix'), .6);
+				FlxG.sound.play(Paths.countdownSound(stageUI, 'intro3'), .6);
 				0;
 			case TWO:
 				countdownReady = createCountdownSprite(introAlts[0], antialias);
-				FlxG.sound.play(Paths.sound('intro2$introSoundsSuffix'), .6);
+				FlxG.sound.play(Paths.countdownSound(stageUI, 'intro2'), .6);
 				1;
 			case ONE:
 				countdownSet = createCountdownSprite(introAlts[1], antialias);
-				FlxG.sound.play(Paths.sound('intro1$introSoundsSuffix'), .6);
+				FlxG.sound.play(Paths.countdownSound(stageUI, 'intro1'), .6);
 				2;
 			case GO:
 				countdownGo = createCountdownSprite(introAlts[2], antialias);
-				FlxG.sound.play(Paths.sound('introGo$introSoundsSuffix'), .6);
+				FlxG.sound.play(Paths.countdownSound(stageUI, 'introGo'), .6);
 				3;
 			case START:
 				4;
@@ -3503,6 +3663,7 @@ class PlayState extends ScriptedState
 		}
 		else FlxG.camera.followLerp = 0;
 		
+		refreshScreenScriptVariables();
 		preUpdate(elapsed);
 
 		if(botplayTxt != null && botplayTxt.visible) {
@@ -3570,12 +3731,6 @@ class PlayState extends ScriptedState
 			}
 		}
 
-		if (camZooming)
-		{
-			FlxG.camera.zoom = FlxMath.lerp(defaultCamZoom, FlxG.camera.zoom, Math.exp(-elapsed * 3.125 * camZoomingDecay * playbackRate));
-			camHUD.zoom = FlxMath.lerp(1, camHUD.zoom, Math.exp(-elapsed * 3.125 * camZoomingDecay * playbackRate));
-		}
-
 		FlxG.watch.addQuick("secShit", curSection);
 		FlxG.watch.addQuick("beatShit", curBeat);
 		FlxG.watch.addQuick("stepShit", curStep);
@@ -3590,6 +3745,7 @@ class PlayState extends ScriptedState
 		
 		super.update(elapsed);
 		updateCameraMoveIdleReset();
+		updateCameraBopZoom(elapsed);
 
 		if (unspawnNotes[0] != null)
 		{
@@ -3917,30 +4073,101 @@ class PlayState extends ScriptedState
 			cameraZoomTween = null;
 		}
 		FlxTween.cancelTweensOf(this, ['defaultCamZoom']);
-		if(FlxG.camera != null)
-			FlxTween.cancelTweensOf(FlxG.camera, ['zoom']);
 	}
 
-	function setDefaultCamZoomPreservingBop(value:Float):Void
+	function updateCameraBopZoom(elapsed:Float):Void
 	{
-		var zoomAdd:Float = 0;
+		if(!camZooming)
+			return;
+
+		var decay:Float = Math.exp(-elapsed * 3.125 * camZoomingDecay * playbackRate);
+		decayCameraBaseZoom(decay);
+		decayCameraBopZoom(FlxG.camera, 'game', decay);
+		decayCameraBopZoom(camHUD, 'hud', decay);
+	}
+
+	function decayCameraBaseZoom(decay:Float):Void
+	{
+		var oldZoom:Float = camGameBaseZoom;
+		if(Math.isNaN(oldZoom))
+			oldZoom = defaultCamZoom;
+
+		var newZoom:Float = defaultCamZoom + (oldZoom - defaultCamZoom) * decay;
+		if(Math.abs(newZoom - defaultCamZoom) < 0.0001)
+			newZoom = defaultCamZoom;
+		applyCameraBaseZoomDelta(newZoom - oldZoom);
+	}
+
+	function applyCameraBaseZoomDelta(delta:Float):Void
+	{
+		if(Math.isNaN(delta) || delta == 0)
+			return;
+
+		camGameBaseZoom += delta;
 		if(FlxG.camera != null)
-			zoomAdd = FlxG.camera.zoom - defaultCamZoom;
+			FlxG.camera.zoom += delta;
+	}
+
+	function decayCameraBopZoom(camera:FlxCamera, target:String, decay:Float):Void
+	{
+		var oldZoom:Float = target == 'game' ? camGameBopZoom : camHUDBopZoom;
+		var newZoom:Float = oldZoom * decay;
+		if(Math.abs(newZoom) < 0.0001)
+			newZoom = 0;
+		applyCameraBopZoomDelta(camera, target, newZoom - oldZoom);
+	}
+
+	function applyCameraBopZoomDelta(camera:FlxCamera, target:String, delta:Float):Void
+	{
+		if(Math.isNaN(delta) || delta == 0)
+			return;
+
+		if(target == 'game')
+			camGameBopZoom += delta;
+		else
+			camHUDBopZoom += delta;
+
+		if(camera != null)
+			camera.zoom += delta;
+	}
+
+	function setDefaultCamZoomTarget(value:Float):Void
+	{
+		if(Math.isNaN(value))
+			return;
+		defaultCamZoom = value;
+		if(Math.isNaN(camGameBaseZoom))
+			camGameBaseZoom = value;
+	}
+
+	function setDefaultCamZoomVisual(value:Float):Void
+	{
+		if(Math.isNaN(value))
+			return;
+
+		var oldZoom:Float = camGameBaseZoom;
+		if(Math.isNaN(oldZoom))
+			oldZoom = defaultCamZoom;
 
 		defaultCamZoom = value;
+		camGameBaseZoom = value;
 		if(FlxG.camera != null)
-			FlxG.camera.zoom = value + zoomAdd;
+			FlxG.camera.zoom += value - oldZoom;
 	}
 
 	function addCameraZoomBop(gameZoom:Float, hudZoom:Float):Void
 	{
 		if(!ClientPrefs.data.camZooms || FlxG.camera == null || camHUD == null)
 			return;
-		if(FlxG.camera.zoom >= defaultCamZoom + 0.35)
+		if(camGameBopZoom >= 0.35)
 			return;
 
-		FlxG.camera.zoom += gameZoom;
-		camHUD.zoom += hudZoom;
+		var gameDelta:Float = gameZoom;
+		if(gameDelta > 0)
+			gameDelta = Math.min(gameDelta, 0.35 - camGameBopZoom);
+
+		applyCameraBopZoomDelta(FlxG.camera, 'game', gameDelta);
+		applyCameraBopZoomDelta(camHUD, 'hud', hudZoom);
 	}
 
 		function getCameraZoomEase(ease:String):Float->Float
@@ -4063,31 +4290,29 @@ class PlayState extends ScriptedState
 		switch (zoomMode)
 		{
 			case 'instant':
-				FlxG.camera.zoom = targetZoom;
-				defaultCamZoom = targetZoom;
+				setDefaultCamZoomVisual(targetZoom);
 			case 'classic' | 'og':
-				defaultCamZoom = targetZoom;
+				setDefaultCamZoomTarget(targetZoom);
 			default:
 				if (steps <= 0)
 				{
-					FlxG.camera.zoom = targetZoom;
-					defaultCamZoom = targetZoom;
+					setDefaultCamZoomVisual(targetZoom);
 				}
 				else
 				{
 					var time:Float = (steps * Conductor.stepCrochet / 1000) / playbackRate;
-					var startZoom:Float = defaultCamZoom;
+					var startZoom:Float = Math.isNaN(camGameBaseZoom) ? defaultCamZoom : camGameBaseZoom;
 					cameraZoomTween = FlxTween.num(startZoom, targetZoom, time, {
 						ease: getCameraZoomEase(ease),
 						onComplete: function(twn:FlxTween)
 						{
-							setDefaultCamZoomPreservingBop(targetZoom);
+							setDefaultCamZoomVisual(targetZoom);
 							if(cameraZoomTween == twn)
 								cameraZoomTween = null;
 						}
 					}, function(value:Float)
 					{
-						setDefaultCamZoomPreservingBop(value);
+						setDefaultCamZoomVisual(value);
 					});
 				}
 		}
@@ -4754,11 +4979,16 @@ class PlayState extends ScriptedState
 
 	function buildEventCallbackArgs(eventName:String, value1:String, value2:String, strumTime:Float, ?values:Array<String>):Array<Dynamic>
 	{
-		var args:Array<Dynamic> = [eventName, value1 != null ? value1 : '', value2 != null ? value2 : '', strumTime];
-		if(values != null && values.length > 2)
+		var args:Array<Dynamic> = [eventName];
+		if(values != null)
 		{
-			for(i in 2...values.length)
-				args.push(values[i] != null ? values[i] : '');
+			for(value in values)
+				args.push(value != null ? value : '');
+		}
+		else
+		{
+			args.push(value1 != null ? value1 : '');
+			args.push(value2 != null ? value2 : '');
 		}
 		return args;
 	}
@@ -5318,7 +5548,7 @@ class PlayState extends ScriptedState
 				if (storyPlaylist.length <= 0)
 				{
 					Mods.loadTopMod();
-					FlxG.sound.playMusic(Paths.music('freakyMenu'));
+					FlxG.sound.playMusic(Paths.menuMusic('mainMenu'));
 					#if DISCORD_ALLOWED DiscordClient.resetClientID(); #end
 
 					canResync = false;
@@ -5326,7 +5556,7 @@ class PlayState extends ScriptedState
 						openSubState(new StickerSubState(null, (sticker) -> new StoryMenuState(sticker)));
 					} else {
 						MusicBeatState.switchState(new StoryMenuState());
-						FlxG.sound.playMusic(Paths.music('freakyMenu'));
+						FlxG.sound.playMusic(Paths.menuMusic('mainMenu'));
 					}
 
 					// if ()
@@ -5367,7 +5597,7 @@ class PlayState extends ScriptedState
 					openSubState(new StickerSubState(null, (sticker) -> new FreeplayState(sticker)));
 				} else {
 					MusicBeatState.switchState(new FreeplayState());
-					FlxG.sound.playMusic(Paths.music('freakyMenu'));
+					FlxG.sound.playMusic(Paths.menuMusic('mainMenu'));
 				}
 				changedDifficulty = false;
 			}
@@ -5781,7 +6011,7 @@ class PlayState extends ScriptedState
 
 		noteMissCommon(direction);
 		if (playMissSound)
-			FlxG.sound.play(Paths.soundRandom('missnote', 1, 3), FlxG.random.float(0.1, 0.2));
+			FlxG.sound.play(Paths.missnoteRandom(), FlxG.random.float(0.1, 0.2));
 		stagesFunc(function(stage:BaseStage) stage.noteMissPress(direction));
 		callOnScripts('noteMissPress', [direction]);
 	}
@@ -5831,7 +6061,7 @@ class PlayState extends ScriptedState
 		}
 
 		if (note != null && note.playMissSound)
-			FlxG.sound.play(Paths.soundRandom('missnote', 1, 3), FlxG.random.float(0.1, 0.2));
+			FlxG.sound.play(Paths.missnoteRandom(), FlxG.random.float(0.1, 0.2));
 		if(instakillOnMiss)
 		{
 			vocals.volume = 0;
@@ -5908,6 +6138,7 @@ class PlayState extends ScriptedState
 		stagesFunc(function(stage:BaseStage) stage.opponentNoteHit(note));
 		var result:Dynamic = callOnLuas('opponentNoteHit', [notes.members.indexOf(note), Math.abs(note.noteData), note.noteType, note.isSustainNote]);
 		if(result != LuaUtils.Function_Stop && result != LuaUtils.Function_StopHScript && result != LuaUtils.Function_StopAll) callOnHScript('opponentNoteHit', [note]);
+		callOnCharacterNoteHit(char, note, Std.int(Math.abs(note.noteData)), note.noteType, note.isSustainNote);
 
 		spawnHoldSplashOnNote(note);
 
@@ -5936,14 +6167,15 @@ class PlayState extends ScriptedState
 		note.wasGoodHit = true;
 
 		if (note.hitsoundVolume > 0 && !note.hitsoundDisabled)
-			FlxG.sound.play(Paths.sound(note.hitsound), note.hitsoundVolume);
+			FlxG.sound.play(note.hitsound == 'hitsound' ? Paths.hitsound() : Paths.sound(note.hitsound), note.hitsoundVolume);
 		
+		var noteCharacter:Character = getNoteCharacter(note, boyfriend);
 		var char:Character = null;
 		if (!note.hitCausesMiss) { //Common notes
 			if (!note.noAnimation) {
 				var animToPlay:String = singAnimations[Std.int(Math.abs(Math.min(singAnimations.length-1, note.noteData)))] + note.animSuffix;
 				
-				char = getNoteCharacter(note, boyfriend);
+				char = noteCharacter;
 				if (char != null) {
 					if (char.playSingAnimation(animToPlay, note.isSustainNote))
 						applyCameraMove(note, char);
@@ -5993,7 +6225,7 @@ class PlayState extends ScriptedState
 			if (gainHealth) health += note.hitHealth * healthGain;
 
 		} else { //Notes that count as a miss if you hit them (Hurt notes for example)
-			char = getNoteCharacter(note, boyfriend);
+			char = noteCharacter;
 			
 			if (!note.noMissAnimation) {
 				switch (note.noteType) {
@@ -6013,8 +6245,40 @@ class PlayState extends ScriptedState
 		stagesFunc(function(stage:BaseStage) stage.goodNoteHit(note));
 		var result:Dynamic = callOnLuas('goodNoteHit', [notes.members.indexOf(note), leData, leType, isSus]);
 		if(result != LuaUtils.Function_Stop && result != LuaUtils.Function_StopHScript && result != LuaUtils.Function_StopAll) callOnHScript('goodNoteHit', [note]);
+		callOnCharacterNoteHit(noteCharacter, note, leData, leType, isSus);
 		spawnHoldSplashOnNote(note);
 		if(!note.isSustainNote) invalidateNote(note);
+	}
+
+	function callOnCharacterNoteHit(character:Character, note:Note, direction:Int, noteType:String, isSustainNote:Bool):Void
+	{
+		if(character == null)
+			return;
+
+		var args:Array<Dynamic> = [character, notes.members.indexOf(note), direction, noteType, isSustainNote];
+		#if LUA_ALLOWED
+		if(luaArray != null)
+		{
+			for(script in luaArray)
+			{
+				if(script == null || script.closed || !script.matchesCharacterScript(character))
+					continue;
+				script.call('characterNoteHit', args);
+			}
+		}
+		#end
+
+		#if HSCRIPT_ALLOWED
+		if(hscriptArray != null)
+		{
+			for(script in hscriptArray)
+			{
+				if(script == null || script.closed || !script.matchesCharacterScript(character) || !script.exists('characterNoteHit'))
+					continue;
+				script.call('characterNoteHit', args);
+			}
+		}
+		#end
 	}
 	
 	/**
@@ -6189,7 +6453,7 @@ class PlayState extends ScriptedState
 			return;
 		if(normalizeCameraBopUnit(unit) != scriptedCameraBopUnit)
 			return;
-		if(FlxG.camera.zoom >= defaultCamZoom + 0.35)
+		if(camGameBopZoom >= 0.35)
 			return;
 
 		if(!scriptedCameraBopHitsPosition(position))
@@ -6246,6 +6510,14 @@ class PlayState extends ScriptedState
 			dad.dance();
 			resetCameraMoveForCharacter(dad);
 		}
+		for(tag => extraCharacter in extraCharacterMap)
+		{
+			if(extraCharacter != null && beat % Math.max(1, extraCharacter.danceEveryNumBeats) == 0 && !extraCharacter.getAnimationName().startsWith('sing') && !extraCharacter.stunned)
+			{
+				extraCharacter.dance();
+				resetCameraMoveForCharacter(extraCharacter);
+			}
+		}
 	}
 
 	function playerDance():Void {
@@ -6259,7 +6531,7 @@ class PlayState extends ScriptedState
 
 	public override function sectionHit(section:Int):Void {
 		if (SONG.notes[section] != null) {
-			if (!scriptedCameraBopActive && !scriptedCameraBopBlocksDefault && camZooming && FlxG.camera.zoom < defaultCamZoom + 0.35 && ClientPrefs.data.camZooms) {
+			if (!scriptedCameraBopActive && !scriptedCameraBopBlocksDefault && camZooming && camGameBopZoom < 0.35 && ClientPrefs.data.camZooms) {
 				addCameraZoomBop(0.015 * camZoomingMult, 0.03 * camZoomingMult);
 			}
 

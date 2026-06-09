@@ -94,7 +94,7 @@ class CopyState extends MusicBeatState
 					File.saveContent('logs/' + Date.now().toString().replace(' ', '-').replace(':', "'") + '-CopyState' + '.txt', failedFilesStack.join('\n'));
 				}
 				canUpdate = false;
-				FlxG.sound.play(Paths.sound('confirmMenu')).onComplete = () ->
+				FlxG.sound.play(Paths.uiSound('confirmMenu')).onComplete = () ->
 				{
 					MusicBeatState.switchState(new InitState());
 				};
