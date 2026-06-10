@@ -62,9 +62,9 @@ public class DataFolderProvider extends DocumentsProvider
     row.add(Root.COLUMN_TITLE, "::APP_TITLE::");
     row.add(Root.COLUMN_MIME_TYPES, "*/*");
     row.add(Root.COLUMN_AVAILABLE_BYTES, BASE_DIR.getFreeSpace());
-    ::if (APP_PACKAGE != "")::
-    row.add(Root.COLUMN_ICON, ::APP_PACKAGE::.R.mipmap.ic_launcher);
-    ::end::
+    //::if (APP_PACKAGE != "")::
+    //row.add(Root.COLUMN_ICON, ::APP_PACKAGE::.R.mipmap.ic_launcher);
+    //::end::
 
     return result;
   }
@@ -339,8 +339,8 @@ public class DataFolderProvider extends DocumentsProvider
     row.add(Document.COLUMN_MIME_TYPE, mimeType);
     row.add(Document.COLUMN_LAST_MODIFIED, file.lastModified());
     row.add(Document.COLUMN_FLAGS, flags);
-    ::if (APP_PACKAGE != "")::
-    row.add(Document.COLUMN_ICON, ::APP_PACKAGE::.R.mipmap.ic_launcher);
-    ::end::
+    //::if (APP_PACKAGE != "")::
+    //row.add(Document.COLUMN_ICON, ::APP_PACKAGE::.R.mipmap.ic_launcher);
+    //::end::
   }
 }

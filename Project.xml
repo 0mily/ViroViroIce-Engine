@@ -37,13 +37,11 @@
 	<define name="SHOW_LOADING_SCREEN" />
 	<define name="PSYCH_WATERMARKS"/> <!-- DELETE THIS TO REMOVE THE PSYCH LOGO FROM LOADING SCREEN -->
 
-	<section unless="debug">
-		<!-- Adds the ability to use OpenFL asset lookup (defaults to sys if disabled)  -->
-		<define name="OPENFL_LOOKUP" />
+	<!-- Adds the ability to use OpenFL asset lookup (defaults to sys if disabled)  -->
+	<define name="OPENFL_LOOKUP" />
 
-		<!-- Adds the ability to use NativeFileSystem on the computer to acsess files  -->
-		<define name="NATIVE_LOOKUP" if="ADDONS_ALLOWED" />
-	</section>
+	<!-- Adds the ability to use NativeFileSystem on the computer to acsess files  -->
+	<define name="NATIVE_LOOKUP" if="ADDONS_ALLOWED" />
 
 	<define name="TOUCH_CONTROLS_ALLOWED" if="mobile || debug" />
 
@@ -89,6 +87,7 @@
 	<assets path="assets/embed"         embed="true"/>
 	<assets path="assets/videos"        if="VIDEOS_ALLOWED"/>
 	<assets path="assets/week_assets"   rename="assets" exclude="*.mp3"/>
+	<assets path="assets/mobile" 		rename="assets/shared/mobile" if="TOUCH_CONTROLS_ALLOWED"/>
 	
 	<section if="TITLE_SCREEN_EASTER_EGG">
 		<assets path="assets/secrets" rename="assets/shared"/>
