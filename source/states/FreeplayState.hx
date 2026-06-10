@@ -263,7 +263,7 @@ class FreeplayState extends ScriptedState
 
 		if (FlxG.sound.music == null)
 			FlxG.sound.playMusic(Paths.menuMusic('mainMenu'), 0.7);
-		else if (FlxG.sound.music.volume < 0.7)
+		else if (FlxG.sound.music.volume < 0.7 && !player.playingMusic)
 			FlxG.sound.music.volume += 0.5 * elapsed;
 
 		lerpScore = Math.floor(FlxMath.lerp(intendedScore, lerpScore, Math.exp(-elapsed * 24)));

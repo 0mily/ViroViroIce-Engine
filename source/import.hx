@@ -82,7 +82,6 @@ import debug.Log;
 import objects.Alphabet;
 import objects.BGSprite;
 import objects.PerspectiveSprite;
-import shaders.SserafimShader;
 
 import states.PlayState;
 import states.LoadingState;

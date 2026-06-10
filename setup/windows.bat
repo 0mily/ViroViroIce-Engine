@@ -16,8 +16,9 @@ haxelib install funkin-modchart
 haxelib install flixel-animate
 haxelib install moonchart
 haxelib install away3d 5.0.9
-haxelib install yagp 1.1.4 --quiet 
-haxelib install flxgif 1.0.3 --quiet --skip-dependencies 
+haxelib install yagp 1.1.4
+haxelib install flxgif 1.0.3 --skip-dependencies
+haxelib install nape-haxe4
 haxelib git hscript-iris https://github.com/pisayesiwsi/hscript-iris.git dev
 haxelib git flxanimate https://github.com/Dot-Stuff/flxanimate.git dev
 haxelib git linc_luajit https://github.com/superpowers04/linc_luajit.git

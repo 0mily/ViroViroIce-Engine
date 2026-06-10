@@ -153,7 +153,6 @@ class HScript extends Iris {
 		Iris.proxyImports.set('funkin.objects.SnowEmitter', funkin.objects.SnowEmitter);
 		Iris.proxyImports.set('funkin.objects.shader.OverlayShader', funkin.objects.shader.OverlayShader);
 		Iris.proxyImports.set('funkin.game.shaders.OverlayShader', funkin.objects.shader.OverlayShader);
-		Iris.proxyImports.set('funkin.graphics.shaders.SserafimShader', shaders.SserafimShader);
 		Iris.proxyImports.set('funkin.utils.AtlasUtil', backend.AtlasUtil);
 		//Iris.proxyImports.set('funkin.graphics.FunkinSprite', funkin.graphics.FunkinSprite);
 		#if flxanimate
@@ -389,7 +388,6 @@ class HScript extends Iris {
 		set('VignetteUtil', backend.VignetteUtil);
 		set('VVIESpriteHandler', objects.VVIESpriteHandler);
 		set('OverlayShader', shaders.OverlayShader);
-		set('SserafimShader', shaders.SserafimShader);
 		set('GradientUtil', backend.GradientUtil);
 		set('AtlasUtil', backend.AtlasUtil);
 		set('DialoguePlus', cutscenes.DialoguePlus);
@@ -973,29 +971,10 @@ class HScript extends Iris {
 		set('getAtlasCurFrame', function(objName:Dynamic = null)
 			return backend.AtlasUtil.getFrame(getAtlasTarget(objName)));
 		#end
-		set('makeSserafimShader', function(tag:String, isCharacter:Bool = false) {
-			if(tag == null) return null;
-			tag = tag.replace('.', '');
-			var shader = new shaders.SserafimShader(isCharacter);
-			scriptVariables()?.set(tag, shader);
-			return shader;
-		});
 		set('setObjectShaderObject', function(objName:String, shaderName:String)
 			return backend.AtlasUtil.setShader(getObject(objName), getShaderObject(shaderName)));
 		set('copyObjectShader', function(sourceName:String, targetName:String)
 			return backend.AtlasUtil.copyShader(getObject(sourceName), getObject(targetName)));
-		set('setSserafimShader', function(objName:String, shaderOrIsCharacter:Dynamic = false) {
-			var shader:shaders.SserafimShader = null;
-			if(Std.isOfType(shaderOrIsCharacter, String))
-			{
-				var existing = getShaderObject(Std.string(shaderOrIsCharacter));
-				if(Std.isOfType(existing, shaders.SserafimShader))
-					shader = cast existing;
-			}
-			else
-				shader = new shaders.SserafimShader(shaderOrIsCharacter == true);
-			return shader != null && backend.AtlasUtil.setShader(getObject(objName), shader);
-		});
 		set('getObjectOrder', function(obj:String, ?group:String = null) {
 			var leObj:FlxBasic = cast getObject(obj);
 			var root:Dynamic = getOrderContainer(group);
