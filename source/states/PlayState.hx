@@ -6166,7 +6166,8 @@ class PlayState extends ScriptedState
 
 		note.wasGoodHit = true;
 
-		if (note.hitsoundVolume > 0 && !note.hitsoundDisabled)
+		//trace('essa porra pode hitsoundear?  Volume do hitsound é maior que 0? ${note.hitsoundVolume > 0} | hitsound tá ativo? ${!note.hitsoundDisabled}');
+		if (note.hitsoundVolume > 0 && !isSus)
 			FlxG.sound.play(note.hitsound == 'hitsound' ? Paths.hitsound() : Paths.sound(note.hitsound), note.hitsoundVolume);
 		
 		var noteCharacter:Character = getNoteCharacter(note, boyfriend);
