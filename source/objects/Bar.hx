@@ -11,6 +11,12 @@ class Bar extends FlxSpriteGroup
 	public var percent(default, set):Float = 0;
 	public var bounds:Dynamic = {min: 0, max: 1};
 	public var leftToRight(default, set):Bool = true;
+	public var flipped(default, set):Bool = false;
+	public var smooth(default, set):Bool = false;
+	public var smoothSpeed:Float = 9;
+	private var targetPercent:Float = 0;
+	private var _colorLeft:FlxColor = FlxColor.WHITE;
+	private var _colorRight:FlxColor = FlxColor.BLACK;
 	public var barCenter(default, null):Float = 0;
 
 	// you might need to change this if you want to use a custom bar
@@ -55,7 +61,14 @@ class Bar extends FlxSpriteGroup
 		if(valueFunction != null)
 		{
 			var value:Null<Float> = FlxMath.remapToRange(FlxMath.bound(valueFunction(), bounds.min, bounds.max), bounds.min, bounds.max, 0, 100);
-			percent = (value != null ? value : 0);
+			var newPercent:Float = (value != null ? value : 0);
+
+			if(smooth)
+			{
+				targetPercent = newPercent;
+				percent = FlxMath.lerp(targetPercent, percent, Math.exp(-elapsed * smoothSpeed)); // lerp engraçado q faz coisas engraçadas
+			}
+			else percent = newPercent;
 		}
 		else percent = 0;
 		super.update(elapsed);
@@ -69,10 +82,15 @@ class Bar extends FlxSpriteGroup
 
 	public function setColors(left:FlxColor = null, right:FlxColor = null)
 	{
-		if (left != null)
-			leftBar.color = left;
-		if (right != null)
-			rightBar.color = right;
+		if (left != null) _colorLeft = left;
+		if (right != null) _colorRight = right;
+		applyColors();
+	}
+
+	public function applyColors()
+	{
+		leftBar.color = _colorLeft;
+		rightBar.color = _colorRight;
 	}
 
 	public function updateBar()
@@ -96,7 +114,10 @@ class Bar extends FlxSpriteGroup
 		rightBar.clipRect.x = barOffset.x + leftSize;
 		rightBar.clipRect.y = barOffset.y;
 
-		barCenter = leftBar.x + leftSize + barOffset.x;
+		if(flipped)
+			barCenter = bg.x + bg.width - leftSize - barOffset.x;
+		else
+			barCenter = leftBar.x + leftSize + barOffset.x;
 
 		// flixel is retarded
 		leftBar.clipRect = leftBar.clipRect;
@@ -134,6 +155,24 @@ class Bar extends FlxSpriteGroup
 	{
 		leftToRight = value;
 		updateBar();
+		return value;
+	}
+
+	private function set_flipped(value:Bool)
+	{
+		if(flipped == value) return value;
+		flipped = value;
+		bg.flipX = value;
+		leftBar.flipX = value;
+		rightBar.flipX = value; // não julgairsme meu modo ambíguo e autêntico de fazer as coisas sem a menor percepção doq eu faço
+		applyColors();
+		return value;
+	}
+
+	private function set_smooth(value:Bool)
+	{
+		smooth = value;
+		if(value) targetPercent = percent;
 		return value;
 	}
 

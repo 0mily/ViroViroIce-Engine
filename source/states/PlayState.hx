@@ -3869,8 +3869,20 @@ class PlayState extends ScriptedState
 	public dynamic function updateIconsPosition()
 	{
 		var iconOffset:Int = 26;
-		iconP1.x = healthBar.barCenter + (150 * iconP1.scale.x - 150) / 2 - iconOffset;
-		iconP2.x = healthBar.barCenter - (150 * iconP2.scale.x) / 2 - iconOffset * 2;
+		if(healthBar.flipped)
+		{
+			iconP1.flipX = true;
+			iconP2.flipX = true;
+			iconP1.x = healthBar.barCenter - (150 * iconP1.scale.x) / 2 - iconOffset * 2;
+			iconP2.x = healthBar.barCenter + (150 * iconP2.scale.x - 150) / 2 - iconOffset; // hi unholywanderer4 thank yu
+		}
+		else
+		{
+			iconP1.flipX = false;
+			iconP2.flipX = false;
+			iconP1.x = healthBar.barCenter + (150 * iconP1.scale.x - 150) / 2 - iconOffset;
+			iconP2.x = healthBar.barCenter - (150 * iconP2.scale.x) / 2 - iconOffset * 2;
+		}
 	}
 
 	/**
@@ -3889,10 +3901,11 @@ class PlayState extends ScriptedState
 		// update health bar
 		health = value;
 		var newPercent:Null<Float> = FlxMath.remapToRange(FlxMath.bound(healthBar.valueFunction(), healthBar.bounds.min, healthBar.bounds.max), healthBar.bounds.min, healthBar.bounds.max, 0, 100);
-		healthBar.percent = (newPercent != null ? newPercent : 0);
+		if(!healthBar.smooth) healthBar.percent = (newPercent != null ? newPercent : 0);
 
-		iconP1.setIconFrame((healthBar.percent < 20) ? 1 : 0); //If health is under 20%, change player icon to frame 1 (losing icon), otherwise, frame 0 (normal)
-		iconP2.setIconFrame((healthBar.percent > 80) ? 1 : 0); //If health is over 80%, change opponent icon to frame 1 (losing icon), otherwise, frame 0 (normal)
+		var iconPercent:Float = (newPercent != null ? newPercent : 0);
+		iconP1.setIconFrame((iconPercent < 20) ? 1 : 0); //If health is under 20%, change player icon to frame 1 (losing icon), otherwise, frame 0 (normal)
+		iconP2.setIconFrame((iconPercent > 80) ? 1 : 0); //If health is over 80%, change opponent icon to frame 1 (losing icon), otherwise, frame 0 (normal)
 		return health;
 	}
 
