@@ -64,6 +64,9 @@ class StageEditorState extends MusicBeatState implements PsychUIEventHandler.Psy
 	var selectionSprites:FlxSpriteGroup = new FlxSpriteGroup();
 	override function create()
 	{
+		FlxG.sound.music.stop();
+		FlxG.sound.playMusic(Paths.editorMusic('stageEditor'), 1); // LOL
+
 		Paths.clearStoredMemory();
 		Paths.clearUnusedMemory();
 		
