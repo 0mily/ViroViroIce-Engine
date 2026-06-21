@@ -139,7 +139,7 @@
 	<haxelib name="extension-androidtools" if="android" />
 	<haxelib name="tjson" />
 
-	<!--Psych stuff needed-->
+	<!-- Viroviro Needed -->
 	<section if="VIDEOS_ALLOWED" unless="html5">
 		<haxelib name="hxCodec" if="linux" /> <!-- fuck my stupid baka chud linux life -->
 		<haxelib name="hxvlc" unless="linux" />
@@ -147,6 +147,8 @@
 	<haxelib name="linc_luajit" if="LUA_ALLOWED"/>
 	<haxelib name="hscript-iris" if="HSCRIPT_ALLOWED" />
 	<haxelib name="hxdiscord_rpc" if="DISCORD_ALLOWED" />
+
+	<!-- VVIE libs -->
 	<haxelib name="flixel-animate" />
 	<haxelib name="moonchart" />
 	<haxelib name="flxgif" />
@@ -156,6 +158,7 @@
 	<haxelib name="grig.audio" />
 	<haxelib name="funkin.vis" />
 
+	<!-- Not even used lol -->
 	<haxedef name="FM_ENGINE" value="PSYCH"/>
 	<haxedef name="FM_ENGINE_VERSION" value="1.0"/>
 
