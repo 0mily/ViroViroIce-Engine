@@ -1,0 +1,104 @@
+# Bugs da engine que temos conhecimento. Seu nível de "chatice" e se foi resolvido ou não.
+# Escrito por Mily!
+# Provavelmente vamos vendo por tempos e tempos.
+#
+# O Nível de chatice é entre 0 e 10.
+# O fato de ser resolvido, é entre 'true' e 'false'.
+# O modo que vamos explicar os bugs é por comentários como esse.
+
+# ----------------------------------------------------------------------
+# Fucking Fuck my chud HaxeFlixel life.
+# ----------------------------------------------------------------------
+
+[BLURRED_TEXT]
+chatice = 8
+estado = false
+# Esse bug aparentemente só existe nas compilações de Windows / nos pcs de poucas pessoas.
+# O bug afeta todos os textos feitos com FlxText ou makeLuaText. Aonde a fonte é
+# estranhamente borrada.
+
+# Não sabemos como resolver de maneira nenhuma. Shiho (a segunda coder principal desta engine)
+# disse que o bug só foi resolvido de repente para ela.
+
+# ----------------------------------------------------------------------
+
+[CRASH_MASTERCHART]
+chatice = 4
+estado = false
+# Quando se entra no chart editor pelo Master Editor, acaba que o jogo simplesmente
+# crasha sem motivo aparente.
+
+# ----------------------------------------------------------------------
+
+[NEWCHART_SUBSTATE]
+chatice = 1
+estado = false
+# Basicamente, ainda no Master Editor, quando vocÊ tem músicas com charts e seleciona o Chart Editor, ele abre
+# a musica mais recente, ao invés de abrir o SubState.
+
+# ----------------------------------------------------------------------
+
+[NEWCHART_OFFSET]
+chatice = 5
+estado = false
+# Eu nsei q macumbaria que eu fiz, mas o substate só muda o Offset dependendo do humor dele no master editor.
+
+# ----------------------------------------------------------------------
+
+[CRASH_HXLUA]
+chatice = 8
+estado = false
+# Esse bug só não permite a engine à usar RunHaxeCode em códigos da engine, pq se não ele só crasha sem mais nem menos.
+# Este bug tem possívelmente uma origem no Hscript-Iris.
+
+# ----------------------------------------------------------------------
+
+[CRASH_MOBILE]
+chatice = 10
+estado = false
+# Te faz LITERALMENTE incapaz de jogar a build mobile com um crash sem motivo.
+
+# ----------------------------------------------------------------------
+
+[CHANGEBPM_BUG]
+chatice = 8
+estado = false
+# O Chart Editor algumas vezes buga na hora de mudar o BPM, sendo obrigatório sempre fazer as mudanças
+# antes de chartar.
+# O bug consiste no chart INTEIRO ficando off sync após mudar para alguns BPMs específicos.
+# TALVEZ seja algum bug restante do Psych Mint, como o de Copy and Paste.
+
+# ----------------------------------------------------------------------
+
+[AA_FLXTEXT]
+chatice = 3
+estado = false
+# Por alguma razão, textos criados por script acabam sempre ficando com AntiAliasing desligados.
+# Obrigando um setProperty para ativá-los novamente.
+
+# ----------------------------------------------------------------------
+
+[CAMERA_FLASH]
+chatice = 1
+estado = false
+# Camera Flash ficam (por alguma razão) bugados no camGame e camHUD.
+# O bug já é conhecido, e é culpa do CameraResizeFix.
+
+# ----------------------------------------------------------------------
+
+[LOAD_EVENTS]
+chatice = 8
+estado = false
+# Bug restante do Psych Mint. Os eventos, mesmo com "Load Events Automatically" desativados,
+# Continuam ativados e sendo usados.
+
+# ----------------------------------------------------------------------
+
+[CONTENTS_FPSDROP]
+chatice = 5
+estado = false
+# Oopsiessssss
+# Bug de otimização meu
+
+# ----------------------------------------------------------------------
+# Por agora é mais isso. Ao longo do tempo, vamos atualizando e resolvendo os bugs.
