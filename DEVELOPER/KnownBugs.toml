@@ -113,4 +113,11 @@ estado = false
 # Left overs da Psych Mint
 
 # ----------------------------------------------------------------------
+
+[NOANIM_NOTE]
+chatice = 3
+estado = false
+# Bug do personagem ainda continuar cantando mesmo com a nota "no Animation Note".
+
+# ----------------------------------------------------------------------
 # Por agora é mais isso. Ao longo do tempo, vamos atualizando e resolvendo os bugs.
