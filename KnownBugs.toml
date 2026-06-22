@@ -101,4 +101,12 @@ estado = false
 # Bug de otimização meu
 
 # ----------------------------------------------------------------------
+
+[CHR_DISAPPEAR]
+chatice = 8
+estado = false
+# Bug do Character Editor, aonde dependendo do SpriteSheet / Atlas, o personagem só
+# desaparece. Sendo necessário reabrir o editor.
+
+# ----------------------------------------------------------------------
 # Por agora é mais isso. Ao longo do tempo, vamos atualizando e resolvendo os bugs.
