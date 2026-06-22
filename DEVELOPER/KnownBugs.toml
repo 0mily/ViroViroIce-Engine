@@ -12,13 +12,8 @@
 
 [BLURRED_TEXT]
 chatice = 8
-estado = false
-# Esse bug aparentemente só existe nas compilações de Windows / nos pcs de poucas pessoas.
-# O bug afeta todos os textos feitos com FlxText ou makeLuaText. Aonde a fonte é
-# estranhamente borrada.
-
-# Não sabemos como resolver de maneira nenhuma. Shiho (a segunda coder principal desta engine)
-# disse que o bug só foi resolvido de repente para ela.
+estado = true
+# Instale DirectX no seu Windows, ou openGL no seu Linux.
 
 # ----------------------------------------------------------------------
 
