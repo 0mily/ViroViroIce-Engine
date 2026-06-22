@@ -104,4 +104,13 @@ estado = false
 # desaparece. Sendo necessário reabrir o editor.
 
 # ----------------------------------------------------------------------
+
+[SUSTAIN_CHART]
+chatice = 3
+estado = false
+# As vezes, quando é feito um zoom, e depois desfaz o zoom enquanto segura uma nota,
+# ela faz um sustain aonde fica marcado seu mouse.
+# Left overs da Psych Mint
+
+# ----------------------------------------------------------------------
 # Por agora é mais isso. Ao longo do tempo, vamos atualizando e resolvendo os bugs.
