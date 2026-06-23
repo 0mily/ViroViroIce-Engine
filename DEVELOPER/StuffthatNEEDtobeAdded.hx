@@ -25,6 +25,18 @@ var PLAYSOUND_PATHS = {
 
     // playSound('game/secretsHAHA', 'secret.ogg', 1, 'secreto');
 
+// * [ICON_REWRITE]
+var ICON_REWRITE = {
+    idea: '
+        seria uma reestruturrar total do Icones e como funcionam. Eles iriam funcionar do mesmo jeito
+        que a da Psych Engine, caso não modificada.
+        Porém, se adicionada um .json, ou .hxicon, ou .lua com o mesmo nome, ele iria identificar
+        como um "VVIE_Icon".
+    '
+};
+
+
+
 // * [TEMPLATE]
 var TEMPLATE = {
     idea: "
