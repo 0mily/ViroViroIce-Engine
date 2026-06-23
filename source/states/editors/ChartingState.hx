@@ -842,7 +842,7 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 		for(i in 0...gridNadaLegalENadaManeira.length)
 			lines.push('\t<gridColor index="${i + 1}">#${gridNadaLegalENadaManeira[i]}</gridColor>');
 		lines.push('</gradientPreset>');
-		return lines.join('\n'); // pronto amor @Shiho
+		return lines.join('\n'); // pronto amor @Shiho // obrigada amor mwamwa
 	}
 
 	function loadPresetGrad(data:String):Bool
@@ -1044,15 +1044,9 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 	{
 		if(PlayState.SONG == null)
 		{
-			try
-			{
-				Song.loadFromJson('test', 'test');
-			}
-			catch(e:Dynamic)
-			{
-				openNewChart();
-				return;
-			}
+			//trace('teste o meu saco');
+			openNewChart();
+			return;
 		}
 
 		PlayState.SONG = sanitizeEditorChart(PlayState.SONG);
@@ -1204,6 +1198,7 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 
 		noteTextureInputText.text = PlayState.SONG.arrowSkin;
 		noteSplashesInputText.text = PlayState.SONG.splashSkin;
+		holdSplashesInputText.text = PlayState.SONG.holdSplashSkin;
 		refreshCameraMoveControls();
 	}
 	
@@ -3350,6 +3345,7 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 	var noRGBCheckBox:PsychUICheckBox;
 	var noteTextureInputText:PsychUIInputText;
 	var noteSplashesInputText:PsychUIInputText;
+	var holdSplashesInputText:PsychUIInputText;
 	var cameraMoveCheckBox:PsychUICheckBox;
 	var cameraMoveIntensityStepper:PsychUINumericStepper;
 	var cameraMoveSpeedStepper:PsychUINumericStepper;
@@ -3468,6 +3464,13 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 			if(cur.trim().length < 1) PlayState.SONG.splashSkin = null;
 		}
 
+		holdSplashesInputText = new PsychUIInputText(objX + 280, objY, 120, '');
+		holdSplashesInputText.onChange = function(old:String, cur:String)
+		{
+			PlayState.SONG.holdSplashSkin = cur;
+			if(cur.trim().length < 1) PlayState.SONG.holdSplashSkin = null;
+		}
+
 		var camX:Float = objX + 195;
 		var camY:Float = 25;
 		cameraMoveCheckBox = new PsychUICheckBox(camX, camY, 'Camera Move', 115, function()
@@ -3514,8 +3517,10 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 
 		tab_group.add(new FlxText(noteTextureInputText.x, noteTextureInputText.y - 15, 100, 'Note Texture:'));
 		tab_group.add(new FlxText(noteSplashesInputText.x, noteSplashesInputText.y - 15, 120, 'Note Splashes Texture:'));
+		tab_group.add(new FlxText(holdSplashesInputText.x, holdSplashesInputText.y - 15, 120, 'Hold Splashes Texture:'));
 		tab_group.add(noteTextureInputText);
 		tab_group.add(noteSplashesInputText);
+		tab_group.add(holdSplashesInputText);
 		tab_group.add(cameraMoveCheckBox);
 		for(control in cameraMoveControls)
 			tab_group.add(control);

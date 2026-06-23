@@ -25,7 +25,7 @@ using StringTools;
 	public var opaqueSustains:Bool = true; // isso não deveria ser strums ao invés de sustains?? -Shiho
 	public var multithreadedLoading:Bool = #if (desktop || cpp || hl) true #else false #end;
 	public var screenshots:Bool = true;
-	public var screenshotKey:Dynamic = {keyboard: 'F10', gamepad: 'NONE'}; // dps eu faço melhor // ah eu
+	public var screenshotKey:Dynamic = {keyboard: 'F3', gamepad: 'NONE'}; // dps eu faço melhor // ah eu // eu deixei f3 ao invés de f10 porque é assim no pedaço-v -Shiho
 
 // Mobile
 

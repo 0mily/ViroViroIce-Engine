@@ -19,9 +19,8 @@ estado = true
 
 [CRASH_MASTERCHART]
 chatice = 4
-estado = false
-# Quando se entra no chart editor pelo Master Editor, acaba que o jogo simplesmente
-# crasha sem motivo aparente.
+estado = true
+# Era a porra do test maldito seja o test
 
 # ----------------------------------------------------------------------
 

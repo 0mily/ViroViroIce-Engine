@@ -14,8 +14,9 @@ class SustainSplash extends FlxSprite
 		super();
 
 		x = -50000;
+		var path:String = (PlayState.SONG != null && PlayState.SONG.holdSplashSkin != null && PlayState.SONG.holdSplashSkin.length > 0) ? PlayState.SONG.holdSplashSkin : 'holdCovers/holdCover-${ClientPrefs.data.holdSkin}';
 
-		frames = Paths.getSparrowAtlas('holdCovers/holdCover-' + ClientPrefs.data.holdSkin);
+		frames = Paths.getSparrowAtlas(path);
 
 		animation.addByPrefix('start', 'holdCoverStart0', 24, false);
 		animation.addByPrefix('hold', 'holdCover0', 12, true);

@@ -35,6 +35,7 @@ class FPSCounter extends Sprite
 	static inline final FPS_PINTO:Int  = 30;
 	static inline final SUF_PINTO:Int  = 10;
 	static inline final MEM_PINTO:Int  = 15;
+	static inline final STA_PINTO:Int  = 15;
 	static inline final ENG_PINTO:Int  = 12; // surpreendente oq realmente foi feito por mim de 2025 e oq foi feito por mim em 2026
 
 	public function new(x:Float = 10, y:Float = 10, color:Int = 0xFFFFFF) // eu sou bura e esqueci do main oi
@@ -92,27 +93,31 @@ class FPSCounter extends Sprite
 		final fpsStr:String    = '$currentFPS';
 		final sufStr:String    = ' FPS\n';
 		final memLine:String   = '$memStr / $peakStr\n';
+		final staLine:String   = ClientPrefs.data.developerMode ? '${Type.getClassName(Type.getClass(FlxG.state))}\n' : '';
 		final engLine:String   = engineName;
 
-		label.text = fpsStr + sufStr + memLine + engLine;
+		label.text = fpsStr + sufStr + memLine + staLine + engLine;
 
 		var font = Paths.font('fpsfont.ttf');
 
 		var fmtFPS  = new TextFormat(font, FPS_PINTO, fpsColor,  true);
 		var fmtSuf  = new TextFormat(font, SUF_PINTO, 0xFFFFFF,  false);
 		var fmtMem  = new TextFormat(font, MEM_PINTO, 0xFFFFFF,  false);
+		var fmtSta  = new TextFormat(font, STA_PINTO, 0xFFFFFF,  false);
 		var fmtEng  = new TextFormat(font, ENG_PINTO, 0xAAAAAA,  false);
 
 		var p0:Int = 0;
 		var p1:Int = p0 + fpsStr.length;
 		var p2:Int = p1 + sufStr.length;
 		var p3:Int = p2 + memLine.length;
-		var p4:Int = p3 + engLine.length;
+		var p4:Int = p3 + staLine.length;
+		var p5:Int = p4 + engLine.length;
 
 		label.setTextFormat(fmtFPS, p0, p1);
 		label.setTextFormat(fmtSuf, p1, p2);
 		label.setTextFormat(fmtMem, p2, p3);
-		label.setTextFormat(fmtEng, p3, p4);
+		label.setTextFormat(fmtSta, p3, p4);
+		label.setTextFormat(fmtEng, p4, p5);
 
 		var w:Float = label.width  + PINTOLAS * 2;
 		var h:Float = label.height + PINTOLAS * 2;

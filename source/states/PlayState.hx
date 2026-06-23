@@ -261,6 +261,10 @@ class PlayState extends ScriptedState
 	 * The opponent vocals of the song (if available).
 	*/
 	public var opponentVocals:FlxSound;
+	/**
+	 * The extra characters vocals of the song (if available).
+	*/
+	public var extraVocals:Map<String, FlxSound> = new Map<String, FlxSound>(); // shiho se cê não terminar isso em menos de 1 semana você será assassinada -Shiho
 	
 	/**
 	 * The player side character.
@@ -1911,6 +1915,7 @@ class PlayState extends ScriptedState
 		extraCharacterMap.set(tag, character);
 		extraCharacterIsPlayer.set(tag, isPlayer);
 		extraCharacterUsePlayerOffsets.set(tag, usePlayerOffsets);
+
 		if(noteType != null && noteType.length > 0)
 			extraCharacterNoteTypes.set(tag, noteType);
 		else
