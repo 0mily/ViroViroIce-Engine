@@ -1384,6 +1384,40 @@ class FunkinLua {
 			return null;
 		});
 
+		registerFunction('doTweenVolume', function(tag:String, vars:String, value:Float, duration:Float, ?ease:String = 'linear') {
+			var target:Dynamic = null;
+			vars = vars.trim();
+			if (vars == null || vars == '') {
+				target = FlxG.sound.music;
+			} else {
+				target = MusicBeatState.getVariables().get(LuaUtils.formatVariable('sound_$vars'));
+			}
+
+			if (target != null) {
+				LuaUtils.cancelTweensOf(target, {volume: value});
+				
+				if (tag != null && tag != '') {
+					var originalTag:String = tag;
+					tag = LuaUtils.formatVariable('tween_$tag');
+					
+					var variables = MusicBeatState.getVariables();
+					variables.set(tag, FlxTween.tween(target, {volume: value}, duration, {
+						ease: LuaUtils.getTweenEaseByString(ease),
+						onComplete: function(twn:FlxTween) {
+							variables.remove(tag);
+							luaCallGlobal('onTweenCompleted', [originalTag, vars]);
+						}
+					}));
+					return tag;
+				} else {
+					FlxTween.tween(target, {volume: value}, duration, {ease: LuaUtils.getTweenEaseByString(ease)});
+				}
+			} else {
+				luaTrace('doTweenVolume: Coudnt find sound/music: ' + vars, false, false, ERROR);
+			}
+			return null;
+		});
+
 		registerFunction('cancelTween', function(tag:String) LuaUtils.cancelTween(tag));
 		registerFunction('cancelTimer', function(tag:String) LuaUtils.cancelTimer(tag));
 		
