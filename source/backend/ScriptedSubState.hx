@@ -125,20 +125,29 @@ class ScriptedSubState extends MusicBeatSubstate {
 	override function updateSection():Void {
 		super.updateSection();
 		
-		setOnLuas('curSection', curSection);
-		setOnLuas('curDecSection', curDecSection);
+		setOnScripts('curSection', curSection);
+		setOnScripts('curDecSection', curDecSection);
 	}
 	override function updateBeat():Void {
 		super.updateBeat();
 		
-		setOnLuas('curBeat', curBeat);
-		setOnLuas('curDecBeat', curDecBeat);
+		setOnScripts('curBeat', curBeat);
+		setOnScripts('curDecBeat', curDecBeat);
 	}
 	override function updateStep():Void {
 		super.updateStep();
 		
-		setOnLuas('curStep', curStep);
-		setOnLuas('curDecStep', curDecStep);
+		setOnScripts('curStep', curStep);
+		setOnScripts('curDecStep', curDecStep);
+		refreshConductorScriptVariables();
+	}
+
+	function refreshConductorScriptVariables():Void {
+		setOnScripts('curBpm', curBpm);
+		setOnScripts('crochet', crochet);
+		setOnScripts('stepCrochet', stepCrochet);
+		setOnScripts('stateConductorPosition', stateConductorPosition);
+		setOnScripts('usesStateConductor', useStateConductor);
 	}
 	
 	public override function destroy():Void {
@@ -374,7 +383,40 @@ class ScriptedSubState extends MusicBeatSubstate {
 	 * }
 	 * ```
 	*/
-	public function implementLua(lua:FunkinLua):Void {}
+	public function implementLua(lua:FunkinLua):Void {
+		implementConductorLua(lua);
+	}
+	public function implementConductorLua(lua:FunkinLua):Void {
+		lua.addLocalCallback('setBPM', function(newBPM:Float, resetClock:Bool = false) {
+			var value:Float = setBPM(newBPM, resetClock);
+			refreshConductorScriptVariables();
+			return value;
+		});
+		lua.addLocalCallback('changeBPM', function(newBPM:Float, resetClock:Bool = false) {
+			var value:Float = changeBPM(newBPM, resetClock);
+			refreshConductorScriptVariables();
+			return value;
+		});
+		lua.addLocalCallback('setStateBPM', function(newBPM:Float, resetClock:Bool = false) {
+			var value:Float = setBPM(newBPM, resetClock);
+			refreshConductorScriptVariables();
+			return value;
+		});
+		lua.addLocalCallback('setStateConductorEnabled', function(enabled:Bool = true, resetClock:Bool = false) {
+			var value:Bool = useStateConductorClock(enabled, resetClock);
+			refreshConductorScriptVariables();
+			return value;
+		});
+		lua.addLocalCallback('resetStateConductor', function(position:Float = 0) {
+			resetStateConductor(position);
+			refreshConductorScriptVariables();
+		});
+		lua.addLocalCallback('setStateConductorPosition', function(position:Float) {
+			var value:Float = setStateConductorPosition(position);
+			refreshConductorScriptVariables();
+			return value;
+		});
+	}
 	#end
 	
 	#if HSCRIPT_ALLOWED

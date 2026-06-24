@@ -381,6 +381,8 @@ class GameOverSubstate extends ScriptedSubState
 	#if LUA_ALLOWED
 	public override function implementLua(lua:psychlua.FunkinLua):Void
 	{
+		super.implementLua(lua);
+
 		lua.set('gameOverCharacter', characterName);
 		lua.set('gameOverMusicCharacter', musicCharacterName);
 		lua.set('gameOverStageUI', PlayState.stageUI);

@@ -489,6 +489,22 @@ class HScript extends Iris {
 			set('game', parentState);
 			set('stage', parentState);
 			set(stateName, cls);
+
+			if (parentState is backend.MusicBeatSubstate)
+			{
+				var beatState:backend.MusicBeatSubstate = cast parentState;
+				set('curBpm', beatState.curBpm);
+				set('crochet', beatState.crochet);
+				set('stepCrochet', beatState.stepCrochet);
+				set('stateConductorPosition', beatState.stateConductorPosition);
+				set('usesStateConductor', beatState.useStateConductor);
+				set('setBPM', function(newBPM:Float, resetClock:Bool = false) return beatState.setBPM(newBPM, resetClock));
+				set('changeBPM', function(newBPM:Float, resetClock:Bool = false) return beatState.changeBPM(newBPM, resetClock));
+				set('setStateBPM', function(newBPM:Float, resetClock:Bool = false) return beatState.setBPM(newBPM, resetClock));
+				set('setStateConductorEnabled', function(enabled:Bool = true, resetClock:Bool = false) return beatState.useStateConductorClock(enabled, resetClock));
+				set('resetStateConductor', function(position:Float = 0) beatState.resetStateConductor(position));
+				set('setStateConductorPosition', function(position:Float) return beatState.setStateConductorPosition(position));
+			} // minha postura de camarão
 		}
 
 		if(PlayState.instance != null) {

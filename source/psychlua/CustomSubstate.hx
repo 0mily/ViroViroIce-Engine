@@ -32,6 +32,8 @@ class CustomSubstate extends ScriptedSubState {
 		});
 	}
 	public override function implementLua(lua:FunkinLua):Void {
+		super.implementLua(lua);
+
 		lua.addLocalCallback('closeSubstate', function() {
 			@:privateAccess parent.closeSubState();
 		});

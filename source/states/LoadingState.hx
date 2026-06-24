@@ -201,6 +201,8 @@ class LoadingState extends ScriptedState
 	}
 	#if LUA_ALLOWED
 	public override function implementLua(lua:FunkinLua):Void {
+		super.implementLua(lua);
+
 		lua.addLocalCallback('getLoaded', function() return loaded);
 		lua.addLocalCallback('getLoadMax', function() return loadMax);
 		lua.addLocalCallback('addBehindBar', function(tag:String) {

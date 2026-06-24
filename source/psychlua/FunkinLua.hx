@@ -688,6 +688,11 @@ class FunkinLua {
 			set('curDecStep', st.curDecStep);
 			set('curDecBeat', st.curDecBeat);
 			set('curDecSection', st.curDecSection);
+			set('curBpm', st.curBpm);
+			set('crochet', st.crochet);
+			set('stepCrochet', st.stepCrochet);
+			set('stateConductorPosition', st.stateConductorPosition);
+			set('usesStateConductor', st.useStateConductor);
 			
 			addLocalCallback('callScript', function(luaFile:String, funcName:String, ?args:Array<Dynamic>) {
 				args ??= [];

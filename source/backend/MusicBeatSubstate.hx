@@ -17,6 +17,7 @@ class MusicBeatSubstate extends flixel.FlxSubState {
 	static var editorFpsHideDepth:Int = 0;
 	var stepsToDo:Int = 0;
 	var _hidingFpsForEditor:Bool = false;
+	var _lastUpdateElapsed:Float = 0;
 	
 	/**
 	 * The current measure in the music.
@@ -43,6 +44,31 @@ class MusicBeatSubstate extends flixel.FlxSubState {
 	 * `curBeat`, but as a decimal.
 	*/
 	public var curDecBeat:Float = 0;
+
+	/**
+	 * Local BPM used when this state/substate drives its own rhythm clock.
+	*/
+	public var bpm(default, set):Float = 100;
+	/**
+	 * Whether this state/substate should use its own rhythm clock instead of `Conductor.songPosition`.
+	*/
+	public var useStateConductor:Bool = false;
+	/**
+	 * Local rhythm clock position, in milliseconds.
+	*/
+	public var stateConductorPosition:Float = 0;
+	/**
+	 * The active BPM for this state/substate.
+	*/
+	public var curBpm(get, never):Float;
+	/**
+	 * The active beat length, in milliseconds.
+	*/
+	public var crochet(get, never):Float;
+	/**
+	 * The active step length, in milliseconds.
+	*/
+	public var stepCrochet(get, never):Float;
 	
 	/**
 	 * The time (in milliseconds) in delay for rhythm events.
@@ -242,6 +268,7 @@ class MusicBeatSubstate extends flixel.FlxSubState {
 	}
 	
 	public override function update(elapsed:Float) {
+		_lastUpdateElapsed = elapsed;
 		EditorSFX.update();
 		ScreenshotUtil.updateInput();
 		DeveloperMode.update();
@@ -280,12 +307,10 @@ class MusicBeatSubstate extends flixel.FlxSubState {
 			}
 			stepHit(curStep);
 
-			if (PlayState.SONG != null) {
-				if (oldStep < curStep) {
-					forwardSection();
-				} else {
-					rollbackSection();
-				}
+			if (oldStep < curStep) {
+				forwardSection();
+			} else {
+				rollbackSection();
 			}
 		}
 		
@@ -301,6 +326,62 @@ class MusicBeatSubstate extends flixel.FlxSubState {
 	public function reset():Void {
 		#if GLOBAL_SCRIPTS GlobalScriptHandler.refreshScripts(FlxG.keys.pressed.SHIFT); #end
 		MusicBeatState.switchState(FlxG.state);
+	}
+
+	function set_bpm(newBPM:Float):Float {
+		if (Math.isNaN(newBPM) || newBPM <= 0)
+			newBPM = Conductor.bpm;
+
+		useStateConductor = true;
+		return bpm = newBPM;
+	}
+
+	function get_curBpm():Float {
+		return useStateConductor ? bpm : Conductor.bpm;
+	}
+
+	function get_crochet():Float {
+		return Conductor.calculateCrochet(curBpm);
+	}
+
+	function get_stepCrochet():Float {
+		return crochet / 4;
+	}
+
+	public function setBPM(newBPM:Float, resetClock:Bool = false):Float {
+		bpm = newBPM;
+		if (resetClock)
+			resetStateConductor();
+		return bpm;
+	}
+
+	public inline function changeBPM(newBPM:Float, resetClock:Bool = false):Float {
+		return setBPM(newBPM, resetClock);
+	}
+
+	public function resetStateConductor(position:Float = 0):Void {
+		stateConductorPosition = position;
+		curSection = 0;
+		curStep = 0;
+		curBeat = 0;
+		curDecSection = 0;
+		curDecStep = 0;
+		curDecBeat = 0;
+		stepsToDo = 0;
+	}
+
+	public function setStateConductorPosition(position:Float):Float {
+		if (Math.isNaN(position))
+			position = 0;
+		stateConductorPosition = position;
+		return stateConductorPosition;
+	}
+
+	public function useStateConductorClock(enabled:Bool = true, resetClock:Bool = false):Bool {
+		useStateConductor = enabled;
+		if (resetClock)
+			resetStateConductor();
+		return useStateConductor;
 	}
 	
 	function forwardSection():Void {
@@ -322,6 +403,20 @@ class MusicBeatSubstate extends flixel.FlxSubState {
 		var lastSection:Int = curSection;
 		curSection = 0;
 		stepsToDo = 0;
+
+		if (PlayState.SONG == null) {
+			var sectionSteps:Int = Math.round(getBeatsOnSection() * 4);
+			if (sectionSteps < 1) sectionSteps = 16;
+
+			curSection = Math.floor(curStep / sectionSteps);
+			stepsToDo = (curSection + 1) * sectionSteps;
+			updateSection();
+
+			if (curSection != lastSection)
+				sectionHit(curSection);
+			return;
+		}
+
 		for (section in PlayState.SONG.notes) {
 			if (section != null) {
 				stepsToDo += Math.round(getBeatsOnSection() * 4);
@@ -355,7 +450,16 @@ class MusicBeatSubstate extends flixel.FlxSubState {
 	}
 	
 	function updateStep():Void {
+		if (useStateConductor) {
+			stateConductorPosition += _lastUpdateElapsed * 1000;
+			curDecStep = (stateConductorPosition - delay) / stepCrochet;
+			curStep = Math.floor(curDecStep);
+			return;
+		}
+
 		var lastChange = Conductor.getBPMFromSeconds(Conductor.songPosition);
+		if (lastChange == null)
+			lastChange = Conductor.defaultBPMChangeMap(Conductor.bpm)[0];
 
 		var shit = ((Conductor.songPosition - delay) - lastChange.songTime) / lastChange.stepCrochet;
 		curDecStep = lastChange.stepTime + shit;
@@ -366,7 +470,10 @@ class MusicBeatSubstate extends flixel.FlxSubState {
 		curBeat = Math.floor(curDecBeat);
 	}
 	function updateSection():Void {
-		if (PlayState.SONG == null) return;
+		if (PlayState.SONG == null) {
+			curDecSection = curDecBeat / getBeatsOnSection();
+			return;
+		}
 		
 		var lastSectionTime:Float = 0;
 		var curCrochet:Float = Conductor.crochet;

@@ -467,6 +467,8 @@ function getPauseSong()
 	#if LUA_ALLOWED
 	public override function implementLua(lua:psychlua.FunkinLua):Void
 	{
+		super.implementLua(lua);
+
 		lua.set('pauseMusicName', pauseMusicName);
 		lua.set('pauseMusicTrack', pauseTrackName);
 		lua.set('pauseMusicCharacter', musicCharacterName);
