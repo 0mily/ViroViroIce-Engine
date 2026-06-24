@@ -37,12 +37,6 @@
 	<define name="SHOW_LOADING_SCREEN" />
 	<define name="PSYCH_WATERMARKS"/> <!-- DELETE THIS TO REMOVE THE PSYCH LOGO FROM LOADING SCREEN -->
 
-	<!-- Adds the ability to use OpenFL asset lookup (defaults to sys if disabled)  -->
-	<define name="OPENFL_LOOKUP" />
-
-	<!-- Adds the ability to use NativeFileSystem on the computer to acsess files  -->
-	<define name="NATIVE_LOOKUP" if="ADDONS_ALLOWED" />
-
 	<define name="TOUCH_CONTROLS_ALLOWED" if="mobile || debug" />
 
 	<!-- define name="UNHOLYWANDERER04" -->

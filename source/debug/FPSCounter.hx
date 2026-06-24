@@ -25,6 +25,7 @@ class FPSCounter extends Sprite
 
 
 	public static var engineName:String = "ViroVirolce Engine"; // "Cool as Ice Engine";
+	public static var stateName:String = ""; // "Cool as Ice Engine";
 
 	@:noCompletion private var times:Array<Float>;
 	@:noCompletion private var peakMemory:Float = 0;
@@ -84,6 +85,7 @@ class FPSCounter extends Sprite
 	public dynamic function updateText():Void { // so people can override it in hscript
 		var mem:Float = memoryMegas;
 		if (mem > peakMemory) peakMemory = mem;
+		stateName = Type.getClassName(Type.getClass(FlxG.state)) == 'psychlua.CustomState' ? 'scriptedState.${psychlua.CustomState.fodaseStateName}' /*foda-se*/ : Type.getClassName(Type.getClass(FlxG.state)); // meio meeh mas ei funciona
 
 		var memStr:String  = flixel.util.FlxStringUtil.formatBytes(mem);
 		var peakStr:String = flixel.util.FlxStringUtil.formatBytes(peakMemory);
@@ -93,7 +95,7 @@ class FPSCounter extends Sprite
 		final fpsStr:String    = '$currentFPS';
 		final sufStr:String    = ' FPS\n';
 		final memLine:String   = '$memStr / $peakStr\n';
-		final staLine:String   = ClientPrefs.data.developerMode ? '${Type.getClassName(Type.getClass(FlxG.state))}\n' : '';
+		final staLine:String   = ClientPrefs.data.developerMode ? '$stateName\n' : '';
 		final engLine:String   = engineName;
 
 		label.text = fpsStr + sufStr + memLine + staLine + engLine;

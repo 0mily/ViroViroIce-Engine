@@ -16,6 +16,7 @@ import psychlua.HScript;
 
 class CustomState extends ScriptedState {
 	public var stateName:String;
+	public static var fodaseStateName:String; // foda-se https://tenor.com/view/son-loaf-sonloaf-talking-to-wall-talking-to-a-wall-gif-16790865802997911039
 	
 	#if LUA_ALLOWED
 	public static function implement() {
@@ -26,6 +27,7 @@ class CustomState extends ScriptedState {
 	public function new(name:String, ?data:Dynamic) {
 		super(data);
 		stateName = name;
+		fodaseStateName = name; // foda-se
 		multiScript = false;
 	}
 

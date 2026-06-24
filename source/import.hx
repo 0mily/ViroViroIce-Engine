@@ -50,7 +50,6 @@ import js.html.*;
 import backend.JSFileSystem as FileSystem;
 #end
 
-import backend.NativeFileSystem as NativeFileSystem;
 import backend.ArrayTools;
 import backend.MathUtil;
 import backend.Constants;
