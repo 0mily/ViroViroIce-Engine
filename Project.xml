@@ -147,7 +147,8 @@
 	<haxelib name="moonchart" />
 	<haxelib name="flxgif" />
 	<haxelib name="yagp" />
-	
+	<haxelib name="flxsoundfilters" />
+
 	<!-- Other -->
 	<haxelib name="grig.audio" />
 	<haxelib name="funkin.vis" />
