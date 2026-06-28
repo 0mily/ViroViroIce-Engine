@@ -7,6 +7,7 @@ Emilly (aka Krystal) :: missing_icon :: Dropshadow Editor :: https://x.com/emill
 Will :: missing_icon :: A definir :: https://www.youtube.com/watch?v=xVBj4RLmyrI :: ffffff
 Ryan_sdjr :: missing_icon :: A definir :: https://x.com/Ryan_sdjr :: ffffff
 Kevin :: missing_icon :: A definir :: https://x.com/KSaint22 :: ffffff
+StarNovaBR::star::Ajuda com port mobile.::https://x.com/StarNovaBR::555555
 
 Agradecimentos Especiais!
 emi3 :: vi :: Criou a Psych Engine Mint, o fork de Psych que usamos de base antes de se tornar uma engine própria. Obrigada. :: https://x.com/fnfin3d :: 82CDE3
