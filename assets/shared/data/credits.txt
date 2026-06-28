@@ -7,6 +7,7 @@ Emilly (aka Krystal) :: missing_icon :: Dropshadow Editor :: https://x.com/emill
 Will :: missing_icon :: TBA :: https://www.youtube.com/watch?v=xVBj4RLmyrI :: ffffff
 Ryan_sdjr :: missing_icon :: TBA :: https://x.com/Ryan_sdjr :: ffffff
 the_boyt95 :: missing_icon :: TBA :: https://x.com/KSaint22 :: ffffff
+StarNovaBR::star::Mobile port help.::https://x.com/StarNovaBR::555555
 
 Special Thanks!
 emi3 :: vi :: Created Psych Engine Mint, the psych fork we've forked before becoming an standalone engine. Thank you. :: https://x.com/fnfin3d :: 82CDE3
