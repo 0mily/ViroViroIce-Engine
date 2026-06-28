@@ -6,6 +6,7 @@ import flixel.input.touch.FlxTouch;
 /**
  * ...
  * @author: Karim Akra
+ * placeholder até ser mudado pra algo original
  */
 class TouchUtil
 {

@@ -17,30 +17,8 @@ import llua.Lua;
 import backend.Achievements;
 #end
 
-// Mobile Controls
-import mobile.input.MobileInputID;
 import mobile.backend.SwipeUtil;
 import mobile.backend.TouchUtil;
-#if TOUCH_CONTROLS_ALLOWED
-import mobile.objects.Hitbox;
-import mobile.objects.TouchPad;
-import mobile.objects.TouchButton;
-import mobile.backend.MobileData;
-import mobile.input.MobileInputManager;
-import mobile.objects.TouchZone;
-import mobile.objects.ScrollableObject;
-#end
-// Android
-#if android
-import extension.androidtools.content.Context as AndroidContext;
-import extension.androidtools.widget.Toast as AndroidToast;
-import extension.androidtools.os.Environment as AndroidEnvironment;
-import extension.androidtools.Permissions as AndroidPermissions;
-import extension.androidtools.Settings as AndroidSettings;
-import extension.androidtools.Tools as AndroidTools;
-import extension.androidtools.os.Build.VERSION as AndroidVersion;
-import extension.androidtools.os.Build.VERSION_CODES as AndroidVersionCode;
-#end
 
 #if sys
 import sys.*;
@@ -69,10 +47,6 @@ import backend.Difficulty;
 import backend.EditorSFX;
 import backend.Mods;
 import backend.Language;
-
-#if !js
-import mobile.backend.StorageUtil;
-#end
 
 import backend.ui.*; //Psych-UI
 

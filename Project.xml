@@ -9,7 +9,7 @@
 	<!--Switch Export with Unique ApplicationID and Icon-->
 	<set name="APP_ID" value="0x0100f6c013bbc000" />
 
-	<config type="android" gradle-version="8.10.2" gradle-plugin="8.8.0" ndkVersion="27.3" minimum-sdk-version="26" target-sdk-version="35" />
+	<!-- <config type="android" gradle-version="8.10.2" gradle-plugin="8.8.0" ndkVersion="27.3" minimum-sdk-version="26" target-sdk-version="35" /> -->
 
 	<!-- NOTE TO SELF: DISABLE THIS IF ISSUES ARE FOUND -->
 	<haxedef name="LINC_LUA_RELATIVE_DYNAMIC_LIB"/> <!-- stable luas PUT AFTER FIRST LINE WITH APP NAME AND ETC -->
@@ -37,7 +37,7 @@
 	<define name="SHOW_LOADING_SCREEN" />
 	<define name="PSYCH_WATERMARKS"/> <!-- DELETE THIS TO REMOVE THE PSYCH LOGO FROM LOADING SCREEN -->
 
-	<define name="TOUCH_CONTROLS_ALLOWED" if="mobile || debug" />
+	<define name="officialBuild" />
 
 	<!-- define name="UNHOLYWANDERER04" -->
 	<!-- define name="BASE_GAME_FILES" -->
@@ -55,7 +55,7 @@
 	<window if="desktop" orientation="landscape" fullscreen="false" resizable="true" vsync="false"/>
 
 	<!--Mobile-specific-->
-	<window if="mobile" orientation="landscape" fullscreen="true" resizable="false" allow-shaders="true" require-shaders="true" />
+	<window if="mobile" orientation="landscape" fullscreen="true" resizable="false" />
 
 	<!--Switch-specific-->
 	<window if="switch" orientation="landscape" fullscreen="true" width="0" height="0" resizable="true" />
@@ -67,7 +67,6 @@
 	<set name="BUILD_DIR" value="export/32bit" if="32bits" />
 
 	<classpath name="source" />
-	<java if="android" path="source/external/android/java" />
 
 	<!-- __________________________ Game Assets & Etc. __________________________ -->
 	
@@ -81,7 +80,6 @@
 	<assets path="assets/embed"         embed="true"/>
 	<assets path="assets/videos"        if="VIDEOS_ALLOWED"/>
 	<assets path="assets/week_assets"   rename="assets" exclude="*.mp3"/>
-	<assets path="assets/mobile" 		rename="assets/shared/mobile" if="TOUCH_CONTROLS_ALLOWED"/>
 	
 	<section if="TITLE_SCREEN_EASTER_EGG">
 		<assets path="assets/secrets" rename="assets/shared"/>
@@ -203,15 +201,29 @@
 	<haxedef name="hscriptPos" if="HSCRIPT_ALLOWED" />
 	<define name="GLOBAL_SCRIPTS" if="HSCRIPT_ALLOWED" />
 
-	<section if="android">
-		<certificate path="key.keystore" password="viroviroice" alias="viroviroice" alias-password="viroviroice" if="android" unless="debug" />
-	</section>
+	<!-- Mobile Shit -->
+    <section if="android">
+        <config:android permission="android.permission.MANAGE_MEDIA"/> 
+        <config:android permission="android.permission.MANAGE_EXTERNAL_STORAGE"/>
+        <config:android permission="android.permission.WRITE_EXTERNAL_STORAGE" />
+        <config:android permission="android.permission.READ_EXTERNAL_STORAGE" />
+        <config:android permission="android.permission.READ_MEDIA_IMAGES"/>
+        <config:android permission="android.permission.READ_MEDIA_AUDIO"/>
+        <config:android permission="android.permission.READ_MEDIA_VIDEO"/>
+        <config:android permission="android.permission.READ_MEDIA_DOCUMENTS" />
+        <config:android permission="android.permission.ACCESS_WIFI_STATE"/>
+        <config:android permission="android.permission.CAPTURE_AUDIO_OUTPUT" />
+    
+        <!--<android extension="mobile.backend.java.FileUtils" />-->
+        
+        <certificate path="key.keystore" password="viroviroice" alias="viroviroice" alias-password="viroviroice"/>
+    </section>
+
+    <java path="source" if="android"/>
 
 	<!-- _________________________________ Custom _______________________________ -->
 	
 	<section if="mobile">
-		<config type="android" viroviro-mono-icon="art/icons/mobile/iconMono.png" /> <!-- espero arranjar um jeito de não precisar fazer um fork da porra do lime pra fazer isso funfar -->
-		<!-- <icon path="art/icons/mobile/iconAdaptive.png" if="android" /> focar nisso depois -->
 		<icon path="art/icons/mobile/iconMobile.png" if="android" />
 	</section>
 	<section unless="mobile">

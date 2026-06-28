@@ -857,8 +857,6 @@ class FunkinLua {
 			return backend.DeveloperMode.getScriptBuildTarget());
 		registerFunction('getActualBuildTarget', function():String
 			return backend.DeveloperMode.getActualBuildTarget());
-		registerFunction('mobileC', function():Bool
-			return Controls.instance != null && Controls.instance.mobileC);
 		registerFunction('mobileControlsMode', function():String
 			return backend.DeveloperMode.mobileSimulation ? 'simulated' : 'hitbox');
 		registerFunction('touchJustPressed', function():Bool

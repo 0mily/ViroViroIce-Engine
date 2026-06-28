@@ -16,6 +16,7 @@ haxelib install away3d 5.0.9
 haxelib install yagp 1.1.4
 haxelib install flxgif 1.0.3 --skip-dependencies
 haxelib install nape-haxe4
+haxelib git flxsoundfilters https://github.com/TheZoroForce240/FlxSoundFilters
 haxelib git hxcpp https://github.com/xdshiho/hxcpp.git
 haxelib git hscript-iris https://github.com/pisayesiwsi/hscript-iris.git dev
 haxelib git linc_luajit https://github.com/xdshiho/linc_luajit-mobile

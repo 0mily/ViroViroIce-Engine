@@ -5,6 +5,7 @@ import flixel.FlxG;
 /**
  * Utility class for handling swipe gestures in HaxeFlixel and dispatching signals for different swipe directions.
  * @author: zacksgamerz (MoonDroid)
+ * placeholder até ser mudado pra algo original
  */
 class SwipeUtil
 {

@@ -20,8 +20,6 @@ import psychlua.HScript;
 import openfl.events.KeyboardEvent;
 import openfl.ui.Keyboard;
 
-import mobile.backend.MobileScaleMode;
-
 #if (linux || mac)
 import lime.graphics.Image;
 #end
