@@ -116,6 +116,7 @@ class MainMenuState extends ScriptedState
 		psychVer = new FlxText(12, FlxG.height - 40, 0, 'ViroViroIce v$modVersion', 12);
 	    #else
 		psychVer = new FlxText(12, FlxG.height - 40, 0, 'ViroViroIce ICEBREAK v$modVersion.' + gitCommit(), 12);
+	    #end
 		psychVer.scrollFactor.set();
 		psychVer.setFormat(Paths.font("vcr.ttf"), 15, FlxColor.WHITE, LEFT, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
 		add(psychVer);
