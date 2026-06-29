@@ -112,7 +112,10 @@ class MainMenuState extends ScriptedState
 		emiVer.scrollFactor.set();
 		emiVer.setFormat(Paths.font("vcr.ttf"), 15, FlxColor.WHITE, LEFT, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
 		add(emiVer);
-		psychVer = new FlxText(12, FlxG.height - 40, 0, 'ViroViroIce $modVersion', 12);
+	    #if officialBuild
+		psychVer = new FlxText(12, FlxG.height - 40, 0, 'ViroViroIce v$modVersion', 12);
+	    #else
+		psychVer = new FlxText(12, FlxG.height - 40, 0, 'ViroViroIce ICEBREAK v$modVersion.' + gitCommit(), 12);
 		psychVer.scrollFactor.set();
 		psychVer.setFormat(Paths.font("vcr.ttf"), 15, FlxColor.WHITE, LEFT, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
 		add(psychVer);
@@ -466,6 +469,22 @@ class MainMenuState extends ScriptedState
 		
 		postUpdate(elapsed);
 	}
+
+	public static macro function getCommit():haxe.macro.ExprOf<String> {
+		#if !display
+		try {
+			var process = new sys.io.Process('git', ['rev-parse', '--short', 'HEAD']);
+			var output = process.stdout.readAll().toString();
+			process.close();
+			return macro $v{StringTools.trim(output)};
+		} catch (e:Dynamic) {
+			return macro $v{"unknown"};
+		}
+		#else
+		return macro $v{"unknown"};
+		#end
+	} // I'm coding on GitHub's site, it's terrible :(
+	  // I can't even fucking test my own shit xd
 	
 	function fade(fadeIn:Bool = false, ?ignore:MenuItem):Void {
 		for (item in getAllMenuItems()) {
