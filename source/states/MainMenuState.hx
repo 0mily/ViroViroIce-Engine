@@ -115,7 +115,7 @@ class MainMenuState extends ScriptedState
 	    #if officialBuild
 		psychVer = new FlxText(12, FlxG.height - 40, 0, 'ViroViroIce v$modVersion', 12);
 	    #else
-		psychVer = new FlxText(12, FlxG.height - 40, 0, 'ViroViroIce ICEBREAK v$modVersion.' + gitCommit(), 12);
+		psychVer = new FlxText(12, FlxG.height - 40, 0, 'ViroViroIce ICEBREAK v$modVersion.commitLegalAqui', 12);
 	    #end
 		psychVer.scrollFactor.set();
 		psychVer.setFormat(Paths.font("vcr.ttf"), 15, FlxColor.WHITE, LEFT, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
@@ -471,7 +471,7 @@ class MainMenuState extends ScriptedState
 		postUpdate(elapsed);
 	}
 
-	public static macro function getCommit():haxe.macro.ExprOf<String> {
+	/*public static macro function getCommit():haxe.macro.ExprOf<String> {
 		#if !display
 		try {
 			var process = new sys.io.Process('git', ['rev-parse', '--short', 'HEAD']);
@@ -485,7 +485,7 @@ class MainMenuState extends ScriptedState
 		return macro $v{"unknown"};
 		#end
 	} // I'm coding on GitHub's site, it's terrible :(
-	  // I can't even fucking test my own shit xd
+	  // I can't even fucking test my own shit xd*/
 	
 	function fade(fadeIn:Bool = false, ?ignore:MenuItem):Void {
 		for (item in getAllMenuItems()) {
