@@ -231,6 +231,7 @@
 		<icon path="art/icons/desktop/icon16.png" size='16' />
 		<icon path="art/icons/desktop/icon32.png" size='32' />
 		<icon path="art/icons/desktop/icon64.png" size='64' />
+		<icon path="art/icons/desktop/icon128.png" size='128' />
 		<icon path="art/icons/desktop/iconOG.png" />
 	</section>
 </project>
