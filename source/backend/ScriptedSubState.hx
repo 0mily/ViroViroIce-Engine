@@ -290,7 +290,7 @@ class ScriptedSubState extends MusicBeatSubstate {
 			lua.stop();
 		}
 		luaArray = null;
-		FunkinLua.customFunctions.clear();
+		//FunkinLua.customFunctions.clear();
 		#end
 
 		#if HSCRIPT_ALLOWED
@@ -301,6 +301,40 @@ class ScriptedSubState extends MusicBeatSubstate {
 		}
 		hscriptArray = null;
 		#end
+
+		clearScriptRuntimeCallbacks();
+	}
+
+	function clearScriptRuntimeCallbacks():Void {
+		var keysToRemove:Array<String> = [];
+		for (key in variables.keys())
+		{
+			var value:Dynamic = variables.get(key);
+			if (key.startsWith('timer_') && Std.isOfType(value, FlxTimer))
+			{
+				var timer:FlxTimer = cast value;
+				timer.cancel();
+				timer.destroy();
+				keysToRemove.push(key);
+			}
+			else if (key.startsWith('tween_') && Std.isOfType(value, FlxTween))
+			{
+				var tween:FlxTween = cast value;
+				tween.cancel();
+				tween.destroy();
+				keysToRemove.push(key);
+			}
+			else if (key.startsWith('sound_') && Std.isOfType(value, FlxSound))
+			{
+				var sound:FlxSound = cast value;
+				sound.stop();
+				sound.destroy();
+				keysToRemove.push(key);
+			}
+		}
+
+		for (key in keysToRemove)
+			variables.remove(key);
 	}
 	#end
 	

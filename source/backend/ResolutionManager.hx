@@ -16,6 +16,7 @@ class ResolutionManager
 	static var initialized:Bool = false;
 	static var resolutionTween:FlxTween = null;
 	static var tweenProxy:Dynamic = null;
+	static var postResizeTimer:FlxTimer = null; // there, Julie
 
 	public static function init():Void
 	{
@@ -208,6 +209,23 @@ class ResolutionManager
 
 		if(FlxG.signals != null)
 			FlxG.signals.gameResized.dispatch(width, height);
+
+		applyPostResizeFix();
+	}
+
+	static function applyPostResizeFix():Void
+	{
+		CameraResizeFix.aplyAll();
+		shaders.ShaderResizeFix.fixAll();
+
+		if(postResizeTimer != null)
+			postResizeTimer.cancel();
+		postResizeTimer = new FlxTimer().start(0, function(_)
+		{
+			CameraResizeFix.aplyAll();
+			shaders.ShaderResizeFix.fixAll();
+			postResizeTimer = null;
+		});
 	}
 
 	static inline function getStageWidth(fallback:Int):Int

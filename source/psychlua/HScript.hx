@@ -125,7 +125,7 @@ class HScript extends Iris {
 			try {
 				parent.hscript = new HScript(parent, code, varsToBring, null, parent.parentState);
 			} catch(e:Dynamic) {
-				catchError(hs, e, parent.lastCalledFunction);
+				catchError(parent.hscript, e, parent.lastCalledFunction);
 				parent.hscript = null;
 			}
 		}
@@ -249,7 +249,7 @@ class HScript extends Iris {
 		}
 	}
 	
-	public static function initFromFile(file:String, ?parent:FlxState, ?base:Class<HScript>) {
+	public static function initFromFile(file:String, ?parent:FlxState, ?base:Class<HScript>, autoCallInitialCallbacks:Bool = true) {
 		var newScript:HScript = null;
 		
 		try {
@@ -259,7 +259,8 @@ class HScript extends Iris {
 			newScript.unsafe = true;
 			newScript.execute();
 			
-			newScript.callInitialCallbacks();
+			if (autoCallInitialCallbacks)
+				newScript.callInitialCallbacks();
 			
 			newScript.unsafe = false;
 		} catch(e:Dynamic) {
@@ -279,7 +280,7 @@ class HScript extends Iris {
 		return newScript;
 	}
 
-	public static function initFromFileWithVars(file:String, ?parent:FlxState, ?varsToBring:Any = null, ?base:Class<HScript>, ?onCreateInstance:HScript->Void) {
+	public static function initFromFileWithVars(file:String, ?parent:FlxState, ?varsToBring:Any = null, ?base:Class<HScript>, ?onCreateInstance:HScript->Void, autoCallInitialCallbacks:Bool = true) {
 		var newScript:HScript = null;
 
 		try {
@@ -291,7 +292,8 @@ class HScript extends Iris {
 			newScript.unsafe = true;
 			newScript.execute();
 
-			newScript.callInitialCallbacks();
+			if (autoCallInitialCallbacks)
+				newScript.callInitialCallbacks();
 
 			newScript.unsafe = false;
 		} catch(e:Dynamic) {
@@ -348,7 +350,7 @@ class HScript extends Iris {
 			XY: flixel.util.FlxAxes.XY,
 			NONE: flixel.util.FlxAxes.NONE
 		});
-		set('FlxText', flixel.text.FlxText);
+		set('FlxText', backend.ScriptedText);
 		set('FlxCamera', flixel.FlxCamera);
 		set('FlxTypedGroup', flixel.group.FlxGroup.FlxTypedGroup);
 		set('FlxSpriteGroup', flixel.group.FlxSpriteGroup);
@@ -417,6 +419,11 @@ class HScript extends Iris {
 		set('CustomSubstate', CustomSubstate);
 		set('MusicBeatState', MusicBeatState);
 		set('MusicBeatSubstate', MusicBeatSubstate);
+		set('switchLastState', MusicBeatState.switchLastState);
+		set('setStateTempData', CustomState.setTempData);
+		set('getStateTempData', CustomState.getTempData);
+		set('stateTempDataExists', CustomState.tempDataExists);
+		set('clearStateTempData', CustomState.clearTempData);
 		#if (!flash && sys)
 		set('FlxRuntimeShader', flixel.addons.display.FlxRuntimeShader);
 		set('ErrorHandledRuntimeShader', shaders.ErrorHandledShader.ErrorHandledRuntimeShader);
@@ -519,6 +526,14 @@ class HScript extends Iris {
 		set('refreshZ', function(?target:Dynamic = null) {
 			return refreshZTarget(target, parentState);
 		});
+		var cameraHost = function():Dynamic {
+			var state:Dynamic = FlxG.state;
+			if(state != null && Reflect.isFunction(Reflect.field(state, 'addCamera')))
+				return state;
+			if(PlayState.instance != null && Reflect.isFunction(Reflect.field(PlayState.instance, 'addCamera')))
+				return PlayState.instance;
+			return null;
+		};
 		set('startDialoguePlus', function(dialogueFile:String = 'dialogue', ?music:String = null) {
 			return PlayState.instance != null ? PlayState.instance.startDialoguePlus(dialogueFile, music) : false;
 		});
@@ -559,16 +574,20 @@ class HScript extends Iris {
 			return true;
 		});
 		set('addCamera', function(tag:String, bgColor:String = '00000000', x:Float = 0, y:Float = 0, width:Int = -1, height:Int = -1, zoom:Float = 1, front:Bool = false) {
-			return PlayState.instance != null ? PlayState.instance.addCamera(tag, bgColor, x, y, width, height, zoom, front) : null;
+			var host:Dynamic = cameraHost();
+			return host != null ? host.addCamera(tag, bgColor, x, y, width, height, zoom, front) : null;
 		});
 		set('removeCamera', function(tag:String, destroy:Bool = true) {
-			return PlayState.instance != null && PlayState.instance.removeCamera(tag, destroy);
+			var host:Dynamic = cameraHost();
+			return host != null && host.removeCamera(tag, destroy);
 		});
 		set('setMainCamera', function(tag:String) {
-			return PlayState.instance != null && PlayState.instance.setMainCamera(tag);
+			var host:Dynamic = cameraHost();
+			return host != null && host.setMainCamera(tag);
 		});
 		set('setCameraOrder', function(tag:String, index:Int) {
-			return PlayState.instance != null && PlayState.instance.setCameraOrder(tag, index);
+			var host:Dynamic = cameraHost();
+			return host != null && host.setCameraOrder(tag, index);
 		});
 		set('setCameraAngle', function(camera:String, angle:Float) {
 			var cam:FlxCamera = LuaUtils.cameraFromString(camera);
@@ -1803,12 +1822,13 @@ class HScript extends Iris {
 			initHaxeModuleCode(funk, codeToRun, varsToBring);
 			if (funk.hscript != null)
 			{
-				final retVal:IrisCall = funk.hscript.call(funcToRun, funcArgs);
-				if (retVal != null)
+				if (funcToRun != null && funcToRun.trim().length > 0)
 				{
-					return (LuaUtils.isLuaSupported(retVal.returnValue)) ? retVal.returnValue : null;
+					final retVal:IrisCall = funk.hscript.call(funcToRun, funcArgs);
+					if (retVal != null)
+						return (LuaUtils.isLuaSupported(retVal.returnValue)) ? retVal.returnValue : null;
 				}
-				else if (funk.hscript.returnValue != null)
+				if (funk.hscript.returnValue != null)
 				{
 					return funk.hscript.returnValue;
 				}
@@ -1924,6 +1944,13 @@ class HScript extends Iris {
 	}
 	
 	public static function catchError(hs:HScript, e:Dynamic, ?funcToRun:String):Void {
+		if (hs == null) {
+			var pos:HScriptInfos = cast {fileName: 'HScript', showLine: false};
+			pos.funcName = funcToRun;
+			Iris.error(Std.string(e), pos);
+			return;
+		}
+
 		if (hs.unsafe) {
 			throw e;
 			return;

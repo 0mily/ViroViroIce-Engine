@@ -1530,6 +1530,7 @@ class CharacterEditorState extends ScriptedState implements PsychUIEventHandler.
 			character.frames = Paths.getMultiAtlas(character.imageFile.split(','));
 		}
 
+		var addedAnyAnimation:Bool = false;
 		for (anim in anims) {
 			var animAnim:String = '' + anim.anim;
 			var animName:String = character.getCurrentAnimationSymbol(anim);
@@ -1537,10 +1538,16 @@ class CharacterEditorState extends ScriptedState implements PsychUIEventHandler.
 			var animLoop:Bool = !!anim.loop; //Bruh
 			var animIndices:Array<Int> = character.getCurrentAnimationIndices(anim);
 			addAnimation(animAnim, animName, animFps, animLoop, animIndices);
+			addedAnyAnimation = addedAnyAnimation || character.hasAnimation(animAnim);
 		}
 		character.refreshOffsets();
 
-		if(anims.length > 0)
+		if(!addedAnyAnimation && !character.isAnimateAtlas && character.frames != null && character.frames.frames.length > 0) // it will make SURE to never dissapear again
+		{
+			character.animation.add('__preview', [0], 0, false);
+			character.animation.play('__preview');
+		}
+		else if(anims.length > 0)
 		{
 			if(lastAnim != null && lastAnim.length > 0 && character.hasAnimation(lastAnim))
 				character.playAnim(lastAnim, true);
@@ -1555,7 +1562,10 @@ class CharacterEditorState extends ScriptedState implements PsychUIEventHandler.
 		if(character.isAnimateAtlas)
 			character.copyAtlasValues();
 		#end
+		character.scale.set(character.jsonScale, character.jsonScale);
 		character.updateHitbox();
+		character.visible = true;
+		character.active = true;
 	}
 
 	function reloadCharacterOptions() {

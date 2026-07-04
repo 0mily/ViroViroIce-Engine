@@ -345,7 +345,7 @@ class PlayState extends ScriptedState
 	/**
 	 * Multiplier for the decay time of the camera bopping.
 	*/
-	public var camZoomingDecay:Float = 1;
+	public var camZoomingDecay:Float = 2; // vslice cool
 	/**
 	 * Disables the default section camera bop while a scripted camera bop event is active.
 	*/
@@ -475,6 +475,7 @@ class PlayState extends ScriptedState
 	@:dox(hide) var cameraFocusTween:FlxTween;
 	@:dox(hide) var cameraMoveTween:FlxTween;
 	@:dox(hide) var cameraZoomTween:FlxTween;
+	static inline final DEFAULT_TWEEN_STEPS:Float = 4;
 	var cameraAngleTweens:Map<FlxCamera, FlxTween> = [];
 	var cameraFocusBaseX:Float = 0;
 	var cameraFocusBaseY:Float = 0;
@@ -3655,7 +3656,7 @@ class PlayState extends ScriptedState
 	override public function update(elapsed:Float)
 	{
 		if(!inCutscene && !paused && !freezeCamera) {
-			FlxG.camera.followLerp = 0.04 * cameraSpeed * playbackRate;
+			FlxG.camera.followLerp = cameraFocusTween != null ? 0 : 0.04 * cameraSpeed * playbackRate;
 			var idleAnim:Bool = (boyfriend.getAnimationName().startsWith('idle') || boyfriend.getAnimationName().startsWith('danceLeft') || boyfriend.getAnimationName().startsWith('danceRight'));
 			if(!startingSong && !endingSong && idleAnim) {
 				boyfriendIdleTime += elapsed;
@@ -3909,8 +3910,8 @@ class PlayState extends ScriptedState
 		if(!healthBar.smooth) healthBar.percent = (newPercent != null ? newPercent : 0);
 
 		var iconPercent:Float = (newPercent != null ? newPercent : 0);
-		iconP1.setIconFrame((iconPercent < 20) ? 1 : 0); //If health is under 20%, change player icon to frame 1 (losing icon), otherwise, frame 0 (normal)
-		iconP2.setIconFrame((iconPercent > 80) ? 1 : 0); //If health is over 80%, change opponent icon to frame 1 (losing icon), otherwise, frame 0 (normal)
+		iconP1.setIconFrame((iconPercent < 20) ? 1 : (iconPercent > 80 ? 2 : 0)); //If health is under 20%, change player icon to frame 1 (losing icon), otherwise, frame 0 (normal)
+		iconP2.setIconFrame((iconPercent > 80) ? 1 : (iconPercent < 20 ? 2 : 0)); //If health is over 80%, change opponent icon to frame 1 (losing icon), otherwise, frame 0 (normal)
 		return health;
 	}
 
@@ -5091,10 +5092,23 @@ class PlayState extends ScriptedState
 		var y:String = targetData[2] ?? '0';
 		var ease:String = easeData[0] ?? targetData[3] ?? 'classic';
 		var steps:String = easeData[1] ?? targetData[4] ?? '0';
+
+		if(easeData.length == 1 && targetData.length > 3 && isNumericString(targetData[3]))
+			steps = targetData[3];
 		if(easeData.length > 1 && isNumericString(easeData[0]) && !isNumericString(easeData[1]))
 		{
 			steps = easeData[0];
 			ease = easeData[1];
+		}
+		if(targetData.length > 4 && isNumericString(targetData[3]) && !isNumericString(targetData[4]) && easeData.length < 1)
+		{
+			steps = targetData[3];
+			ease = targetData[4];
+		}
+		else if(targetData.length > 4 && !isNumericString(targetData[3]) && isNumericString(targetData[4]) && easeData.length < 1)
+		{
+			ease = targetData[3];
+			steps = targetData[4];
 		}
 
 		return [target, x, y, ease, steps];
@@ -5251,22 +5265,18 @@ class PlayState extends ScriptedState
 
 			default:
 				if(steps <= 0)
-				{
-					camFollow.setPosition(targetX, targetY);
-					if(cameraSpeed <= 0)
-						FlxG.camera.snapToTarget();
-					return;
-				}
+					steps = DEFAULT_TWEEN_STEPS;
 
 				camFollow.setPosition(startX, startY);
+				FlxG.camera.snapToTarget();
 				cameraFocusTween = FlxTween.tween(camFollow, {x: targetX, y: targetY}, (steps * Conductor.stepCrochet / 1000) / playbackRate, {
-					ease: LuaUtils.getTweenEaseByString(easeMode),
-					onUpdate: (_) -> if(cameraSpeed <= 0) FlxG.camera.snapToTarget(),
+					ease: getCameraZoomEase(easeMode),
+					onUpdate: (_) -> FlxG.camera.snapToTarget(),
 					onComplete: (_) ->
 					{
-						if(cameraSpeed <= 0)
-							FlxG.camera.snapToTarget();
 						cameraFocusTween = null;
+						refreshCameraMovePosition();
+						FlxG.camera.snapToTarget();
 					}
 				});
 		}
@@ -5292,14 +5302,15 @@ class PlayState extends ScriptedState
 	function normalizeCameraEase(ease:String):String {
 		if(ease == null || ease.trim().length < 1) return 'classic';
 
-		return switch(ease.toLowerCase().trim())
+		var normalized:String = ease.toLowerCase().trim();
+		return switch(normalized)
 		{
 			case 'classic' | 'og':
 				'classic';
 			case 'instant' | 'inst':
 				'instant';
 			default:
-				ease;
+				normalized;
 		}
 	}
 
@@ -5394,11 +5405,6 @@ class PlayState extends ScriptedState
 	function setCameraMoveTarget(x:Float, y:Float):Void
 	{
 		if(camFollow == null) return;
-		if(cameraFocusTween != null)
-		{
-			cameraFocusTween.cancel();
-			cameraFocusTween = null;
-		}
 		if(cameraMoveTween != null)
 		{
 			cameraMoveTween.cancel();
@@ -5433,6 +5439,7 @@ class PlayState extends ScriptedState
 	function refreshCameraMovePosition():Void
 	{
 		if(camFollow == null || isCameraOnForcedPos) return;
+		if(cameraFocusTween != null) return;
 		camFollow.setPosition(cameraFocusBaseX + cameraMoveOffsetX, cameraFocusBaseY + cameraMoveOffsetY);
 	}
 

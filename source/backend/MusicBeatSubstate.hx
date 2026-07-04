@@ -178,7 +178,7 @@ class MusicBeatSubstate extends flixel.FlxSubState {
 		return Controls.instance;
 	}
 
-	#if TOUCH_CONTROLS_ALLOWED
+	#if (TOUCH_CONTROLS_ALLOWED && mobile)
 	public var touchPad:TouchPad;
 	public var hitbox:Hitbox;
 	public var camControls:FlxCamera;
@@ -250,7 +250,14 @@ class MusicBeatSubstate extends flixel.FlxSubState {
 
 	override function destroy():Void
 	{
-		#if TOUCH_CONTROLS_ALLOWED
+		#if GLOBAL_SCRIPTS
+		if (parent == null)
+			MusicBeatSubstate.callGlobal('onDestroyState', [this, Type.getClass(this)]);
+		else
+			MusicBeatSubstate.callGlobal('onDestroySubState', [this, Type.getClass(this)]);
+		#end
+
+		#if (TOUCH_CONTROLS_ALLOWED && mobile)
 		removeTouchPad();
 		removeHitbox();
 		#end
@@ -383,11 +390,26 @@ class MusicBeatSubstate extends flixel.FlxSubState {
 			resetStateConductor();
 		return useStateConductor;
 	}
+
+	function usesSongSections():Bool {
+		return Std.isOfType(this, states.PlayState);
+	}
 	
 	function forwardSection():Void {
 		if (stepsToDo < 1) stepsToDo = Math.round(getBeatsOnSection() * 4);
 		
 		if (curStep == 0) sectionHit(0); // idgaf
+
+		if (!keepUp && !usesSongSections() && curStep - stepsToDo > 64)
+		{
+			var sectionSteps:Int = Math.round(getBeatsOnSection() * 4);
+			if (sectionSteps < 1) sectionSteps = 16;
+			curSection = Math.floor(curStep / sectionSteps);
+			stepsToDo = (curSection + 1) * sectionSteps;
+			updateSection();
+			sectionHit(curSection);
+			return;
+		}
 		
 		while (curStep >= stepsToDo) {
 			curSection ++;
@@ -404,7 +426,7 @@ class MusicBeatSubstate extends flixel.FlxSubState {
 		curSection = 0;
 		stepsToDo = 0;
 
-		if (PlayState.SONG == null) {
+		if (PlayState.SONG == null || !usesSongSections()) {
 			var sectionSteps:Int = Math.round(getBeatsOnSection() * 4);
 			if (sectionSteps < 1) sectionSteps = 16;
 
@@ -443,7 +465,7 @@ class MusicBeatSubstate extends flixel.FlxSubState {
 		var val:Null<Float> = 4;
 		section ??= curSection;
 		
-		if (PlayState.SONG != null && PlayState.SONG.notes[section] != null)
+		if (PlayState.SONG != null && usesSongSections() && PlayState.SONG.notes[section] != null)
 			val = PlayState.SONG.notes[section].sectionBeats;
 		
 		return (val == null ? 4 : val);
@@ -470,7 +492,7 @@ class MusicBeatSubstate extends flixel.FlxSubState {
 		curBeat = Math.floor(curDecBeat);
 	}
 	function updateSection():Void {
-		if (PlayState.SONG == null) {
+		if (PlayState.SONG == null || !usesSongSections()) {
 			curDecSection = curDecBeat / getBeatsOnSection();
 			return;
 		}

@@ -12,6 +12,7 @@ class MusicBeatState extends MusicBeatSubstate {
 	public var camOther:FlxCamera = null;
 	public static var timePassedOnState:Float = 0;
 	@:dox(hide) var _psychCameraInitialized:Bool = false;
+	static var previousState:Void->FlxState = null;
 	
 	public function new() {
 		super();
@@ -152,6 +153,7 @@ class MusicBeatState extends MusicBeatSubstate {
 
 		FlxTransitionableState.skipNextTransIn = true;
 		FlxTransitionableState.skipNextTransOut = true;
+		clearTransientStateManagers();
 
 		if (nextState is CustomState) {
 			var customState:CustomState = cast nextState;
@@ -162,6 +164,44 @@ class MusicBeatState extends MusicBeatSubstate {
 
 		FlxTransitionableState.skipNextTransIn = false;
 		FlxTransitionableState.skipNextTransOut = false;
+	}
+
+	static function stateFactoryFrom(state:FlxState):Void->FlxState {
+		if (state == null)
+			return null;
+
+		if (state is CustomState) {
+			var customState:CustomState = cast state;
+			var name:String = customState.stateName;
+			var data:Dynamic = customState.data;
+			return () -> new CustomState(name, data);
+		}
+
+		var cls:Class<Dynamic> = Type.getClass(state);
+		if (cls == null)
+			return null;
+
+		return function() {
+			try return cast Type.createInstance(cls, []) catch (e:Dynamic) return null;
+		}
+	}
+
+	static function rememberCurrentState():Void {
+		var factory:Void->FlxState = stateFactoryFrom(FlxG.state);
+		if (factory != null)
+			previousState = factory;
+	}
+
+	public static function switchLastState():Bool {
+		if (previousState == null)
+			return false;
+
+		var state:FlxState = previousState();
+		if (state == null)
+			return false;
+
+		switchState(state);
+		return true;
 	}
 	
 	public override function create() {
@@ -254,8 +294,11 @@ class MusicBeatState extends MusicBeatSubstate {
 		if (MusicBeatSubstate.callGlobal('onSwitchState', [nextState, Type.getClass(nextState)]) != psychlua.LuaUtils.Function_Stop) {
 			if (nextState == null)
 				return resetState();
+
+			rememberCurrentState();
 			
 			if (FlxTransitionableState.skipNextTransIn) {
+				clearTransientStateManagers();
 				FlxG.switchState(nextState); // actually just cant rid of this deprecated implementation or everything dies
 			} else {
 				startTransition(nextState);
@@ -270,6 +313,7 @@ class MusicBeatState extends MusicBeatSubstate {
 	*/
 	public static function resetState():Void {
 		if (FlxTransitionableState.skipNextTransIn) {
+			clearTransientStateManagers();
 			FlxG.resetState();
 		} else {
 			startTransition();
@@ -286,6 +330,7 @@ class MusicBeatState extends MusicBeatSubstate {
 	*/
 	public static function startTransition(?nextState:FlxState):Void {
 		nextState = canseiOverride(nextState);
+		clearTransientStateManagers();
 		FlxG.state.openSubState(new CustomFadeTransition(.5, false));
 		
 		nextState ??= FlxG.state;
@@ -300,5 +345,10 @@ class MusicBeatState extends MusicBeatSubstate {
 				CustomFadeTransition.finishCallback = () -> FlxG.switchState(nextState);
 			}
 		}
+	}
+
+	static function clearTransientStateManagers():Void {
+		flixel.util.FlxTimer.globalManager.clear();
+		flixel.tweens.FlxTween.globalManager.clear();
 	}
 }

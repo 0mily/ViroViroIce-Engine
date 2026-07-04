@@ -91,6 +91,7 @@ class Main extends Sprite
 		
 		FlxG.save.bind('funkin', CoolUtil.getSavePath());
 		Controls.instance = new Controls();
+		ClientPrefs.preloadContentSelection();
 		Language.reloadPhrases();
 		Difficulty.resetList();
 		moonchart.Moonchart.init();

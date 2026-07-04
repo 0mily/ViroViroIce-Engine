@@ -163,6 +163,7 @@ class Mods
 		ClientPrefs.pendingSelectedContent = '';
 		ClientPrefs.contentBootStatus = '';
 		ClientPrefs.saveContentSelectionState();
+		psychlua.CustomState.clearAllTempData();
 
 		loadTopMod();
 		pushGlobalMods();
@@ -253,7 +254,8 @@ class Mods
 
 		for (mod in contentMods)
 		{
-			if (mod != primaryContentMod && !globalMods.contains(mod))
+			var pack:Dynamic = getPack(mod);
+			if ((mod != primaryContentMod || (pack != null && pack.runsGlobally == true)) && !globalMods.contains(mod))
 				globalMods.push(mod);
 
 			for(packageFolder in getPackageDirectories(mod))

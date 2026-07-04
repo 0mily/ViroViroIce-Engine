@@ -492,13 +492,15 @@ class LuaUtils
 		}
 	}
 
-	public static function destroyObject(tag:String) {
-		var variables = MusicBeatState.getVariables();
+	public static function destroyObject(tag:String, ?state:flixel.FlxState) {
+		var variables = state != null ? state.extraData : MusicBeatState.getVariables();
 		var obj:FlxSprite = variables.get(tag);
 		if(obj == null || obj.destroy == null)
 			return;
 
-		LuaUtils.getTargetInstance().remove(obj, true);
+		var target:Dynamic = state ?? LuaUtils.getTargetInstance();
+		if(target != null && Reflect.isFunction(Reflect.field(target, 'remove')))
+			target.remove(obj, true);
 		obj.destroy();
 		variables.remove(tag);
 	}

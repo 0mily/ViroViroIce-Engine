@@ -10,6 +10,7 @@ class TextFunctions
 			var leText:FlxText = new FlxText(x, y, width, text, 16);
 			if (PlayState.instance != null) leText.cameras = [PlayState.instance.camHUD];
 			leText.setFormat(Paths.font("vcr.ttf"), 16, FlxColor.WHITE, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
+			leText.antialiasing = ClientPrefs.data.antialiasing;
 			leText.scrollFactor.set();
 			leText.borderSize = 2;
 			MusicBeatState.getVariables().set(tag, leText);

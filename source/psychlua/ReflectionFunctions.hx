@@ -92,12 +92,18 @@ class ReflectionFunctions
 		});
 	}
 	public static function implementLocal(funk:FunkinLua) {
+		function targetState():Dynamic {
+			if (funk.parentState != null)
+				return funk.parentState;
+			return CustomSubstate.instance != null ? CustomSubstate.instance : LuaUtils.getTargetInstance();
+		}
+
 		funk.addLocalCallback("getProperty", function(variable:String, allowMaps:Bool = false) {
-			return LuaUtils.getPropertyLoop(variable, allowMaps, funk.parentState);
+			return LuaUtils.getPropertyLoop(variable, allowMaps, targetState());
 		});
 		funk.addLocalCallback("setProperty", function(variable:String, value:Dynamic, allowMaps:Bool = false, allowInstances:Bool = false) {
 			if (allowInstances) value = parseInstances(value);
-			LuaUtils.setPropertyLoop(variable, value, allowMaps, funk.parentState);
+			LuaUtils.setPropertyLoop(variable, value, allowMaps, targetState());
 		});
 		funk.addLocalCallback("getPropertyFromGroup", function(group:String, index:Int, variable:String, allowMaps:Bool = false) {
 			if (index < 0) {
@@ -105,7 +111,7 @@ class ReflectionFunctions
 				return null;
 			}
 			
-			var groupOrArray:Dynamic = LuaUtils.getPropertyLoop(group, allowMaps, funk.parentState);
+			var groupOrArray:Dynamic = LuaUtils.getPropertyLoop(group, allowMaps, targetState());
 			
 			if (groupOrArray != null) {
 				if (groupOrArray.length != null) {
@@ -130,7 +136,7 @@ class ReflectionFunctions
 				return value;
 			}
 			
-			var groupOrArray:Dynamic = LuaUtils.getPropertyLoop(group, allowMaps, funk.parentState);
+			var groupOrArray:Dynamic = LuaUtils.getPropertyLoop(group, allowMaps, targetState());
 			if (allowInstances) value = parseInstances(value);
 
 			if (groupOrArray != null) {
@@ -150,13 +156,13 @@ class ReflectionFunctions
 			}
 		});
 		funk.addLocalCallback("addToGroup", function(group:String, tag:String, index:Int = -1) {
-			var obj:FlxSprite = LuaUtils.getPropertyLoop(tag, false, funk.parentState);
+			var obj:FlxSprite = LuaUtils.getPropertyLoop(tag, false, targetState());
 			if (obj == null || obj.destroy == null) {
 				FunkinLua.luaTrace('addToGroup: Object $tag is not valid!', false, false, ERROR);
 				return;
 			}
 			
-			var groupOrArray:Dynamic = LuaUtils.getPropertyLoop(group, false, funk.parentState);
+			var groupOrArray:Dynamic = LuaUtils.getPropertyLoop(group, false, targetState());
 			if (groupOrArray == null) {
 				FunkinLua.luaTrace('addToGroup: Group/Array $group is not valid!', false, false, ERROR);
 				return;
@@ -177,14 +183,14 @@ class ReflectionFunctions
 		funk.addLocalCallback("removeFromGroup", function(group:String, index:Int = -1, ?tag:String, destroy:Bool = true) {
 			var obj:FlxSprite = null;
 			if (tag != null) {
-				obj = LuaUtils.getPropertyLoop(tag, false, funk.parentState);
+				obj = LuaUtils.getPropertyLoop(tag, false, targetState());
 				if (obj == null || obj.destroy == null) {
 					FunkinLua.luaTrace('removeFromGroup: Object $tag is not valid!', false, false, ERROR);
 					return;
 				}
 			}
 			
-			var groupOrArray:Dynamic = LuaUtils.getPropertyLoop(group, false, funk.parentState);
+			var groupOrArray:Dynamic = LuaUtils.getPropertyLoop(group, false, targetState());
 			if (groupOrArray == null) {
 				FunkinLua.luaTrace('removeFromGroup: Group/Array $group is not valid!', false, false, ERROR);
 				return;
@@ -206,17 +212,17 @@ class ReflectionFunctions
 			}
 		});
 		funk.addLocalCallback("callMethod", function(funcToRun:String, args:Array<Dynamic>) {
-			return callMethodFromObject(funk.parentState, funcToRun, parseInstances(args ?? []));
+			return callMethodFromObject(targetState(), funcToRun, parseInstances(args ?? []));
 		});
 		function addInstance(objectName:String, inFront:Bool = false) {
-			var obj:Dynamic = (parseSingleInstance(objectName, true) ?? LuaUtils.getObjectDirectly(objectName));
-			var instance = funk.parentState;
+			var instance:Dynamic = targetState();
+			var obj:Dynamic = (parseSingleInstance(objectName, true) ?? LuaUtils.getObjectDirectly(objectName, false, instance));
 			
-			if (obj != null) {
+			if (obj != null && instance != null) {
 				if (inFront) {
 					instance.add(obj);
 				} else {
-					var gameover = substates.GameOverSubstate.instance;
+					var gameover:Dynamic = substates.GameOverSubstate.instance;
 					var addToGameover:Bool = ((instance == PlayState.instance && PlayState.instance.isDead) || instance == gameover); // yea whatever bro
 					
 					if (instance != PlayState.instance || addToGameover) {
@@ -246,10 +252,12 @@ class ReflectionFunctions
 		funk.addLocalCallback('openSubstate', function(type:String, ?args:Array<Dynamic>) {
 			var cls:Class<Dynamic> = Type.resolveClass(type);
 			
-			if (cls != null)
-				return funk.parentState.openSubState(Type.createInstance(cls, parseInstances(args ?? [])));
+			var instance:Dynamic = targetState();
+			if (cls != null && instance != null)
+				return instance.openSubState(Type.createInstance(cls, parseInstances(args ?? [])));
 			
 			FunkinLua.luaTrace('openSubstate: Couldn\'t resolve class $type', false, false, ERROR);
+			return null;
 		});
 	}
 

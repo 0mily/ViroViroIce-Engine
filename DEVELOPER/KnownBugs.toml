@@ -41,9 +41,8 @@ estado = false
 
 [CRASH_HXLUA]
 chatice = 8
-estado = false
-# Esse bug só não permite a engine à usar RunHaxeCode em códigos da engine, pq se não ele só crasha sem mais nem menos.
-# Este bug tem possívelmente uma origem no Hscript-Iris.
+estado = true
+# Oi
 
 # ----------------------------------------------------------------------
 
@@ -66,9 +65,8 @@ estado = false
 
 [AA_FLXTEXT]
 chatice = 3
-estado = false
-# Por alguma razão, textos criados por script acabam sempre ficando com AntiAliasing desligados.
-# Obrigando um setProperty para ativá-los novamente.
+estado = true
+# Preciso reescrever esse sistema.
 
 # ----------------------------------------------------------------------
 
@@ -98,9 +96,8 @@ estado = false
 
 [CHR_DISAPPEAR]
 chatice = 8
-estado = false
-# Bug do Character Editor, aonde dependendo do SpriteSheet / Atlas, o personagem só
-# desaparece. Sendo necessário reabrir o editor.
+estado = true
+#fiz um reforço pra ter CERTEZA que não vai bugar dnv
 
 # ----------------------------------------------------------------------
 

@@ -76,7 +76,7 @@ class FunkinLua {
 	public static var globalValues:Map<String, Dynamic> = [];
 	static var globalValueOwners:Map<String, FunkinLua> = [];
 	
-	public static function initFromFile(file:String, ?parent:FlxState, ?onCreateInstance:FunkinLua->Void):FunkinLua {
+	public static function initFromFile(file:String, ?parent:FlxState, ?onCreateInstance:FunkinLua->Void, autoCallCreate:Bool = true):FunkinLua {
 		var newScript:FunkinLua = null;
 		
 		try {
@@ -86,7 +86,8 @@ class FunkinLua {
 			if(onCreateInstance != null)
 				onCreateInstance(newScript);
 			
-			newScript.call('onCreate');
+			if (autoCallCreate)
+				newScript.call('onCreate');
 		} catch(e:Dynamic) {
 			Log.print(e, FATAL);
 			newScript = null;
@@ -395,6 +396,8 @@ class FunkinLua {
 	}
 
 	static function oldTweenFunction(tag:String, vars:String, tweenValue:Any, duration:Float, ease:String, funcName:String) {
+		var owner:FunkinLua = currentCallbackOwner();
+		var ownerState:FlxState = currentCallbackState(owner);
 		var target:Dynamic = LuaUtils.tweenPrepare(tag, vars);
 		var variables = MusicBeatState.getVariables();
 		if(target != null) {
@@ -405,7 +408,7 @@ class FunkinLua {
 				variables.set(tag, FlxTween.tween(target, tweenValue, duration, {ease: LuaUtils.getTweenEaseByString(ease),
 					onComplete: function(twn:FlxTween) {
 						variables.remove(tag);
-						luaCallGlobal('onTweenCompleted', [originalTag, vars]);
+						luaCallGlobalFrom(owner, ownerState, 'onTweenCompleted', [originalTag, vars]);
 					}
 				}));
 			}
@@ -417,6 +420,8 @@ class FunkinLua {
 	}
 	static function noteTweenFunction(tag:String, note:Int, data:Dynamic, duration:Float, ease:String) {
 		if(PlayState.instance == null) return null;
+		var owner:FunkinLua = currentCallbackOwner();
+		var ownerState:FlxState = currentCallbackState(owner);
 		
 		var strumNote:StrumNote = PlayState.instance.strumLineNotes.members[note % PlayState.instance.strumLineNotes.length];
 		if(strumNote == null) return null;
@@ -433,7 +438,7 @@ class FunkinLua {
 				onComplete: function(twn:FlxTween)
 				{
 					variables.remove(tag);
-					luaCallGlobal('onTweenCompleted', [originalTag]);
+					luaCallGlobalFrom(owner, ownerState, 'onTweenCompleted', [originalTag]);
 				}
 			}));
 			return tag;
@@ -597,16 +602,45 @@ class FunkinLua {
 		return false;
 	}
 	
-	public static function luaCallGlobal(func:String, args:Array<Dynamic>):Void {
-		var state:FlxState = FlxG.state;
+	public static function luaCallGlobal(func:String, args:Array<Dynamic>, ?targetState:FlxState):Void {
+		var state:FlxState = targetState ?? FlxG.state;
 		do {
 			if (state is ScriptedSubState)
 				cast(state, ScriptedSubState).callOnLuas(func, args);
 			state = state.subState;
 		} while (state != null);
 	}
+
+	static function currentCallbackOwner():FunkinLua {
+		return lastCalledScript;
+	}
+
+	static function currentCallbackState(owner:FunkinLua):FlxState {
+		return owner != null && owner.parentState != null ? owner.parentState : FlxG.state;
+	}
+
+	public static function luaCallGlobalFrom(owner:FunkinLua, state:FlxState, func:String, args:Array<Dynamic>):Void {
+		if (owner != null && owner.closed)
+			return;
+
+		var previousScript:FunkinLua = lastCalledScript;
+		lastCalledScript = owner;
+		luaCallGlobal(func, args, state);
+		lastCalledScript = previousScript;
+	}
 	
 	public static var registeredFunctions:Map<String, Dynamic> = [];
+	static function getCallbackState():FlxState {
+		if (lastCalledScript != null && lastCalledScript.parentState != null)
+			return lastCalledScript.parentState;
+		return FlxG.state;
+	}
+
+	static function getCallbackVariables():Map<String, Dynamic> {
+		var state:FlxState = getCallbackState();
+		return state != null ? state.extraData : MusicBeatState.getVariables();
+	}
+
 	public static function registerFunctions():Void {
 		registeredFunctions.clear();
 		
@@ -916,9 +950,19 @@ class FunkinLua {
 		if (FlxG.state is ScriptedSubState)
 			st = cast FlxG.state;
 
+		function cameraHost():Dynamic
+		{
+			var state:Dynamic = FlxG.state;
+			if(state != null && Reflect.isFunction(Reflect.field(state, 'addCamera')))
+				return state;
+			if(PlayState.instance != null && Reflect.isFunction(Reflect.field(PlayState.instance, 'addCamera')))
+				return PlayState.instance;
+			return null;
+		}
+
 		registerMobileRuntimeFunctions();
 
-		registerFunction('addRemixRemover', function(suffix:String) {
+		registerFunction('addNameCropper', function(suffix:String) {
 			if (game.bucetaTira == null)
 				game.bucetaTira = [];
 
@@ -1313,6 +1357,8 @@ class FunkinLua {
 
 		// gay ass tweens
 		registerFunction('startTween', function(tag:String, vars:String, values:Any = null, duration:Float, ?options:Any = null) {
+			var owner:FunkinLua = currentCallbackOwner();
+			var ownerState:FlxState = currentCallbackState(owner);
 			var penisExam:Dynamic = LuaUtils.tweenPrepare(tag, vars);
 			if (penisExam != null) {
 				if (values != null) {
@@ -1328,11 +1374,11 @@ class FunkinLua {
 							startDelay: myOptions.startDelay,
 							loopDelay: myOptions.loopDelay,
 	
-							onUpdate: (myOptions.onUpdate == null ? null : function(twn:FlxTween) luaCallGlobal(myOptions.onUpdate, [originalTag, vars])),
-							onStart: (myOptions.onUpdate == null ? null : function(twn:FlxTween) luaCallGlobal(myOptions.onStart, [originalTag, vars])),
+							onUpdate: (myOptions.onUpdate == null ? null : function(twn:FlxTween) luaCallGlobalFrom(owner, ownerState, myOptions.onUpdate, [originalTag, vars])),
+							onStart: (myOptions.onUpdate == null ? null : function(twn:FlxTween) luaCallGlobalFrom(owner, ownerState, myOptions.onStart, [originalTag, vars])),
 							onComplete: function(twn:FlxTween) {
 								if (twn.type == FlxTweenType.ONESHOT || twn.type == FlxTweenType.BACKWARD) variables.remove(tag);
-								if (myOptions.onComplete != null) luaCallGlobal(myOptions.onComplete, [originalTag, vars]);
+								if (myOptions.onComplete != null) luaCallGlobalFrom(owner, ownerState, myOptions.onComplete, [originalTag, vars]);
 							}
 						} : null));
 						return tag;
@@ -1343,9 +1389,9 @@ class FunkinLua {
 							startDelay: myOptions.startDelay,
 							loopDelay: myOptions.loopDelay,
 							
-							onComplete: (myOptions.onComplete == null ? null : function(twn:FlxTween) luaCallGlobal(myOptions.onComplete, [null, vars])),
-							onUpdate: (myOptions.onUpdate == null ? null : function(twn:FlxTween) luaCallGlobal(myOptions.onUpdate, [null, vars])),
-							onStart: (myOptions.onStart == null ? null : function(twn:FlxTween) luaCallGlobal(myOptions.onStart, [null, vars])),
+							onComplete: (myOptions.onComplete == null ? null : function(twn:FlxTween) luaCallGlobalFrom(owner, ownerState, myOptions.onComplete, [null, vars])),
+							onUpdate: (myOptions.onUpdate == null ? null : function(twn:FlxTween) luaCallGlobalFrom(owner, ownerState, myOptions.onUpdate, [null, vars])),
+							onStart: (myOptions.onStart == null ? null : function(twn:FlxTween) luaCallGlobalFrom(owner, ownerState, myOptions.onStart, [null, vars])),
 						} : null);
 					}
 				} else {
@@ -1362,6 +1408,8 @@ class FunkinLua {
 		registerFunction('doTweenAlpha', function(tag:String, vars:String, value:Dynamic, duration:Float, ?ease:String = 'linear') return oldTweenFunction(tag, vars, {alpha: value}, duration, ease, 'doTweenAlpha'));
 		registerFunction('doTweenZoom', function(tag:String, camera:String, value:Dynamic, duration:Float, ?ease:String = 'linear') return oldTweenFunction(tag, LuaUtils.cameraString(camera), {zoom: value}, duration, ease, 'doTweenZoom'));
 		registerFunction('doTweenColor', function(tag:String, vars:String, targetColor:String, duration:Float, ?ease:String = 'linear') {
+			var owner:FunkinLua = currentCallbackOwner();
+			var ownerState:FlxState = currentCallbackState(owner);
 			var penisExam:Dynamic = LuaUtils.tweenPrepare(tag, vars);
 			if (penisExam != null) {
 				FlxTween.cancelTweensOf(penisExam, ['color', 'alpha']);
@@ -1375,7 +1423,7 @@ class FunkinLua {
 					variables.set(tag, FlxTween.color(penisExam, duration, curColor, CoolUtil.colorFromString(targetColor), {ease: LuaUtils.getTweenEaseByString(ease),
 						onComplete: function(twn:FlxTween) {
 							variables.remove(tag);
-							luaCallGlobal('onTweenCompleted', [originalTag, vars]);
+							luaCallGlobalFrom(owner, ownerState, 'onTweenCompleted', [originalTag, vars]);
 						}
 					}));
 					return tag;
@@ -1388,6 +1436,8 @@ class FunkinLua {
 		});
 
 		registerFunction('doTweenVolume', function(tag:String, vars:String, value:Float, duration:Float, ?ease:String = 'linear') {
+			var owner:FunkinLua = currentCallbackOwner();
+			var ownerState:FlxState = currentCallbackState(owner);
 			var target:Dynamic = null;
 			vars = vars.trim();
 			if (vars == null || vars == '') {
@@ -1408,7 +1458,7 @@ class FunkinLua {
 						ease: LuaUtils.getTweenEaseByString(ease),
 						onComplete: function(twn:FlxTween) {
 							variables.remove(tag);
-							luaCallGlobal('onTweenCompleted', [originalTag, vars]);
+							luaCallGlobalFrom(owner, ownerState, 'onTweenCompleted', [originalTag, vars]);
 						}
 					}));
 					return tag;
@@ -1425,6 +1475,8 @@ class FunkinLua {
 		registerFunction('cancelTimer', function(tag:String) LuaUtils.cancelTimer(tag));
 		
 		registerFunction('runTimer', function(tag:String, time:Float = 1, loops:Int = 1) {
+			var owner:FunkinLua = currentCallbackOwner();
+			var ownerState:FlxState = currentCallbackState(owner);
 			LuaUtils.cancelTimer(tag);
 			var variables = MusicBeatState.getVariables();
 			
@@ -1432,7 +1484,7 @@ class FunkinLua {
 			tag = LuaUtils.formatVariable('timer_$tag');
 			variables.set(tag, new FlxTimer().start(time, function(tmr:FlxTimer) {
 				if (tmr.finished) variables.remove(tag);
-				luaCallGlobal('onTimerCompleted', [originalTag, tmr.loops, tmr.loopsLeft]);
+				luaCallGlobalFrom(owner, ownerState, 'onTimerCompleted', [originalTag, tmr.loops, tmr.loopsLeft]);
 				//trace('Timer Completed: ' + tag);
 			}, loops));
 			return tag;
@@ -1448,16 +1500,20 @@ class FunkinLua {
 		registerFunction('resetRes', function() return ResolutionManager.reset());
 		registerFunction('ResetRes', function() return ResolutionManager.reset());
 		registerFunction('addCamera', function(tag:String, bgColor:String = '00000000', x:Float = 0, y:Float = 0, width:Int = -1, height:Int = -1, zoom:Float = 1, front:Bool = false) {
-			return PlayState.instance != null && PlayState.instance.addCamera(tag, bgColor, x, y, width, height, zoom, front) != null;
+			var host:Dynamic = cameraHost();
+			return host != null && host.addCamera(tag, bgColor, x, y, width, height, zoom, front) != null;
 		});
 		registerFunction('removeCamera', function(tag:String, destroy:Bool = true) {
-			return PlayState.instance != null && PlayState.instance.removeCamera(tag, destroy);
+			var host:Dynamic = cameraHost();
+			return host != null && host.removeCamera(tag, destroy);
 		});
 		registerFunction('setMainCamera', function(tag:String) {
-			return PlayState.instance != null && PlayState.instance.setMainCamera(tag);
+			var host:Dynamic = cameraHost();
+			return host != null && host.setMainCamera(tag);
 		});
 		registerFunction('setCameraOrder', function(tag:String, index:Int) {
-			return PlayState.instance != null && PlayState.instance.setCameraOrder(tag, index);
+			var host:Dynamic = cameraHost();
+			return host != null && host.setCameraOrder(tag, index);
 		});
 		registerFunction('tweenRes', function(width:Int, height:Int, duration:Float = 1, ease:String = 'linear', resizable:Bool = true) // never tested btw
 			return ResolutionManager.tweenRes(width, height, duration, LuaUtils.getTweenEaseByString(ease), resizable) != null);
@@ -1466,24 +1522,28 @@ class FunkinLua {
 		registerFunction('tweenResFrom', function(fromWidth:Int, fromHeight:Int, toWidth:Int, toHeight:Int, duration:Float = 1, ease:String = 'linear', resizable:Bool = true)
 			return ResolutionManager.tweenResFrom(fromWidth, fromHeight, toWidth, toHeight, duration, LuaUtils.getTweenEaseByString(ease), resizable) != null);
 		registerFunction('doTweenRes', function(tag:String, width:Int, height:Int, duration:Float, ease:String = 'linear', resizable:Bool = true) {
+			var owner:FunkinLua = currentCallbackOwner();
+			var ownerState:FlxState = currentCallbackState(owner);
 			var variables = MusicBeatState.getVariables();
 			var originalTag:String = tag;
 			tag = LuaUtils.formatVariable('tween_$tag');
 			LuaUtils.cancelTween(tag);
 			variables.set(tag, ResolutionManager.tweenRes(width, height, duration, LuaUtils.getTweenEaseByString(ease), resizable, function(twn:FlxTween) {
 				variables.remove(tag);
-				luaCallGlobal('onTweenCompleted', [originalTag, 'resolution']);
+				luaCallGlobalFrom(owner, ownerState, 'onTweenCompleted', [originalTag, 'resolution']);
 			}));
 			return tag;
 		});
 		registerFunction('doTweenResolution', function(tag:String, width:Int, height:Int, duration:Float, ease:String = 'linear', resizable:Bool = true) {
+			var owner:FunkinLua = currentCallbackOwner();
+			var ownerState:FlxState = currentCallbackState(owner);
 			var variables = MusicBeatState.getVariables();
 			var originalTag:String = tag;
 			tag = LuaUtils.formatVariable('tween_$tag');
 			LuaUtils.cancelTween(tag);
 			variables.set(tag, ResolutionManager.tweenRes(width, height, duration, LuaUtils.getTweenEaseByString(ease), resizable, function(twn:FlxTween) {
 				variables.remove(tag);
-				luaCallGlobal('onTweenCompleted', [originalTag, 'resolution']);
+				luaCallGlobalFrom(owner, ownerState, 'onTweenCompleted', [originalTag, 'resolution']);
 			}));
 			return tag;
 		});
@@ -1529,7 +1589,12 @@ class FunkinLua {
 		registerFunction('desgracaY', () -> backend.CameraResizeFix.desgracaY(FlxG.camera));
 
 		registerFunction('cameraShake', function(camera:String, intensity:Float, duration:Float) LuaUtils.cameraFromString(camera).shake(intensity, duration));
-		registerFunction('cameraFlash', function(camera:String, color:String, duration:Float,forced:Bool) LuaUtils.cameraFromString(camera).flash(CoolUtil.colorFromString(color), duration, null, forced));
+		registerFunction('cameraFlash', function(camera:String, color:String, duration:Float, forced:Bool) {
+			var cam:FlxCamera = LuaUtils.cameraFromString(camera);
+			backend.CameraResizeFix.aplyCentroOFS(cam);
+			cam.flash(CoolUtil.colorFromString(color), duration, null, forced);
+			backend.CameraResizeFix.aplyCentroOFS(cam);
+		});
 		registerFunction('cameraFade', function(camera:String, color:String, duration:Float, forced:Bool, ?fadeOut:Bool = false) LuaUtils.cameraFromString(camera).fade(CoolUtil.colorFromString(color), duration, fadeOut, null, forced));
 		registerFunction('setCameraAngle', function(camera:String, angle:Float) {
 			var cam:FlxCamera = LuaUtils.cameraFromString(camera);
@@ -1612,25 +1677,45 @@ class FunkinLua {
 		});
 
 		registerFunction('makeLuaSprite', function(tag:String, ?image:String = null, ?x:Float = 0, ?y:Float = 0) {
+			if (tag == null || tag.trim().length < 1)
+				return false;
+
 			tag = tag.replace('.', '');
-			LuaUtils.destroyObject(tag);
+			var state:FlxState = getCallbackState();
+			var variables:Map<String, Dynamic> = getCallbackVariables();
+			LuaUtils.destroyObject(tag, state);
 			var leSprite:ModchartSprite = new ModchartSprite(x, y);
 			
 			if (image != null && image.length > 0)
-				leSprite.loadGraphic(Paths.image(image));
+			{
+				var graphic = Paths.image(image);
+				if(graphic == null)
+				{
+					luaTrace('makeLuaSprite: image "$image" could not be found.', false, false, ERROR); // ik, ik, i also hate silent shit
+					return false;
+				}
+				leSprite.loadGraphic(graphic);
+			}
 			
-			MusicBeatState.getVariables().set(tag, leSprite);
+			variables.set(tag, leSprite);
 			leSprite.active = true;
+			return true;
 		});
 		registerFunction('makeAnimatedLuaSprite', function(tag:String, ?image:String = null, ?x:Float = 0, ?y:Float = 0, ?spriteType:String = 'auto') {
+			if (tag == null || tag.trim().length < 1)
+				return false;
+
 			tag = tag.replace('.', '');
-			LuaUtils.destroyObject(tag);
+			var state:FlxState = getCallbackState();
+			var variables:Map<String, Dynamic> = getCallbackVariables();
+			LuaUtils.destroyObject(tag, state);
 			var leSprite:ModchartSprite = new ModchartSprite(x, y);
 
 			if (image != null && image.length > 0)
 				LuaUtils.loadFrames(leSprite, image, spriteType);
-			
-			MusicBeatState.getVariables().set(tag, leSprite);
+
+			variables.set(tag, leSprite);
+			return true;
 		});
 		var makePerspectiveSpriteFunc = function(tag:String, ?image:String = null, ?bottomX:Float = 0, ?bottomY:Float = 0, ?topX:Float = 0, ?topY:Float = 0) {
 			if(tag == null)
@@ -1716,6 +1801,8 @@ class FunkinLua {
 			return backend.GradientUtil.setStop(LuaUtils.getObjectDirectly(obj), index, color, alpha);
 		});
 		var tweenGradientFunc = function(tag:String, obj:String, colors:Dynamic = null, ?alphas:Dynamic = null, duration:Float = 1, ?ease:String = 'linear') {
+			var owner:FunkinLua = currentCallbackOwner();
+			var ownerState:FlxState = currentCallbackState(owner);
 			var spr:FlxSprite = LuaUtils.getObjectDirectly(obj);
 			if(spr == null)
 			{
@@ -1729,13 +1816,15 @@ class FunkinLua {
 			LuaUtils.cancelTween(originalTag);
 			variables.set(tag, backend.GradientUtil.tweenSprite(spr, colors, alphas, duration, LuaUtils.getTweenEaseByString(ease), function(twn:FlxTween) {
 				variables.remove(tag);
-				luaCallGlobal('onTweenCompleted', [originalTag, obj]);
+				luaCallGlobalFrom(owner, ownerState, 'onTweenCompleted', [originalTag, obj]);
 			}));
 			return tag;
 		};
 		registerFunction('tweenGradient', tweenGradientFunc);
 		registerFunction('doTweenGradient', tweenGradientFunc);
 		var tweenGradientAlphaFunc = function(tag:String, obj:String, alphas:Dynamic = null, duration:Float = 1, ?ease:String = 'linear') {
+			var owner:FunkinLua = currentCallbackOwner();
+			var ownerState:FlxState = currentCallbackState(owner);
 			var spr:FlxSprite = LuaUtils.getObjectDirectly(obj);
 			if(spr == null)
 			{
@@ -1749,7 +1838,7 @@ class FunkinLua {
 			LuaUtils.cancelTween(originalTag);
 			variables.set(tag, backend.GradientUtil.tweenSpriteAlpha(spr, alphas, duration, LuaUtils.getTweenEaseByString(ease), function(twn:FlxTween) {
 				variables.remove(tag);
-				luaCallGlobal('onTweenCompleted', [originalTag, obj]);
+				luaCallGlobalFrom(owner, ownerState, 'onTweenCompleted', [originalTag, obj]);
 			}));
 			return tag;
 		};
@@ -1915,20 +2004,20 @@ class FunkinLua {
 		});
 
 		registerFunction('luaSpriteExists', function(tag:String) {
-			var obj:FlxSprite = MusicBeatState.getVariables().get(tag);
+			var obj:FlxSprite = getCallbackVariables().get(tag);
 			return (obj != null && (Std.isOfType(obj, ModchartSprite) || Std.isOfType(obj, ModchartAnimateSprite)));
 		});
 		registerFunction('luaTextExists', function(tag:String) {
-			var obj:FlxText = MusicBeatState.getVariables().get(tag);
+			var obj:FlxText = getCallbackVariables().get(tag);
 			return (obj != null && Std.isOfType(obj, FlxText));
 		});
 		registerFunction('luaSoundExists', function(tag:String) {
-			var obj:FlxSound = MusicBeatState.getVariables().get(LuaUtils.formatVariable('sound_$tag'));
+			var obj:FlxSound = getCallbackVariables().get(LuaUtils.formatVariable('sound_$tag'));
 			return (obj != null && Std.isOfType(obj, FlxSound));
 		});
 
 		registerFunction('setObjectCamera', function(obj:String, camera:String = 'game') {
-			var object:FlxBasic = LuaUtils.getObjectDirectly(obj);
+			var object:FlxBasic = LuaUtils.getObjectDirectly(obj, false, getCallbackState());
 			if (object != null) {
 				object.cameras = [LuaUtils.cameraFromString(camera)];
 				return true;
@@ -1984,6 +2073,8 @@ class FunkinLua {
 		registerFunction('playMusic', function(sound:String, ?volume:Float = 1, ?loop:Bool = false) FlxG.sound.playMusic(resolveScriptMusic(sound), volume, loop));
 		registerFunction('playMenuMusic', function(sound:String, ?volume:Float = 1, ?loop:Bool = false, ?track:String = 'music') FlxG.sound.playMusic(Paths.menuMusic(sound, track), volume, loop));
 		registerFunction('playSound', function(sound:String, ?volume:Float = 1, ?tag:String = null, ?loop:Bool = false):String {
+			var owner:FunkinLua = currentCallbackOwner();
+			var ownerState:FlxState = currentCallbackState(owner);
 			if (tag != null && tag.length > 0) {
 				var originalTag:String = tag;
 				
@@ -1997,7 +2088,7 @@ class FunkinLua {
 
 				variables.set(tag, FlxG.sound.play(Paths.sound(sound), volume, loop, null, true, () -> {
 					if (!loop) variables.remove(tag);
-					luaCallGlobal('onSoundFinished', [originalTag]);
+					luaCallGlobalFrom(owner, ownerState, 'onSoundFinished', [originalTag]);
 				}));
 				
 				return tag;

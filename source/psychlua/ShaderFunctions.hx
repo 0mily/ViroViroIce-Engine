@@ -508,6 +508,8 @@ class ShaderFunctions
 	{
 		if (!ClientPrefs.data.shaders) return false;
 
+		var owner:FunkinLua = FunkinLua.lastCalledScript;
+		var ownerState:flixel.FlxState = owner != null && owner.parentState != null ? owner.parentState : FlxG.state;
 		var target:FilterTarget = targetFromString(targetName, funcName);
 		var blur:Dynamic = getBlur(target, blurTag, funcName);
 		if (blur == null) return false;
@@ -525,7 +527,7 @@ class ShaderFunctions
 			onComplete: function(_) {
 				variables.remove(tweenTag);
 				rebuildBlurFilters(target);
-				FunkinLua.luaCallGlobal('onTweenCompleted', [originalTag, targetName]);
+				FunkinLua.luaCallGlobalFrom(owner, ownerState, 'onTweenCompleted', [originalTag, targetName]);
 			}
 		}));
 		return true;
@@ -838,9 +840,11 @@ class ShaderFunctions
 			var startValue:Float = shader.getFloat(prop) ?? 0.0;
 			var tweenEase:Dynamic = Reflect.field(FlxEase, ease);
 			if (tweenEase == null) tweenEase = FlxEase.linear;
+			var owner:FunkinLua = FunkinLua.lastCalledScript;
+			var ownerState:flixel.FlxState = owner != null && owner.parentState != null ? owner.parentState : FlxG.state;
 			FlxTween.num(startValue, value, duration, {
 				ease: tweenEase,
-				onComplete: function(_) FunkinLua.luaCallGlobal('onTweenCompleted', [tag])
+				onComplete: function(_) FunkinLua.luaCallGlobalFrom(owner, ownerState, 'onTweenCompleted', [tag])
 			}, function(v:Float) shader.setFloat(prop, v));
 			return true;
 			#else
