@@ -20,6 +20,8 @@ haxelib git flxsoundfilters https://github.com/TheZoroForce240/FlxSoundFilters
 haxelib git hxcpp https://github.com/xdshiho/hxcpp.git
 haxelib git hscript-iris https://github.com/pisayesiwsi/hscript-iris.git dev
 haxelib git linc_luajit https://github.com/xdshiho/linc_luajit-mobile
+haxelib git funkin.vis https://github.com/FunkinCrew/funkVis.git 1966f8fbbbc509ed90d4b520f3c49c084fc92fd6
+haxelib git grig.audio https://gitlab.com/haxe-grig/grig.audio.git
 haxelib install extension-haptics 1.0.4 --skip-dependencies
 haxelib install android-manager 1.0.1 --skip-dependencies
 echo Finished!

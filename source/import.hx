@@ -17,9 +17,9 @@ import llua.Lua;
 import backend.Achievements;
 #end
 
+import mobile.backend.TouchUtil;
 #if mobile
 import mobile.backend.StorageSystem;
-import mobile.backend.TouchUtil;
 //import mobile.backend.utils.PopUp;
 // Não por agora
 #end
