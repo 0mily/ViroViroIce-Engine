@@ -72,6 +72,15 @@ class Main extends Sprite
 		Lib.current.loaderInfo.uncaughtErrorEvents.addEventListener(UncaughtErrorEvent.UNCAUGHT_ERROR, onCrash);
 		#end
 		
+		#if mobile
+		StorageSystem.getPermissions();
+		Sys.setCwd(StorageSystem.getAssetsDirectory());
+		/*FlxG.signals.preUpdate.add(function() 
+		{
+			MobileUtil.updateInputMethod();
+		});*/
+		#end
+		
 		appName = (FlxG.stage.application.meta.get('file') ?? 'ViroViroIce');
 		
 		#if (cpp && windows)
@@ -127,12 +136,6 @@ class Main extends Sprite
 		Lib.current.stage.window.setIcon(icon);
 		#end
 
-		// This requests file access on android (otherwise we will crash later)
-		#if android
-		StorageUtil.requestPermissions();
-		Sys.setCwd(StorageUtil.getStorageDirectory());
-		#end
-
 		#if mobile
 		extension.haptics.Haptic.initialize();
 		#end
@@ -145,13 +148,12 @@ class Main extends Sprite
 		FlxG.game.focusLostFramerate = #if mobile 30 #else 60 #end;
 		FlxG.keys.preventDefaultKeys = [TAB];
 		
+		#if android
+        FlxG.android.preventDefaultKeys = [BACK];
+        #end
+		
 		#if DISCORD_ALLOWED
 		DiscordClient.prepare();
-		#end
-
-		#if mobile
-		#if android FlxG.android.preventDefaultKeys = [BACK]; #end
-		lime.system.System.allowScreenTimeout = ClientPrefs.data.screensaver;
 		#end
 		
 		// shader coords fix

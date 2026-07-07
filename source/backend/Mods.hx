@@ -42,10 +42,11 @@ typedef ContentData = {
 
 class Mods
 {
-	public static inline var ADDONS_FOLDER:String = 'addons';
-	public static inline var CONTENTS_FOLDER:String = 'contents';
-	static inline var ADDONS_LIST_FILE:String = 'addonsList.txt';
-	static inline var LEGACY_MODS_LIST_FILE:String = 'modsList.txt';
+	public static inline var ADDONS_FOLDER:String = #if mobile StorageSystem.getDirectory() + #end 'addons';
+	public static inline var CONTENTS_FOLDER:String = #if mobile StorageSystem.getDirectory() + #end 'contents';
+	static inline var ADDONS_LIST_FILE:String = #if mobile StorageSystem.getDirectory() + #end 'addonsList.txt';
+	static inline var LEGACY_MODS_LIST_FILE:String = #if mobile StorageSystem.getDirectory() + #end 'modsList.txt';
+	// testes pq eu não sei como funciona isso ainda — StarNova
 
 	static public var selectedContentDirectory:String = '';
 	static public var currentModDirectory:String = '';
