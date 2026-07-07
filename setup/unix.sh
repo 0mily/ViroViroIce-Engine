@@ -15,6 +15,7 @@ haxelib install flixel-tools
 haxelib install tjson
 haxelib install flixel-animate
 haxelib install hxdiscord_rpc
+haxelib install hxvlc --skip-dependencies
 haxelib git hxCodec https://github.com/polybiusproxy/hxCodec.git 0a51aed0d9523d22a83e453ce7b593ec7fed4742
 haxelib install funkin-modchart
 haxelib install moonchart
