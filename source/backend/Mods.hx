@@ -42,11 +42,10 @@ typedef ContentData = {
 
 class Mods
 {
-	public static inline var ADDONS_FOLDER:String = #if mobile StorageSystem.getDirectory() + #end 'addons';
-	public static inline var CONTENTS_FOLDER:String = #if mobile StorageSystem.getDirectory() + #end 'contents';
-	static inline var ADDONS_LIST_FILE:String = #if mobile StorageSystem.getDirectory() + #end 'addonsList.txt';
-	static inline var LEGACY_MODS_LIST_FILE:String = #if mobile StorageSystem.getDirectory() + #end 'modsList.txt';
-	// testes pq eu não sei como funciona isso ainda — StarNova
+	public static inline var ADDONS_FOLDER:String = 'addons';
+	public static inline var CONTENTS_FOLDER:String = 'contents';
+	static inline var ADDONS_LIST_FILE:String = 'addonsList.txt';
+	static inline var LEGACY_MODS_LIST_FILE:String = 'modsList.txt';
 
 	static public var selectedContentDirectory:String = '';
 	static public var currentModDirectory:String = '';
@@ -117,17 +116,17 @@ class Mods
 			return key;
 		if (key == CONTENTS_FOLDER || key.startsWith('$CONTENTS_FOLDER/'))
 			return key;
-		return '$ADDONS_FOLDER/$key';
+		return #if mobile StorageSystem.getDirectory() + #end '$ADDONS_FOLDER/$key';
 	}
 
 	public static function resolveContentPath(key:String = ''):String
 	{
 		key = normalizeFolderKey(key);
-		return key.length < 1 ? '$CONTENTS_FOLDER/' : '$CONTENTS_FOLDER/$key';
+		return key.length < 1 ? #if mobile StorageSystem.getDirectory() + #end '$CONTENTS_FOLDER/' : #if mobile StorageSystem.getDirectory() + #end '$CONTENTS_FOLDER/$key';
 	}
 
 	inline public static function contentRootDirectory(content:String):String
-		return '$CONTENTS_FOLDER/${normalizeFolderKey(content)}';
+		return #if mobile StorageSystem.getDirectory() + #end '$CONTENTS_FOLDER/${normalizeFolderKey(content)}';
 
 	inline public static function contentModDirectory(content:String, modFolder:String):String
 		return contentRootDirectory(content) + '/' + normalizeFolderKey(modFolder);
@@ -309,7 +308,7 @@ class Mods
 
 		if (mod.length < 1)
 			return rootFolder + (packageName.length > 0 ? '/$packageName' : '');
-		return '$mod/$rootFolder' + (packageName.length > 0 ? '/$packageName' : '');
+		return #if mobile StorageSystem.getDirectory() + #end '$mod/$rootFolder' + (packageName.length > 0 ? '/$packageName' : '');
 	}
 
 	inline public static function getModDirectories():Array<String>
