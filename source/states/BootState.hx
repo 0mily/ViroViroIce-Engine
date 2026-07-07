@@ -9,11 +9,6 @@ class BootState extends MusicBeatState
 		Mods.loadTopMod();
 		Mods.pushGlobalMods();
 		#end
-
-		#if (TOUCH_CONTROLS_ALLOWED && mobile)
-		trace("Loading mobile data");
-		MobileData.init();
-		#end
 		
 		FlxTransitionableState.skipNextTransIn = true;
 		FlxTransitionableState.skipNextTransOut = true;
