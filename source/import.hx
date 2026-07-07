@@ -19,7 +19,7 @@ import backend.Achievements;
 
 #if mobile
 import mobile.backend.StorageSystem;
-//import mobile.backend.utils.TouchUtil;
+import mobile.backend.TouchUtil;
 //import mobile.backend.utils.PopUp;
 // Não por agora
 #end
