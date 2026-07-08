@@ -127,7 +127,6 @@
 	<haxelib name="flixel" />
 	<haxelib name="flixel-addons" />
 	<haxelib name="nape-haxe4" /> <!-- bf doin -->
-	<haxelib name="extension-haptics" if="mobile" />
 	<haxelib name="android-manager" if="android" />
 	<haxelib name="tjson" />
 

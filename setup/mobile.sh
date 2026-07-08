@@ -36,7 +36,6 @@ haxelib install hxvlc --skip-dependencies
 haxelib install away3d 5.0.9
 haxelib install yagp 1.1.4
 haxelib install flxgif 1.0.3 --skip-dependencies
-haxelib install extension-haptics 1.0.4 --skip-dependencies
 haxelib install android-manager 1.0.1 --skip-dependencies
 
 echo ""
