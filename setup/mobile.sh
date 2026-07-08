@@ -18,7 +18,6 @@ echo ""
 
 echo -e "${CYAN}[1/3] Installing standard libraries...${NC}"
 echo "----------------------------------------------------------"
-haxelib install lime
 haxelib install openfl
 haxelib install flixel
 haxelib install flixel-addons
@@ -43,6 +42,7 @@ haxelib install android-manager 1.0.1 --skip-dependencies
 echo ""
 echo -e "${CYAN}[3/3] Installing Git repositories (Mobile specifics)...${NC}"
 echo "----------------------------------------------------------"
+haxelib git lime https://github.com/DeveloperPorting-Stuff/lime main
 haxelib git flxsoundfilters https://github.com/TheZoroForce240/FlxSoundFilters
 haxelib git hxcpp https://github.com/xdshiho/hxcpp.git
 haxelib git hscript-iris https://github.com/pisayesiwsi/hscript-iris.git dev
