@@ -163,12 +163,12 @@ class Main extends Sprite
 	}
 	
 	function onKeyPress(e:KeyboardEvent):Void
-{
-    if (e.keyCode == Keyboard.F11)
-    {
-        Lib.application.window.fullscreen = !Lib.application.window.fullscreen; // resquícios diretos da Cool as Ice Engine.
-    }
-}
+	{
+	    if (e.keyCode == Keyboard.F11)
+	    {
+	        Lib.application.window.fullscreen = !Lib.application.window.fullscreen; // resquícios diretos da Cool as Ice Engine.
+	    }
+	}
 
 	static function resetSpriteCache(sprite:Sprite):Void {
 		shaders.ShaderResizeFix.fixSprite(sprite);
@@ -216,10 +216,10 @@ class Main extends Sprite
 		errMsg += '\n\n> Crash Handler written by sqirra-rng';
 		
 		#if sys
-		if (!FileSystem.exists("./crash/"))
-			FileSystem.createDirectory("./crash/");
+		if (!FileSystem.exists(#if mobile StorageSystem.getDirectory() + #end "./crash/"))
+			FileSystem.createDirectory(#if mobile StorageSystem.getDirectory() + #end "./crash/");
 		
-		File.saveContent(path, errText);
+		File.saveContent(#if mobile StorageSystem.getDirectory() + #end path, errText);
 		Sys.println(errText);
 		#end
 		

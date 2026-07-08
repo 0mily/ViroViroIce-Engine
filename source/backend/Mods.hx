@@ -111,7 +111,7 @@ class Mods
 	{
 		key = normalizeFolderKey(key);
 		if (key.length < 1)
-			return '$ADDONS_FOLDER/';
+			return #if mobile StorageSystem.getDirectory() + #end '$ADDONS_FOLDER/';
 		if (key == ADDONS_FOLDER || key.startsWith('$ADDONS_FOLDER/'))
 			return key;
 		if (key == CONTENTS_FOLDER || key.startsWith('$CONTENTS_FOLDER/'))
@@ -949,10 +949,10 @@ class Mods
 
 		#if ADDONS_ALLOWED
 		#if sys
-		var listFile:String = FileSystem.exists(ADDONS_LIST_FILE) ? ADDONS_LIST_FILE : LEGACY_MODS_LIST_FILE;
-		if (FileSystem.exists(listFile)) {
+		var listFile:String = FileSystem.exists(#if mobile StorageSystem.getDirectory() + #end ADDONS_LIST_FILE) ? ADDONS_LIST_FILE : LEGACY_MODS_LIST_FILE;
+		if (FileSystem.exists(#if mobile StorageSystem.getDirectory() + #end listFile)) {
 			try {
-				for (mod in CoolUtil.coolTextFile(listFile)) {
+				for (mod in CoolUtil.coolTextFile(#if mobile StorageSystem.getDirectory() + #end listFile)) {
 					if (mod.trim().length < 1) continue;
 
 					var dat = mod.split('|');
@@ -1006,7 +1006,7 @@ class Mods
 		for (mod in list.available)
 			content += '$mod|${list.enabled.contains(mod) ? 1 : 0}\n';
 
-		File.saveContent(ADDONS_LIST_FILE, content);
+		File.saveContent(#if mobile StorageSystem.getDirectory() + #end ADDONS_LIST_FILE, content);
 		#end
 
 		updatedOnState = true;

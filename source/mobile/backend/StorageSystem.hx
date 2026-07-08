@@ -101,7 +101,7 @@ class StorageSystem
 			// Creating .nomedia files to avoid images remaining in the gallery
 			if (!FileSystem.exists(paths[0] + ".nomedia")) File.saveContent(paths[0] + ".nomedia", "/storage/emulated/0/Android/media/" + packageName);
 			
-			if (!FileSystem.exists(paths[0] + "assets") || !FileSystem.exists(paths[1] + "mods"))
+			if (!FileSystem.exists(paths[0] + "assets") || !FileSystem.exists(paths[1] + "contents") || !FileSystem.exists(paths[1] + "addons"))
 			{
 				startApkCopy();
 				return true;
@@ -110,11 +110,12 @@ class StorageSystem
 			{
 				trace("Running silent integrity check...");
 				var restoredAssets = copyFromAPK("assets/", null, false, getAssetsDirectory());
-				var restoredContent = copyFromAPK("mods/", null, false);
+				var restoredContent = copyFromAPK("contents/", null, false);
+				var restoredAddons = copyFromAPK("addons/", null, false);
 				
-				if (restoredAssets > 0 || restoredContent > 0)
+				if (restoredAssets > 0 || restoredContent > 0 || restoredAddons > 0)
 				{
-					trace('Integrity Check fixed missing files! Restored: ${restoredAssets + restoredContent} files.');
+					trace('Integrity Check fixed missing files! Restored: ${restoredAssets + restoredContent + restoredAddons} files.');
 				}
 				
 				return false;
@@ -140,7 +141,8 @@ class StorageSystem
 		try
 		{
 			copyFromAPK("assets/", null, true, getAssetsDirectory());
-			copyFromAPK("mods/", null, true);
+			copyFromAPK("contents/", null, true);
+			copyFromAPK("addons/", null, true);
 			
 			PopUp.showConfirm("Success!", "Files extracted. The game will now restart.", "Restart", "Cancel", function() {
 				lime.system.System.exit(0);
