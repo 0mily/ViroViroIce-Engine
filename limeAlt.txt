@@ -1,0 +1,2 @@
+Problema con hxcpp or hxdiscord_rpc:
+$env:HAXELIB_PATH='J:\YOUR\RUTE\FROM\REPO\ViroViroIce-Engine-GO\.haxelib'

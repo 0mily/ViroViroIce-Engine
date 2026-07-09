@@ -30,11 +30,10 @@ class CallbackHandler {
 			Convert.toLua(l, ret);
 			return 1;
 		} catch (e:haxe.Exception) {
-			if (Lua_helper.sendErrorsToLua) {
-				LuaL.error(l, 'Callback ${e.details()}');
-				return 0;
-			}
-			throw e;
+			var message:String = 'Callback ${e.details()}';
+			FunkinLua.luaTrace(message, false, false, ERROR);
+			Lua.pushstring(l, message);
+			return Lua.error(l);
 		}
 		return 0;
 	}

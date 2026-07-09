@@ -1,0 +1,22 @@
+diff --git a/source/psychlua/CallbackHandler.hx b/source/psychlua/CallbackHandler.hx
+index d68ce49..97b4d12 100644
+--- a/source/psychlua/CallbackHandler.hx
++++ b/source/psychlua/CallbackHandler.hx
+@@ -29,13 +29,12 @@ class CallbackHandler {
+ 			
+ 			Convert.toLua(l, ret);
+ 			return 1;
+ 		} catch (e:haxe.Exception) {
+-			if (Lua_helper.sendErrorsToLua) {
+-				LuaL.error(l, 'Callback ${e.details()}');
+-				return 0;
+-			}
+-			throw e;
++			var message:String = 'Callback ${e.details()}';
++			FunkinLua.luaTrace(message, false, false, ERROR);
++			Lua.pushstring(l, message);
++			return Lua.error(l);
+ 		}
+ 		return 0;
+ 	}
+ }
