@@ -144,11 +144,11 @@
 	<haxelib name="moonchart" />
 	<haxelib name="flxgif" />
 	<haxelib name="yagp" />
-	<haxelib name="flxsoundfilters" />
+	<haxelib name="flxsoundfilters" url="https://github.com/TheZoroForce240/FlxSoundFilters" ref="main" />
 
 	<!-- Other -->
 	<haxelib name="grig.audio" />
-	<haxelib name="funkin.vis" />
+	<haxelib name="funkVis" url="https://github.com/FunkinCrew/funkVis" ref="main" />
 
 	<!-- Not even used lol -->
 	<haxedef name="FM_ENGINE" value="PSYCH"/>

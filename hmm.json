@@ -1,0 +1,120 @@
+{
+    "dependencies":  [
+                         {
+                             "name":  "flixel",
+                             "type":  "haxelib",
+                             "dir":  null
+                         },
+                         {
+                             "name":  "flixel-addons",
+                             "type":  "haxelib",
+                             "dir":  null
+                         },
+                         {
+                             "name":  "nape-haxe4",
+                             "type":  "haxelib",
+                             "dir":  null
+                         },
+                         {
+                             "name":  "android-manager",
+                             "type":  "haxelib",
+                             "dir":  null
+                         },
+                        {
+                             "name":  "tjson",
+                             "type":  "haxelib",
+                             "dir":  null
+                         },
+                         {
+                             "name":  "hxCodec",
+                             "type":  "haxelib",
+                             "dir":  null
+                         },
+                         {
+                             "name":  "hxvlc",
+                             "type":  "haxelib",
+                             "dir":  null
+                         },
+                         {
+                             "name":  "linc_luajit",
+                             "type":  "haxelib",
+                             "dir":  null
+                         },
+                         {
+                             "name":  "hscript-iris",
+                             "type":  "haxelib",
+                             "dir":  null
+                         },
+                         {
+                             "name":  "hxdiscord_rpc",
+                             "type":  "haxelib",
+                             "dir":  null
+                         },
+                         {
+                             "name":  "flixel-animate",
+                             "type":  "haxelib",
+                             "dir":  null
+                         },
+                         {
+                             "name":  "moonchart",
+                             "type":  "haxelib",
+                             "dir":  null
+                         },
+                         {
+                             "name":  "flxgif",
+                             "type":  "haxelib",
+                             "dir":  null
+                         },
+                         {
+                             "name":  "yagp",
+                             "type":  "haxelib",
+                             "dir":  null
+                         },
+                         {
+                             "name":  "flxsoundfilters",
+                             "type":  "git",
+                             "url":  "https://github.com/TheZoroForce240/FlxSoundFilters",
+                             "ref":  "main",
+                             "dir":  null
+                         },
+                         {
+                             "name":  "grig.audio",
+                             "type":  "haxelib",
+                             "dir":  null
+                         },
+                         {
+                             "name":  "funkVis",
+                             "type":  "git",
+                             "url":  "https://github.com/FunkinCrew/funkVis",
+                             "ref":  "main",
+                             "dir":  null
+                         },
+                         {
+                             "name":  "hxcpp-debug-server",
+                             "type":  "haxelib",
+                             "dir":  null
+                         },
+                         		{
+                            "name": "hxcpp",
+                            "type": "git",
+                            "dir": null,
+                            "ref": "1a468335a0016aa87439c1878b5b845f88a4bae0",
+                            "url": "https://github.com/FunkinCrew/hxcpp"
+                        },
+                        		{
+                            "name": "lime",
+                            "type": "haxelib",
+                            "dir": null
+                        },
+                        {
+                            "name": "openfl",
+                            "type": "haxelib",
+                            "dir": null
+                        },
+                        {
+                            "name": "funkin-modchart",
+                            "type": "haxelib",
+                            "dir": null
+                        }
+                     ]
+}
