@@ -8,7 +8,7 @@ import backend.Difficulty;
 import flixel.FlxG;
 import flixel.FlxSprite;
 import flixel.group.FlxSpriteGroup;
-import flixel.text.FlxText;
+import backend.ViroText as FlxText;
 import flixel.util.FlxColor;
 import flixel.math.FlxMath;
 import states.PlayState;

@@ -104,6 +104,21 @@ class Main extends Sprite
 		Language.reloadPhrases();
 		Difficulty.resetList();
 		moonchart.Moonchart.init();
+
+	/**
+		* For HaxeUI.
+		* doing it for later
+	**/
+		haxe.ui.locale.LocaleManager.instance.autoSetLocale = false;
+		haxe.ui.Toolkit.init();
+		haxe.ui.Toolkit.theme = 'dark';
+		haxe.ui.Toolkit.autoScale = false;
+		haxe.ui.focus.FocusManager.instance.autoFocus = false;
+		haxe.ui.tooltips.ToolTipManager.defaultDelay = 200;
+	/**
+		* For HaxeUI.
+		* doing it for later
+	**/
 		
 		#if HSCRIPT_ALLOWED HScript.init(); #end
 		#if GLOBAL_SCRIPTS GlobalScriptHandler.init(); #end
@@ -155,7 +170,8 @@ class Main extends Sprite
 		// shader coords fix
 		FlxG.signals.gameResized.add((w:Int, h:Int) -> {
 			backend.CameraResizeFix.aplyAll();
-			shaders.ShaderResizeFix.fixAll();
+			if (!backend.ResolutionManager.isTweening())
+				shaders.ShaderResizeFix.fixAll();
 		});
 		FlxG.cameras.cameraResized.add((camera) -> backend.CameraResizeFix.aplyCentroOFS(camera));
 

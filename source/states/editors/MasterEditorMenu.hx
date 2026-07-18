@@ -13,6 +13,7 @@ class MasterEditorMenu extends ScriptedSubState
 	var options:Array<String> = [
 		'Chart Editor',
 		'Character Editor',
+		'Blank UI Editor',
 		'Stage Editor',
 		'Dropshadow Editor',
 		'Level Editor',
@@ -33,6 +34,33 @@ class MasterEditorMenu extends ScriptedSubState
 	
 	var textBG:FlxSprite;
 	var bg:FlxSprite;
+	var shutdim:FlxSprite;
+	var shutvig:FlxSprite;
+	var shuttext:FlxText;
+	var shutTreme:Float = 0;
+	var shuttxtY:Float = 0;
+	final msgs:Array<String> = [
+		"NÃO",
+		"Tá ruim",
+		"Incompleto",
+		"*Tosse*",
+		"*fart*",
+		"Pó parando",
+		"Eu em",
+		"Shiho, para.",
+		"Agora não",
+		"dps termino",
+		"ativem vocês mesmos, eu em",
+		"Bleh",
+		"oxi cara?",
+		"nem dá",
+		"tô não",
+		"later",
+		"soon",
+		"not now",
+		"vai embora",
+		"pq nn tenta outra opção em?"
+	];
 	
 	public function new(fadeIn:Bool = false) {
 		super();
@@ -68,8 +96,10 @@ class MasterEditorMenu extends ScriptedSubState
 		
 		optionFunctions['Chart Editor'] = () -> openSubState(new states.editors.content.CoolNewSongSubState());
 		optionFunctions['Character Editor'] = () -> LoadingState.loadAndSwitchState(new CharacterEditorState(Character.DEFAULT_CHARACTER, false));
+		// optionFunctions['Blank UI Editor'] = () -> MusicBeatState.switchState(new BlankUIEditorState()); believe me. Is just as buggy as it looks.
+		optionFunctions['Blank UI Editor'] = blockshut;
 		optionFunctions['Stage Editor'] = () -> LoadingState.loadAndSwitchState(new StageEditorState());
-        if (PlayState.SONG != null) optionFunctions['Dropshadow Editor'] =  () -> LoadingState.loadAndSwitchState(new DropShadowEditor(), false);
+		optionFunctions['Dropshadow Editor'] = () -> LoadingState.loadAndSwitchState(new DropShadowEditor(), false);
 		optionFunctions['Level Editor'] = () -> MusicBeatState.switchState(new LevelEditorState());
 		optionFunctions['Menu Character Editor'] = () -> MusicBeatState.switchState(new MenuCharacterEditorState());
 		optionFunctions['Dialogue Editor'] = () -> LoadingState.loadAndSwitchState(new DialogueEditorState(), false);
@@ -163,9 +193,90 @@ class MasterEditorMenu extends ScriptedSubState
 			if (item.targetY == 0)
 				item.alpha = 1;
 		}
+
+		if (shutTreme > 0 && shuttext != null)
+		{
+			shutTreme -= elapsed;
+			shuttext.x = 40 + FlxG.random.float(-10, 10);
+			shuttext.y = shuttxtY + FlxG.random.float(-8, 8);
+		}
+		else if (shuttext != null)
+		{
+			shuttext.x = 40;
+			shuttext.y = shuttxtY;
+		}
 		super.update(elapsed);
 		
 		postUpdate(elapsed);
+	}
+
+	function blockshut():Void
+	{
+		FlxG.sound.play(Paths.missnoteRandom(), FlxG.random.float(0.1, 0.2));
+		FlxG.camera.shake(0.006, 0.15);
+
+		if (FlxG.sound.music != null)
+		{
+			var musicVolume:Float = FlxG.sound.music.volume;
+			FlxTween.cancelTweensOf(FlxG.sound.music, ['volume']);
+			FlxG.sound.music.volume = Math.min(FlxG.sound.music.volume, 0.25);
+			new FlxTimer().start(0.01, (_) -> {
+				if (FlxG.sound.music != null)
+					FlxTween.tween(FlxG.sound.music, {volume: musicVolume}, 1.4, {ease: FlxEase.quadOut});
+			});
+		}
+
+		if (shutdim == null)
+		{
+			shutdim = new FlxSprite().makeGraphic(1, 1, FlxColor.BLACK);
+			shutdim.scale.set(FlxG.width, FlxG.height);
+			shutdim.scrollFactor.set();
+			shutdim.updateHitbox();
+			shutdim.alpha = 0;
+			add(shutdim);
+
+			shutvig = new FlxSprite();
+			shutvig.loadGraphic(backend.VignetteUtil.makeGraphic(FlxG.width, FlxG.height, FlxColor.BLACK, 1, 0.35, 0.5));
+			shutvig.scrollFactor.set();
+			shutvig.alpha = 0;
+			add(shutvig);
+		}
+
+		if (shuttext == null)
+		{
+			shuttext = new FlxText(40, 0, FlxG.width - 80, '', 72);
+			shuttext.setFormat(Paths.font("vcr.ttf"), 72, FlxColor.WHITE, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
+			shuttext.borderSize = 3;
+			shuttext.scrollFactor.set();
+			add(shuttext);
+		}
+
+		FlxTween.cancelTweensOf(shutdim);
+		FlxTween.cancelTweensOf(shutvig);
+		FlxTween.cancelTweensOf(shuttext);
+		FlxTween.cancelTweensOf(shuttext.scale);
+
+		shutdim.alpha = 0;
+		shutvig.alpha = 0;
+		FlxTween.tween(shutdim, {alpha: 0.55}, 0.12, {ease: FlxEase.quadOut});
+		FlxTween.tween(shutvig, {alpha: 0.95}, 0.12, {ease: FlxEase.quadOut});
+		FlxTween.tween(shutdim, {alpha: 0}, 0.65, {ease: FlxEase.quadIn, startDelay: 0.6});
+		FlxTween.tween(shutvig, {alpha: 0}, 0.65, {ease: FlxEase.quadIn, startDelay: 0.6});
+
+		var message:String = FlxG.random.getObject(msgs);
+		if (message == '*fart*')
+			FlxG.sound.play(Paths.sound('general/fart'), 0.7);
+
+		shuttext.text = message;
+		shuttext.alpha = 1;
+		shuttext.angle = FlxG.random.float(-6, 6);
+		shuttext.scale.set(1.2, 1.2);
+		shuttext.screenCenter(Y);
+		shuttxtY = shuttext.y;
+		shutTreme = 0.45;
+
+		FlxTween.tween(shuttext, {alpha: 0, angle: FlxG.random.float(-12, 12)}, 0.75, {ease: FlxEase.quadIn, startDelay: 0.35});
+		FlxTween.tween(shuttext.scale, {x: 1, y: 1}, 0.2, {ease: FlxEase.backOut});
 	}
 
 	function changeSelection(change:Int = 0, forced:Bool = false) {

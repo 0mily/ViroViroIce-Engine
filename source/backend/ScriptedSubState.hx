@@ -86,6 +86,12 @@ class ScriptedSubState extends MusicBeatSubstate {
 		if (callOnScripts('onUpdatePresence', [rpcDetails, rpcState], true) != LuaUtils.Function_Stop)
 			super.updatePresence();
 	}
+
+	public override function onResize(Width:Int, Height:Int):Void {
+		super.onResize(Width, Height);
+		if (_pre)
+			callOnScripts('onResize', [Width, Height]);
+	}
 	
 	public override function draw():Void {
 		if (callOnScripts('onDraw', true) == LuaUtils.Function_Stop) return;

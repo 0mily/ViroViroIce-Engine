@@ -48,6 +48,7 @@ import psychlua.HScript;
 #end
 
 import backend.DropShadowData;
+import backend.DropShadowData.CharacterSpecificData;
 
 typedef StrumRuntimeTarget = {
 	var staticIndices:Array<Int>;
@@ -352,7 +353,6 @@ class PlayState extends ScriptedState
 	public var scriptedCameraBopActive:Bool = false;
 	public var scriptedCameraBopRate:Float = 4;
 	public var scriptedCameraBopOffset:Float = 0;
-	public var scriptedCameraBopIntensity:Float = 1;
 	public var scriptedCameraBopUnit:String = 'beat';
 	public var scriptedCameraBopGame:Float = 0.015;
 	public var scriptedCameraBopHUD:Float = 0.03;
@@ -501,6 +501,8 @@ class PlayState extends ScriptedState
 	public var scoreTxt:FlxText;
 	public var timeTxt:FlxText;
 	var scoreTxtTween:FlxTween;
+	var resolutionLayoutWidth:Int = -1;
+	var resolutionLayoutHeight:Int = -1;
 
 	/**
 	 * The player's accumulated score since the start of the week (in Story Mode).
@@ -604,6 +606,11 @@ class PlayState extends ScriptedState
 
 		// for lua
 		instance = this;
+		backend.ResolutionManager.syncForState(this);
+		// Keep the dimensions that will be used by objects created before script onCreate callbacks. ( SORRY JULIEEEEE )
+		// now scripts should probably work better
+		resolutionLayoutWidth = FlxG.width;
+		resolutionLayoutHeight = FlxG.height;
 
 		PauseSubState.songName = null; //Reset to default
 		playbackRate = ClientPrefs.getGameplaySetting('songspeed');
@@ -769,6 +776,8 @@ class PlayState extends ScriptedState
 				#end
 			}
 		#end
+		// preguiçoso.
+		applyResolutionLayout();
 
 		var camPos:FlxPoint = FlxPoint.get(girlfriendCameraOffset[0], girlfriendCameraOffset[1]);
 		if(gf != null)
@@ -801,9 +810,8 @@ class PlayState extends ScriptedState
 		startCharacterScripts(boyfriend);
 		#end
 
-        // Dropshadow 
-        dropshadowData = DropShadowData.getDropshadowFile(curStage);
-        setDropshadow();
+        // Dropshadow
+        dropshadowData = new DropShadowData(curStage);
 
 
         
@@ -928,6 +936,8 @@ class PlayState extends ScriptedState
 		noteGroup.cameras = [camHUD];
 		comboGroup.cameras = [camHUD];
 
+		resolutionLayoutWidth = FlxG.width;
+		resolutionLayoutHeight = FlxG.height;
 		startingSong = true;
 
 		#if LUA_ALLOWED
@@ -966,6 +976,9 @@ class PlayState extends ScriptedState
 		milyMC.MilyMC.load(this);
 		#end
 		#end
+		// Song, note-type and event scripts run at different points of PlayState creation.
+		// Reconcile any resolution change once all of their onCreate callbacks have finished.
+		applyResolutionLayout();
 
 		if(eventNotes.length > 0)
 		{
@@ -1004,72 +1017,49 @@ class PlayState extends ScriptedState
 		resetRPC();
 		
 		stagesFunc(function(stage:BaseStage) stage.createPost());
+		setDropshadow();
 		super.create();
 		Paths.clearUnusedMemory();
 		
 		if(eventNotes.length < 1) checkEventNote();
 	}
 
-    var dropshadowData:DropShadowFile;
-    function setDropshadow()
-    {
-        for(i in 0...dadGroup.length)
-        {
-            var character:Character = cast dadGroup.members[i];
-            character.dropShadow.enabled = dropshadowData.dad.enabled;
-            character.dropShadow.color = cast FlxColor.fromString(dropshadowData.color);
-            character.dropShadow.distance = dropshadowData.distance;
-            character.dropShadow.strength = dropshadowData.strength;
-            character.dropShadow.antialiasAmt = dropshadowData.antialiasAmt;
-            character.dropShadow.baseHue = dropshadowData.hue;
-            character.dropShadow.baseBrightness = dropshadowData.brightness;
-            character.dropShadow.baseContrast = dropshadowData.contrast;
-            character.dropShadow.baseSaturation  = dropshadowData.saturation;
-            character.dropShadow.threshold = dropshadowData.threshold;
+	var dropshadowData:DropShadowData;
+	function setDropshadow()
+	{
+		if(dropshadowData == null)
+			dropshadowData = new DropShadowData(curStage);
 
-            if(dropshadowData.dad.useAltMask) character.dropShadow.loadAltMask(dropshadowData.dad.altMaskImage);
-            character.dropShadow.angle = dropshadowData.dad.angle;
-            character.dropShadow.maskThreshold = dropshadowData.dad.maskThreshold;
-        }
+		DropShadowData.applyToCharacter(dad, dropshadowData.dad, ClientPrefs.data.shaders);
+		DropShadowData.applyToCharacter(gf, dropshadowData.girlfriend, ClientPrefs.data.shaders);
+		DropShadowData.applyToCharacter(boyfriend, dropshadowData.boyfriend, ClientPrefs.data.shaders);
+	}
 
-        for(i in 0...gfGroup.length)
-        {
-            var character:Character = cast gfGroup.members[i];
-            character.dropShadow.enabled = dropshadowData.girlfriend.enabled;
-            character.dropShadow.color = cast FlxColor.fromString(dropshadowData.color);
-            character.dropShadow.distance = dropshadowData.distance;
-            character.dropShadow.strength = dropshadowData.strength;
-            character.dropShadow.antialiasAmt = dropshadowData.antialiasAmt;
-            character.dropShadow.baseHue = dropshadowData.hue;
-            character.dropShadow.baseBrightness = dropshadowData.brightness;
-            character.dropShadow.baseContrast = dropshadowData.contrast;
-            character.dropShadow.baseSaturation  = dropshadowData.saturation;
-            character.dropShadow.threshold = dropshadowData.threshold;
+	function applyDropshadowToGroup(group:FlxSpriteGroup, data:CharacterSpecificData)
+	{
+		if(group == null || data == null)
+			return;
 
-            if(dropshadowData.girlfriend.useAltMask)character.dropShadow.loadAltMask(dropshadowData.girlfriend.altMaskImage);
-            character.dropShadow.angle = dropshadowData.girlfriend.angle;
-            character.dropShadow.maskThreshold = dropshadowData.girlfriend.maskThreshold;
-        }
+		for(member in group.members)
+			if(Std.isOfType(member, Character) && member.alpha > 0.001)
+				DropShadowData.applyToCharacter(cast member, data, ClientPrefs.data.shaders);
+	}
 
-        for(i in 0...bfGroup.length)
-        {
-            var character:Character = cast bfGroup.members[i];
-            character.dropShadow.enabled = dropshadowData.boyfriend.enabled;
-            character.dropShadow.color = cast FlxColor.fromString(dropshadowData.color);
-            character.dropShadow.distance = dropshadowData.distance;
-            character.dropShadow.strength = dropshadowData.strength;
-            character.dropShadow.antialiasAmt = dropshadowData.antialiasAmt;
-            character.dropShadow.baseHue = dropshadowData.hue;
-            character.dropShadow.baseBrightness = dropshadowData.brightness;
-            character.dropShadow.baseContrast = dropshadowData.contrast;
-            character.dropShadow.baseSaturation  = dropshadowData.saturation;
-            character.dropShadow.threshold = dropshadowData.threshold;
+	function applyDropshadowForType(character:Character, type:Int)
+	{
+		if(character == null || dropshadowData == null)
+			return;
 
-            if(dropshadowData.boyfriend.useAltMask) character.dropShadow.loadAltMask(dropshadowData.boyfriend.altMaskImage);
-            character.dropShadow.angle = dropshadowData.boyfriend.angle;
-            character.dropShadow.maskThreshold = dropshadowData.boyfriend.maskThreshold;
-        }
-    }
+		switch(type)
+		{
+			case 0:
+				DropShadowData.applyToCharacter(character, dropshadowData.boyfriend, ClientPrefs.data.shaders);
+			case 1:
+				DropShadowData.applyToCharacter(character, dropshadowData.dad, ClientPrefs.data.shaders);
+			case 2:
+				DropShadowData.applyToCharacter(character, dropshadowData.girlfriend, ClientPrefs.data.shaders);
+		}
+	}
 	
 	#if LUA_ALLOWED
 	public override function implementLua(lua:FunkinLua):Void {
@@ -1243,6 +1233,133 @@ class PlayState extends ScriptedState
 		healthBar.setColors(FlxColor.fromRGB(dad.healthColorArray[0], dad.healthColorArray[1], dad.healthColorArray[2]),
 			FlxColor.fromRGB(boyfriend.healthColorArray[0], boyfriend.healthColorArray[1], boyfriend.healthColorArray[2]));
 	}
+
+	public function applyResolutionLayout():Void
+	{
+		var oldWidth:Int = resolutionLayoutWidth > 0 ? resolutionLayoutWidth : FlxG.width;
+		var oldHeight:Int = resolutionLayoutHeight > 0 ? resolutionLayoutHeight : FlxG.height;
+		var healthBarAdjusted:Bool = false;
+
+		if(timeTxt != null)
+		{
+			var oldX:Float = STRUM_X + (oldWidth / 2) - 248;
+			var oldY:Float = ClientPrefs.data.downScroll ? oldHeight - 60 : 28;
+			if(closeTo(timeTxt.x, oldX))
+				timeTxt.x = STRUM_X + (FlxG.width / 2) - 248;
+			if(closeTo(timeTxt.y, oldY))
+				timeTxt.y = ClientPrefs.data.downScroll ? FlxG.height - 60 : 28;
+		}
+
+		if(timeBar != null)
+		{
+			var oldX:Float = (oldWidth - timeBar.width) * 0.5;
+			if(closeTo(timeBar.x, oldX))
+				timeBar.screenCenter(X);
+			if(timeTxt != null && closeTo(timeBar.y, (ClientPrefs.data.downScroll ? oldHeight - 60 : 28) - 1))
+				timeBar.y = timeTxt.y - 1;
+			timeBar.updateBar();
+		}
+
+		if(healthBar != null)
+		{
+			var oldX:Float = (oldWidth - healthBar.width) * 0.5;
+			var oldY:Float = oldHeight * (!ClientPrefs.data.downScroll ? 0.89 : 0.11);
+			if(closeTo(healthBar.x, oldX))
+			{
+				healthBar.screenCenter(X);
+				healthBarAdjusted = true;
+			}
+			if(closeTo(healthBar.y, oldY))
+			{
+				healthBar.y = FlxG.height * (!ClientPrefs.data.downScroll ? 0.89 : 0.11);
+				healthBarAdjusted = true;
+			}
+			healthBar.updateBar();
+		}
+
+		if(healthBarAdjusted && iconP1 != null && iconP2 != null && healthBar != null)
+		{
+			iconP1.y = healthBar.y - 75;
+			iconP2.y = healthBar.y - 75;
+			updateIconsPosition(); // iiiiiiiiiiiiiiiiiiiiiiiiii suck
+		}
+
+		if(scoreTxt != null)
+		{
+			if(closeTo(scoreTxt.x, 0))
+				scoreTxt.x = 0;
+			if(closeTo(scoreTxt.fieldWidth, oldWidth))
+				scoreTxt.fieldWidth = FlxG.width;
+			if(closeTo(scoreTxt.y, ClientPrefs.data.downScroll ? 100 : oldHeight - 40))
+				scoreTxt.y = ClientPrefs.data.downScroll ? 100 : FlxG.height - 40;
+			scoreTxt.updateHitbox();
+		}
+
+		if(botplayTxt != null && healthBar != null)
+		{
+			if(closeTo(botplayTxt.x, 400))
+				botplayTxt.x = 400;
+			if(closeTo(botplayTxt.fieldWidth, Math.max(1, oldWidth - 800)))
+				botplayTxt.fieldWidth = Math.max(1, FlxG.width - 800);
+			if(healthBarAdjusted && closeTo(botplayTxt.y, ClientPrefs.data.downScroll ? oldHeight * 0.11 + 70 : oldHeight * 0.89 - 90))
+				botplayTxt.y = ClientPrefs.data.downScroll ? healthBar.y + 70 : healthBar.y - 90;
+			botplayTxt.updateHitbox();
+		}
+
+		applyStrumResolutionLayout(false, oldWidth, oldHeight);
+		applyStrumResolutionLayout(true, oldWidth, oldHeight);
+		FlxG.worldBounds.set(0, 0, FlxG.width, FlxG.height);
+		resolutionLayoutWidth = FlxG.width;
+		resolutionLayoutHeight = FlxG.height;
+	}
+
+	function applyStrumResolutionLayout(player:Bool, oldWidth:Int, oldHeight:Int):Void
+	{
+		var group:FlxTypedGroup<StrumNote> = player ? playerStrums : opponentStrums;
+		if(group == null)
+			return;
+
+		var strumLineX:Float = ClientPrefs.data.middleScroll ? STRUM_X_MIDDLESCROLL : STRUM_X;
+		for(strum in group.members)
+		{
+			if(strum == null)
+				continue;
+
+			var oldX:Float = strumLineX;
+			if(!player && ClientPrefs.data.middleScroll)
+			{
+				oldX += 310;
+				if(strum.noteData > 1)
+					oldX += oldWidth / 2 + 25;
+			}
+			oldX += Note.swagWidth * strum.noteData;
+			oldX += 50;
+			if(player)
+				oldX += oldWidth / 2;
+
+			var newX:Float = strumLineX;
+			if(!player && ClientPrefs.data.middleScroll)
+			{
+				newX += 310;
+				if(strum.noteData > 1)
+					newX += FlxG.width / 2 + 25;
+			}
+
+			newX += Note.swagWidth * strum.noteData;
+			newX += 50;
+			if(player)
+				newX += FlxG.width / 2;
+
+			if(closeTo(strum.x, oldX))
+				strum.x = newX;
+			strum.downScroll = ClientPrefs.data.downScroll;
+			if(closeTo(strum.y, strum.downScroll ? oldHeight - strum.height - 50 : 50))
+				strum.y = strum.downScroll ? getDownscrollStrumY(strum) : 50;
+		}
+	}
+
+	static inline function closeTo(value:Float, expected:Float):Bool
+		return Math.isNaN(value) || Math.abs(value - expected) <= 1.5;
 
 	public function setStrumSkin(target:Dynamic, skinName:String):Bool
 	{
@@ -2291,6 +2408,7 @@ class PlayState extends ScriptedState
 		video.tag = tag;
 		video.pauseWithGame = pauseWithGame;
 		video.syncWithSong = syncWithSong;
+		video.playOnAdd = playOnLoad;
 		video.setPosition(x, y);
 		video.cameras = [LuaUtils.cameraFromString(camera)];
 		var vars:Map<String, Dynamic> = MusicBeatState.getVariables();
@@ -2316,8 +2434,6 @@ class PlayState extends ScriptedState
 			video.destroy();
 		};
 
-		if(playOnLoad)
-			video.play();
 		return video;
 		#else
 		FlxG.log.warn('Platform not supported!');
@@ -3860,11 +3976,11 @@ class PlayState extends ScriptedState
 	*/
 	public dynamic function updateIconsScale(elapsed:Float)
 	{
-		var mult:Float = FlxMath.lerp(1, iconP1.scale.x, Math.exp(-elapsed * 9 * playbackRate));
+		var mult:Float = FlxMath.lerp(1, iconP1.scale.x, Math.exp(-elapsed * 15 * playbackRate));
 		iconP1.scale.set(mult, mult);
 		iconP1.updateHitbox();
 
-		var mult:Float = FlxMath.lerp(1, iconP2.scale.x, Math.exp(-elapsed * 9 * playbackRate));
+		var mult:Float = FlxMath.lerp(1, iconP2.scale.x, Math.exp(-elapsed * 15 * playbackRate));
 		iconP2.scale.set(mult, mult);
 		iconP2.updateHitbox();
 	}
@@ -4266,6 +4382,20 @@ class PlayState extends ScriptedState
 					case 'elasticinout':
 						return FlxEase.elasticInOut;
 
+					case 'smoothstep' | 'smoothstepinout': // shit for Vslice port
+						return FlxEase.smoothStepInOut;
+					case 'smoothstepin':
+						return FlxEase.smoothStepIn;
+					case 'smoothstepout':
+						return FlxEase.smoothStepOut;
+
+					case 'smootherstep' | 'smootherstepinout':
+						return FlxEase.smootherStepInOut;
+					case 'smootherstepin':
+						return FlxEase.smootherStepIn;
+					case 'smootherstepout':
+						return FlxEase.smootherStepOut;
+
 					default:
 						return FlxEase.linear;
 				}
@@ -4426,9 +4556,6 @@ class PlayState extends ScriptedState
 			case 'Modify Camera Move' | 'ModifyCameraMove': // desculpa Shiho
 				applyModifyCameraMoveEvent(value1, value2, values);
 
-			case 'Set Camera Bop' | 'SetCameraBop':
-				applySetCameraBopEvent(value1, value2, values);
-
 			case 'Play Animation' | 'PlayAnimation':
 				//trace('Anim to play: ' + value1);
 				if(eventName == 'PlayAnimation')
@@ -4531,11 +4658,13 @@ class PlayState extends ScriptedState
 
 							var lastAlpha:Float = boyfriend.alpha;
 							var lastShader = boyfriend.shader;
+							if(lastShader == boyfriend.dropShadow) lastShader = null;
 							boyfriend.alpha = 0.00001;
 							boyfriend.shader = null;
 							boyfriend = boyfriendMap.get(value2);
 							boyfriend.alpha = lastAlpha;
 							boyfriend.shader = lastShader;
+							applyDropshadowForType(boyfriend, charType);
 							iconP1.changeIcon(boyfriend.healthIcon);
 						}
 						setOnScripts('boyfriendName', boyfriend.curCharacter);
@@ -4549,6 +4678,7 @@ class PlayState extends ScriptedState
 							var wasGf:Bool = dad.curCharacter.startsWith('gf-') || dad.curCharacter == 'gf';
 							var lastAlpha:Float = dad.alpha;
 							var lastShader = dad.shader;
+							if(lastShader == dad.dropShadow) lastShader = null;
 							dad.alpha = 0.00001;
 							dad.shader = null;
 							dad = dadMap.get(value2);
@@ -4561,6 +4691,7 @@ class PlayState extends ScriptedState
 							}
 							dad.alpha = lastAlpha;
 							dad.shader = lastShader;
+							applyDropshadowForType(dad, charType);
 							iconP2.changeIcon(dad.healthIcon);
 						}
 						setOnScripts('dadName', dad.curCharacter);
@@ -4576,11 +4707,13 @@ class PlayState extends ScriptedState
 
 								var lastAlpha:Float = gf.alpha;
 								var lastShader = gf.shader;
+								if(lastShader == gf.dropShadow) lastShader = null;
 								gf.alpha = 0.00001;
 								gf.shader = null;
 								gf = gfMap.get(value2);
 								gf.alpha = lastAlpha;
 								gf.shader = lastShader;
+								applyDropshadowForType(gf, charType);
 							}
 							setOnScripts('gfName', gf.curCharacter);
 						}
@@ -4697,48 +4830,10 @@ class PlayState extends ScriptedState
 		scriptedCameraBopBlocksDefault = blockDefault;
 		scriptedCameraBopRate = 4;
 		scriptedCameraBopOffset = 0;
-		scriptedCameraBopIntensity = 1;
 		scriptedCameraBopUnit = 'beat';
 		scriptedCameraBopGame = 0.015;
 		scriptedCameraBopHUD = 0.03;
 		scriptedCameraBopPattern = null;
-	}
-
-	function applySetCameraBopEvent(value1:String, value2:String, ?values:Array<String>):Void
-	{
-		var hasValues:Bool = false;
-		if(values != null)
-		{
-			for(value in values)
-			{
-				if(value != null && value.trim().length > 0)
-				{
-					hasValues = true;
-					break;
-				}
-			}
-		}
-		else
-			hasValues = (value1 != null && value1.trim().length > 0) || (value2 != null && value2.trim().length > 0);
-
-		if(!hasValues)
-		{
-			resetScriptedCameraBop();
-			return;
-		}
-
-		scriptedCameraBopIntensity = parseEventFloat(values, 0, value1, 1);
-		scriptedCameraBopRate = parseEventFloat(values, 1, value2, 4);
-		scriptedCameraBopOffset = parseEventFloat(values, 2, null, 0);
-		if(Math.isNaN(scriptedCameraBopIntensity)) scriptedCameraBopIntensity = 1;
-		if(Math.isNaN(scriptedCameraBopRate) || scriptedCameraBopRate < 0) scriptedCameraBopRate = 0;
-		if(Math.isNaN(scriptedCameraBopOffset)) scriptedCameraBopOffset = 0;
-		scriptedCameraBopUnit = 'beat';
-		scriptedCameraBopGame = 0.015;
-		scriptedCameraBopHUD = 0.03;
-		scriptedCameraBopPattern = null;
-		scriptedCameraBopActive = scriptedCameraBopRate > 0 && scriptedCameraBopIntensity != 0;
-		scriptedCameraBopBlocksDefault = scriptedCameraBopActive;
 	}
 
 	function applyCameraModuleBopEvent(value1:String, value2:String, ?values:Array<String>):Void
@@ -4766,7 +4861,6 @@ class PlayState extends ScriptedState
 
 		scriptedCameraBopUnit = normalizeCameraBopUnit(timing.length > 1 ? timing[1] : 'beat');
 		scriptedCameraBopOffset = 0;
-		scriptedCameraBopIntensity = 1;
 		scriptedCameraBopGame = parseFloatOr(zoom.length > 0 ? zoom[0] : null, 0);
 		scriptedCameraBopHUD = parseFloatOr(zoom.length > 1 ? zoom[1] : null, 0);
 		scriptedCameraBopPattern = null;
@@ -6106,7 +6200,7 @@ class PlayState extends ScriptedState
 		// play character anims
 		var char:Character = getNoteCharacter(note, boyfriend);
 		if (char != null) {
-			if ((note == null || !note.noMissAnimation) && char.hasMissAnimations) {
+			if ((note == null || note.shouldMissAnim()) && char.hasMissAnimations) {
 				var postfix:String = '';
 				if (note != null) postfix = note.animSuffix;
 
@@ -6146,7 +6240,7 @@ class PlayState extends ScriptedState
 				applyCameraMove(note, char);
 				char.specialAnim = true;
 				char.heyTimer = 0.6;
-			} else if(!note.noAnimation) {
+			} else if(note.shouldPlayAnim()) {
 				var animToPlay:String = singAnimations[Std.int(Math.abs(Math.min(singAnimations.length-1, note.noteData)))] + note.animSuffix;
 
 				if (char.playSingAnimation(animToPlay, note.isSustainNote))
@@ -6196,12 +6290,11 @@ class PlayState extends ScriptedState
 			FlxG.sound.play(note.hitsound == 'hitsound' ? Paths.hitsound() : Paths.sound(note.hitsound), note.hitsoundVolume);
 		
 		var noteCharacter:Character = getNoteCharacter(note, boyfriend);
-		var char:Character = null;
+		var char:Character = noteCharacter;
 		if (!note.hitCausesMiss) { //Common notes
-			if (!note.noAnimation) {
+			if (note.shouldPlayAnim()) {
 				var animToPlay:String = singAnimations[Std.int(Math.abs(Math.min(singAnimations.length-1, note.noteData)))] + note.animSuffix;
 				
-				char = noteCharacter;
 				if (char != null) {
 					if (char.playSingAnimation(animToPlay, note.isSustainNote))
 						applyCameraMove(note, char);
@@ -6251,9 +6344,7 @@ class PlayState extends ScriptedState
 			if (gainHealth) health += note.hitHealth * healthGain;
 
 		} else { //Notes that count as a miss if you hit them (Hurt notes for example)
-			char = noteCharacter;
-			
-			if (!note.noMissAnimation) {
+			if (note.shouldMissAnim()) {
 				switch (note.noteType) {
 					case 'Hurt Note':
 						if (char != null && char.hasAnimation('hurt')) {
@@ -6485,7 +6576,7 @@ class PlayState extends ScriptedState
 		if(!scriptedCameraBopHitsPosition(position))
 			return;
 
-		addCameraZoomBop(scriptedCameraBopGame * camZoomingMult * scriptedCameraBopIntensity, scriptedCameraBopHUD * camZoomingMult * scriptedCameraBopIntensity);
+		addCameraZoomBop(scriptedCameraBopGame * camZoomingMult, scriptedCameraBopHUD * camZoomingMult);
 	}
 
 	function scriptedCameraBopHitsPosition(position:Int):Bool

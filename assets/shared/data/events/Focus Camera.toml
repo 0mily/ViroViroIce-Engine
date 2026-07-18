@@ -35,7 +35,7 @@ type = 'dropdown'
 group = 2
 part = 1
 default = 'classic'
-options = [ 'classic', 'instant', 'linear', 'quadIn', 'quadOut', 'quadInOut', 'cubeIn', 'cubeOut', 'cubeInOut', 'sineIn', 'sineOut', 'sineInOut', 'expoIn', 'expoOut', 'expoInOut', 'backIn', 'backOut', 'backInOut', 'elasticOut', 'bounceOut' ]
+options = [ 'classic', 'instant', 'linear', 'smoothStep', 'smoothStepIn', 'smoothStepOut', 'smoothStepInOut', 'quadIn', 'quadOut', 'quadInOut', 'cubeIn', 'cubeOut', 'cubeInOut', 'sineIn', 'sineOut', 'sineInOut', 'expoIn', 'expoOut', 'expoInOut', 'backIn', 'backOut', 'backInOut', 'elasticOut', 'bounceOut' ]
 width = 170
 advance = false
 

@@ -397,7 +397,7 @@ class PhillyStreets extends BaseStage
 		else
 			abot.lookLeft();
 
-		if(finishInstantly) abot.eyes.setAtlasCurFrame(abot.eyes.getAtlasLength() - 1);
+		if(finishInstantly) abot.eyes.animation.curAnim.curFrame = abot.eyes.animation.curAnim.numFrames - 1;
 	}
 
 	override function startSong()

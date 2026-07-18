@@ -2137,7 +2137,7 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 				}
 			}
 			
-			if (!note.noAnimation) {
+			if (note.shouldPlayAnim()) {
 				var buddy:EditorBuddy = note.mustPress ? bfBuddy : dadBuddy;
 				if(buddy != null)
 					buddy.holdSing(singAnimations[note.noteData % 4], note.sustainLength / 1000);

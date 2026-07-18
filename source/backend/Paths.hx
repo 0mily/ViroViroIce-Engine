@@ -19,9 +19,8 @@ import flash.media.Sound;
 import haxe.Json;
 import haxe.io.Path as HaxePath;
 
-#if flxanimate
 import animate.FlxAnimateFrames;
-#end
+import animate.FlxAnimateFrames.SpritemapInput;
 
 #if sys
 import sys.FileSystem;
@@ -976,7 +975,6 @@ class Paths
 	}
 	#end
 
-	#if flxanimate
 	static function normalizeAtlasKey(imageKey:String):String
 	{
 		if(imageKey == null) return '';
@@ -1030,6 +1028,13 @@ class Paths
 
 	public static function loadAnimateAtlas(spr:FlxAnimate, folderOrImg:Dynamic, spriteJson:Dynamic = null, animationJson:Dynamic = null)
 	{
+		if(spr == null) return;
+		#if !flash
+		@:privateAccess spr._renderTexture = FlxDestroyUtil.destroy(spr._renderTexture);
+		#end
+		@:privateAccess spr._renderTextureDirty = true;
+		spr.useRenderTexture = true;
+
 		if(Std.isOfType(folderOrImg, String))
 		{
 			var originalPath:String = normalizeAtlasKey(Std.string(folderOrImg));
@@ -1045,7 +1050,7 @@ class Paths
 				var folderPath:String = getAnimateAtlasFolderPath(originalPath);
 				if(folderPath != null)
 				{
-					spr.loadAtlasFolder(folderPath);
+					spr.frames = FlxAnimateFrames.fromAnimate(folderPath, null, null, originalPath, false, {cacheOnLoad: true});
 					return;
 				}
 			}
@@ -1056,10 +1061,10 @@ class Paths
 
 			if(spriteJson == null)
 			{
-				var spriteMaps:Array<Dynamic> = getAnimateAtlasSpriteMaps(originalPath);
+				var spriteMaps:Array<SpritemapInput> = getAnimateAtlasSpriteMaps(originalPath);
 				if(spriteMaps.length > 0)
 				{
-					spr.loadAtlasExMulti(spriteMaps, animationJson);
+					spr.frames = FlxAnimateFrames.fromAnimate(Std.string(animationJson), spriteMaps, null, originalPath, false, {cacheOnLoad: true});
 					return;
 				}
 			}
@@ -1076,7 +1081,9 @@ class Paths
 			animationJson = getAnimateAtlasText(animationJson);
 		}
 
-		spr.loadAtlasEx(folderOrImg, spriteJson, animationJson);
+		if(animationJson == null || spriteJson == null || folderOrImg == null) return;
+		var inputs:Array<SpritemapInput> = [{source: folderOrImg, json: Std.string(spriteJson)}];
+		spr.frames = FlxAnimateFrames.fromAnimate(Std.string(animationJson), inputs, null, null, true, {cacheOnLoad: true});
 	}
 
 	static function loadMultiAnimateAtlas(spr:FlxAnimate, keys:Array<String>):Void
@@ -1131,10 +1138,10 @@ class Paths
 		return OpenFlAssets.exists(animationFile, TEXT) ? HaxePath.directory(animationFile) : null;
 	}
 
-	static function getAnimateAtlasText(data:Dynamic):Dynamic
+	static function getAnimateAtlasText(data:Dynamic):String
 	{
 		if(data == null) return null;
-		if(!Std.isOfType(data, String)) return data;
+		if(!Std.isOfType(data, String)) return Json.stringify(data);
 
 		var str:String = Std.string(data);
 		var trimmed:String = str.trim();
@@ -1144,10 +1151,10 @@ class Paths
 		return text != null ? text : str;
 	}
 
-	static function getAnimateAtlasSpriteMaps(folder:String):Array<Dynamic>
+	static function getAnimateAtlasSpriteMaps(folder:String):Array<SpritemapInput>
 	{
 		folder = normalizeAtlasKey(folder);
-		var spriteMaps:Array<Dynamic> = [];
+		var spriteMaps:Array<SpritemapInput> = [];
 		addAnimateAtlasSpriteMap(spriteMaps, folder, 'spritemap');
 
 		var index:Int = 1;
@@ -1161,14 +1168,14 @@ class Paths
 		return spriteMaps;
 	}
 
-	static function addAnimateAtlasSpriteMap(spriteMaps:Array<Dynamic>, folder:String, name:String):Bool
+	static function addAnimateAtlasSpriteMap(spriteMaps:Array<SpritemapInput>, folder:String, name:String):Bool
 	{
 		var spriteJson:String = getTextFromFile('images/$folder/$name.json');
 		if(spriteJson == null) return false;
 
 		spriteMaps.push({
 			json: spriteJson,
-			image: image(getAnimateAtlasImageKey(folder, spriteJson, name))
+			source: image(getAnimateAtlasImageKey(folder, spriteJson, name))
 		});
 		return true;
 	}
@@ -1191,5 +1198,4 @@ class Paths
 
 		return '$folder/$imageName';
 	}
-	#end
 }

@@ -154,6 +154,7 @@ class MusicBeatState extends MusicBeatSubstate {
 		FlxTransitionableState.skipNextTransIn = true;
 		FlxTransitionableState.skipNextTransOut = true;
 		clearTransientStateManagers();
+		ResolutionManager.syncForState(nextState);
 
 		if (nextState is CustomState) {
 			var customState:CustomState = cast nextState;
@@ -216,6 +217,7 @@ class MusicBeatState extends MusicBeatSubstate {
 		timePassedOnState = 0;
 	}
 	override function preCreate():Void {
+		ResolutionManager.syncForState(this);
 		#if GLOBAL_SCRIPTS GlobalScriptHandler.refreshScripts(); #end
 		
 		if (camOther == null) {
@@ -299,6 +301,7 @@ class MusicBeatState extends MusicBeatSubstate {
 			
 			if (FlxTransitionableState.skipNextTransIn) {
 				clearTransientStateManagers();
+				ResolutionManager.syncForState(nextState);
 				FlxG.switchState(nextState); // actually just cant rid of this deprecated implementation or everything dies
 			} else {
 				startTransition(nextState);
@@ -331,6 +334,8 @@ class MusicBeatState extends MusicBeatSubstate {
 	public static function startTransition(?nextState:FlxState):Void {
 		nextState = canseiOverride(nextState);
 		clearTransientStateManagers();
+		if(nextState != null)
+			ResolutionManager.syncForState(nextState);
 		FlxG.state.openSubState(new CustomFadeTransition(.5, false));
 		
 		nextState ??= FlxG.state;

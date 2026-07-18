@@ -8,13 +8,25 @@ import tjson.TJSON;
 class HealthIcon extends FlxSprite
 {
 	public static inline final ICON_SIZE:Float = 150;
-	static inline final PIXEL_ICON_SOURCE_WIDTH:Int = 64;
-	static inline final PIXEL_ICON_SOURCE_HEIGHT:Int = 32;
 
 	public var sprTracker:FlxSprite;
 	public var bop:Bool = true;
+	public var bitmapSize(get, set):Float;
+	public var bitmapWidth(get, set):Int;
+	public var bitmapHeight(get, set):Int;
 	private var isPlayer:Bool = false;
 	private var char:String = '';
+	private var sourceIconGraphic:FlxGraphic = null;
+	private var sourceIconImage:String = null;
+	private var sourceFrameWidth:Int = Std.int(ICON_SIZE);
+	private var sourceFrameHeight:Int = Std.int(ICON_SIZE);
+	private var currentBitmapWidth:Int = Std.int(ICON_SIZE);
+	private var currentBitmapHeight:Int = Std.int(ICON_SIZE);
+	private var currentIconConfig:Dynamic = null;
+	private var currentIconHasConfig:Bool = false;
+	private var currentConfigChar:String = '';
+	private var currentPivot:String = 'center';
+	private var iconAllowsGPU:Bool = true;
 	private var neutralTag:String = null;
 	private var dyingTag:String = null;
 	private var winningTag:String = null;
@@ -59,28 +71,22 @@ class HealthIcon extends FlxSprite
 	}
 
 	private var iconOffsets:Array<Float> = [0, 0];
-	static function upscalePixelIconGraphic(key:String, graphic:FlxGraphic, allowGPU:Bool):FlxGraphic
-	{
-		if(graphic == null || graphic.width != PIXEL_ICON_SOURCE_WIDTH || graphic.height != PIXEL_ICON_SOURCE_HEIGHT || graphic.bitmap == null)
-			return graphic;
-
-		var scaledKey:String = 'pixel-health-icon:$key';
-		if(Paths.currentTrackedAssets.exists(scaledKey))
-		{
-			Paths.localTrackedAssets.push(scaledKey);
-			return Paths.currentTrackedAssets.get(scaledKey);
-		}
-
-		var bitmap:BitmapData = new BitmapData(Std.int(ICON_SIZE * 2), Std.int(ICON_SIZE), true, 0x00000000);
-		var matrix:Matrix = new Matrix(bitmap.width / graphic.bitmap.width, 0, 0, bitmap.height / graphic.bitmap.height);
-		bitmap.draw(graphic.bitmap, matrix, null, null, null, false);
-		return Paths.cacheBitmap(scaledKey, null, bitmap, allowGPU);
-	}
 
 	public function changeIcon(char:String, ?allowGPU:Bool = true) {
 		if(char == null || char.length < 1) char = 'face';
 		if(this.char != char) {
 			destroyIconScripts();
+			sourceIconGraphic = null;
+			sourceIconImage = null;
+			sourceFrameWidth = Std.int(ICON_SIZE);
+			sourceFrameHeight = Std.int(ICON_SIZE);
+			currentBitmapWidth = Std.int(ICON_SIZE);
+			currentBitmapHeight = Std.int(ICON_SIZE);
+			currentIconConfig = null;
+			currentIconHasConfig = false;
+			currentConfigChar = '';
+			currentPivot = 'center';
+			iconAllowsGPU = allowGPU;
 			neutralTag = null;
 			dyingTag = null;
 			winningTag = null;
@@ -146,11 +152,26 @@ class HealthIcon extends FlxSprite
 		var frameSize:Array<Int> = readIntArray(Reflect.field(config, 'frame_size'), [Std.int(ICON_SIZE), Std.int(ICON_SIZE)]);
 		var frameWidth:Int = Std.int(Math.max(1, frameSize[0]));
 		var frameHeight:Int = Std.int(Math.max(1, frameSize.length > 1 ? frameSize[1] : frameSize[0]));
+		var bitmapSize:Array<Int> = readIntArray(Reflect.field(config, 'bitmap_size'), [frameWidth, frameHeight]);
+		var bitmapWidth:Int = Std.int(Math.max(1, bitmapSize[0]));
+		var bitmapHeight:Int = Std.int(Math.max(1, bitmapSize.length > 1 ? bitmapSize[1] : bitmapSize[0]));
 
-		loadGraphic(graphic, true, frameWidth, frameHeight);
-		iconOffsets[0] = (width - ICON_SIZE) * 0.5;
-		iconOffsets[1] = (height - ICON_SIZE) * 0.5;
-		updateHitbox();
+		sourceIconGraphic = graphic;
+		sourceIconImage = image;
+		sourceFrameWidth = frameWidth;
+		sourceFrameHeight = frameHeight;
+		currentIconConfig = config;
+		currentIconHasConfig = hasConfig;
+		currentConfigChar = char;
+		currentPivot = readString(Reflect.field(config, 'pivot'), 'center');
+		iconAllowsGPU = allowGPU;
+
+		antialiasing = !char.endsWith('-pixel') && ClientPrefs.data.antialiasing; // still not tested with pixel icons tho. I should make a conf to them or smth later on
+		applyBitmapSize(bitmapWidth, bitmapHeight);
+		configureIconAnimations(config, hasConfig, char);
+	}
+
+	function configureIconAnimations(config:Dynamic, hasConfig:Bool, iconChar:String):Void {
 
 		var animated:Bool = readBool(Reflect.field(config, 'animated'), false);
 		var fps:Int = 0;
@@ -178,12 +199,90 @@ class HealthIcon extends FlxSprite
 		dyingTag = newIconTag(readString(Reflect.field(config, 'tag_toDying'), null), 'death', defaultFrames, 1, !hasConfig);
 		winningTag = newIconTag(readString(Reflect.field(config, 'tag_toWinning'), null), 'winning', defaultFrames, 2, !hasConfig);
 
-		if(animation.getByName(char) == null)
-			animation.add(char, defaultFrames, 0, false, isPlayer);
+		if(animation.getByName(iconChar) == null)
+			animation.add(iconChar, defaultFrames, 0, false, isPlayer);
 
-		playIconTag(neutralTag ?? char);
-		applyPivot(readString(Reflect.field(config, 'pivot'), 'center'), frameWidth, frameHeight);
-		antialiasing = !char.endsWith('-pixel') && ClientPrefs.data.antialiasing;
+		playIconTag(neutralTag ?? iconChar);
+	}
+
+	function getSizedIconGraphic(bitmapWidth:Int, bitmapHeight:Int):FlxGraphic {
+		if(sourceIconGraphic == null || sourceIconGraphic.bitmap == null)
+			return sourceIconGraphic;
+		if(bitmapWidth == sourceFrameWidth && bitmapHeight == sourceFrameHeight)
+			return sourceIconGraphic;
+
+		var scaledKey:String = 'health-icon-bitmap:$sourceIconImage:${bitmapWidth}x$bitmapHeight';
+		if(Paths.currentTrackedAssets.exists(scaledKey))
+		{
+			Paths.localTrackedAssets.push(scaledKey);
+			return Paths.currentTrackedAssets.get(scaledKey);
+		}
+
+		var targetWidth:Int = Std.int(Math.max(1, Math.round(sourceIconGraphic.width * bitmapWidth / sourceFrameWidth)));
+		var targetHeight:Int = Std.int(Math.max(1, Math.round(sourceIconGraphic.height * bitmapHeight / sourceFrameHeight)));
+		var bitmap:BitmapData = new BitmapData(targetWidth, targetHeight, true, 0x00000000);
+		var matrix:Matrix = new Matrix(targetWidth / sourceIconGraphic.bitmap.width, 0, 0, targetHeight / sourceIconGraphic.bitmap.height);
+		bitmap.draw(sourceIconGraphic.bitmap, matrix, null, null, null, antialiasing);
+		return Paths.cacheBitmap(scaledKey, null, bitmap, iconAllowsGPU);
+	}
+
+	function applyBitmapSize(bitmapWidth:Int, bitmapHeight:Int):Bool {
+		if(sourceIconGraphic == null)
+			return false;
+
+		var graphic:FlxGraphic = getSizedIconGraphic(bitmapWidth, bitmapHeight);
+		if(graphic == null)
+			return false;
+
+		currentBitmapWidth = bitmapWidth;
+		currentBitmapHeight = bitmapHeight;
+		loadGraphic(graphic, true, bitmapWidth, bitmapHeight);
+		iconOffsets[0] = (bitmapWidth - ICON_SIZE) * 0.5;
+		iconOffsets[1] = (bitmapHeight - ICON_SIZE) * 0.5;
+		updateHitbox();
+		applyPivot(currentPivot, bitmapWidth, bitmapHeight);
+		return true;
+	}
+
+	public function setIconSize(width:Float, height:Float = -1):Bool {
+		var newWidth:Int = Std.int(Math.max(1, Math.round(width)));
+		var newHeight:Int = height <= 0 ? newWidth : Std.int(Math.max(1, Math.round(height)));
+		if(newWidth == currentBitmapWidth && newHeight == currentBitmapHeight)
+			return true;
+
+		var previousFrame:Int = currentIconFrame;
+		var previousTag:String = currentIconTag;
+		if(!applyBitmapSize(newWidth, newHeight))
+			return false;
+
+		configureIconAnimations(currentIconConfig ?? {}, currentIconHasConfig, currentConfigChar);
+		if(!playIconTag(previousTag))
+			setIconFrame(previousFrame);
+		return true;
+	}
+
+	inline function get_bitmapSize():Float
+		return currentBitmapWidth;
+
+	function set_bitmapSize(value:Float):Float {
+		setIconSize(value, value);
+		return currentBitmapWidth;
+	}
+
+	inline function get_bitmapWidth():Int
+		return currentBitmapWidth;
+
+	function set_bitmapWidth(value:Int):Int {
+		setIconSize(value, currentBitmapHeight);
+		return currentBitmapWidth;
+	}
+
+	inline function get_bitmapHeight():Int
+		return currentBitmapHeight;
+
+	function set_bitmapHeight(value:Int):Int {
+		setIconSize(currentBitmapWidth, value);
+		return currentBitmapHeight;
 	}
 
 	function loadIconConfig(char:String):Dynamic {
@@ -285,6 +384,13 @@ class HealthIcon extends FlxSprite
 			return fallback;
 		var parsed:Null<Int> = Std.parseInt(Std.string(value));
 		return parsed == null ? fallback : parsed;
+	}
+
+	static function readFloat(value:Dynamic, fallback:Float):Float {
+		if(value == null)
+			return fallback;
+		var parsed:Float = Std.parseFloat(Std.string(value));
+		return Math.isNaN(parsed) ? fallback : parsed;
 	}
 
 	static function readIntArray(value:Dynamic, fallback:Array<Int>):Array<Int> {
@@ -453,13 +559,37 @@ class HealthIcon extends FlxSprite
 
 	function getIconScriptProperty(variable:String, allowMaps:Bool = false):Dynamic {
 		var resolved:Dynamic = resolveScriptProperty(variable);
-		if(resolved.base == this && resolved.key.indexOf('.') == -1 && resolved.key.indexOf('[') == -1 && scriptProperties.exists(resolved.key))
-			return scriptProperties.get(resolved.key);
+		if(resolved.base == this && resolved.key.indexOf('.') == -1 && resolved.key.indexOf('[') == -1)
+		{
+			switch(resolved.key)
+			{
+				case 'bitmapSize' | 'bitmap_size': return bitmapSize;
+				case 'bitmapWidth' | 'bitmap_width': return bitmapWidth;
+				case 'bitmapHeight' | 'bitmap_height': return bitmapHeight;
+			}
+			if(scriptProperties.exists(resolved.key))
+				return scriptProperties.get(resolved.key);
+		}
 		return psychlua.LuaUtils.getPropertyLoop(resolved.key, allowMaps, resolved.base);
 	}
 
 	function setIconScriptProperty(variable:String, value:Dynamic, allowMaps:Bool = false):Dynamic {
 		var resolved:Dynamic = resolveScriptProperty(variable);
+		if(resolved.base == this && resolved.key.indexOf('.') == -1 && resolved.key.indexOf('[') == -1)
+		{
+			switch(resolved.key)
+			{
+				case 'bitmapSize' | 'bitmap_size':
+					bitmapSize = readFloat(value, bitmapSize);
+					return bitmapSize;
+				case 'bitmapWidth' | 'bitmap_width':
+					bitmapWidth = readInt(value, bitmapWidth);
+					return bitmapWidth;
+				case 'bitmapHeight' | 'bitmap_height':
+					bitmapHeight = readInt(value, bitmapHeight);
+					return bitmapHeight;
+			}
+		}
 		if(resolved.base == this && resolved.key.indexOf('.') == -1 && resolved.key.indexOf('[') == -1 && !psychlua.LuaUtils.hasField(this, resolved.key))
 		{
 			scriptProperties.set(resolved.key, value);
@@ -541,6 +671,12 @@ class HealthIcon extends FlxSprite
 		lua.addLocalCallback('scaleObject', function(objName:String, x:Float, y:Float, updateHitbox:Bool = true) {
 			return scaleIconScriptObject(objName, x, y, updateHitbox);
 		});
+		lua.addLocalCallback('setIconSize', function(width:Float, height:Float = -1) {
+			return setIconSize(width, height);
+		});
+		lua.addLocalCallback('setIconBitmapSize', function(width:Float, height:Float = -1) {
+			return setIconSize(width, height);
+		});
 		lua.addLocalCallback('isDyingIcon', function() return isDyingIcon());
 		lua.addLocalCallback('isWinningIcon', function() return isWinningIcon());
 		lua.addLocalCallback('isNeutralIcon', function() return isNeutralIcon());
@@ -593,6 +729,12 @@ class HealthIcon extends FlxSprite
 		});
 		script.set('scaleObject', function(objName:String, x:Float, y:Float, updateHitbox:Bool = true) {
 			return scaleIconScriptObject(objName, x, y, updateHitbox);
+		});
+		script.set('setIconSize', function(width:Float, height:Float = -1) {
+			return setIconSize(width, height);
+		});
+		script.set('setIconBitmapSize', function(width:Float, height:Float = -1) {
+			return setIconSize(width, height);
 		});
 		script.set('isDyingIcon', function() return isDyingIcon());
 		script.set('isWinningIcon', function() return isWinningIcon());

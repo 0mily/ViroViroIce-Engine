@@ -28,7 +28,10 @@ class EditorSFX
 		if(!ClientPrefs.data.editorSFX)
 			return;
 
-		play(Paths.editorSound(key), volume);
+		try
+			play(Paths.editorSound(key), volume)
+		catch(e:Dynamic)
+			trace('Editor sound "$key" failed: $e');
 	}
 
 	public static function playChartSound(key:String, ?volume:Float = 0.7):Void
@@ -36,7 +39,10 @@ class EditorSFX
 		if(!ClientPrefs.data.editorSFX)
 			return;
 
-		play(Paths.chartEditorSound(key), volume);
+		try
+			play(Paths.chartEditorSound(key), volume)
+		catch(e:Dynamic)
+			trace('Chart editor sound "$key" failed: $e');
 	}
 
 	static function play(sound:Sound, volume:Float):Void

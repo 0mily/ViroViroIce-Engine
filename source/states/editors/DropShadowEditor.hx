@@ -1,181 +1,149 @@
 package states.editors;
 
 import backend.DropShadowData;
-
-import flixel.FlxSubState;
-import flixel.util.FlxSave;
-import flixel.util.FlxSort;
-import flixel.util.FlxSpriteUtil;
-import flixel.util.FlxStringUtil;
-import flixel.util.FlxDestroyUtil;
-import flixel.input.keyboard.FlxKey;
-
-import openfl.events.KeyboardEvent;
-
-import lime.utils.Assets;
-import lime.media.AudioBuffer;
-
-import flash.media.Sound;
-import flash.geom.Rectangle;
-
-
-import objects.*;
-import states.stages.*;
-import states.stages.objects.*;
-
-import haxe.Json;
-import haxe.Exception;
-import haxe.io.Bytes;
-
-import states.editors.content.MetaNote;
-import states.editors.content.VSlice;
-import states.editors.content.Prompt;
-import states.editors.content.*;
-
-import backend.Song;
+import backend.DropShadowData.CharacterSpecificData;
 import backend.StageData;
-import backend.Highscore;
-import backend.Difficulty;
+
+import flixel.addons.display.shapes.FlxShapeCircle;
+import flixel.util.FlxGradient;
+import lime.system.Clipboard;
 
 import objects.Character;
-import objects.HealthIcon;
-import objects.Note;
-import objects.StrumNote;
+import states.MainMenuState;
+import states.editors.content.FileDialogHandler;
 
-import shaders.DropShadowShader;
+typedef DropShadowColorPicker = {
+	var tabName:String;
+	var character:Character;
+	var data:CharacterSpecificData;
+	var gradient:FlxSprite;
+	var gradientSelector:FlxSprite;
+	var wheel:FlxSprite;
+	var wheelSelector:FlxShapeCircle;
+	var preview:FlxSprite;
+	var hexText:FlxText;
+}
 
-
-import flixel.math.FlxAngle;
-
-using DateTools;
-
-/**
-    Code first, optimize after
-**/
 class DropShadowEditor extends ScriptedState implements PsychUIEventHandler.PsychUIEvent
 {
-    var camGame:FlxCamera;
-    var camUI:FlxCamera;
-    var mainBox:PsychUIBox;
-    var upperBox:PsychUIBox;
-    var curStage:String = 'stage';
+	var camGame:FlxCamera;
+	var camUI:FlxCamera;
+	var mainBox:PsychUIBox;
+	var upperBox:PsychUIBox;
 
-    var boyfriendGroup:FlxSpriteGroup;
-    var dadGroup:FlxSpriteGroup;
-    var gfGroup:FlxSpriteGroup;
+	var curStage:String = 'stage';
+	var stageData:StageFile;
+	var dropShadowData:DropShadowData;
 
-    var girlfriend:Character;
-    var dad:Character;
-    var boyfriend:Character;
+	public var boyfriendGroup:FlxSpriteGroup;
+	public var dadGroup:FlxSpriteGroup;
+	public var gfGroup:FlxSpriteGroup;
 
-    var characters:Array<Character> = [];
+	public var boyfriend:Character;
+	public var dad:Character;
+	public var gf:Character;
 
-    
-    var stageData:StageFile;
-    var dropShadowData:DropShadowData = new DropShadowData();
-
-    var BF_X:Float = 770;
+	var BF_X:Float = 770;
 	var BF_Y:Float = 100;
 	var DAD_X:Float = 100;
 	var DAD_Y:Float = 100;
 	var GF_X:Float = 400;
 	var GF_Y:Float = 130;
 
-    var outputTxt:FlxText;
+	var outputTxt:FlxText;
 	var outputAlpha:Float = 0;
 
-    
-    override function create()
-    {
+	var stageDropDown:PsychUIDropDownMenu;
+	var dadDropDown:PsychUIDropDownMenu;
+	var gfDropDown:PsychUIDropDownMenu;
+	var boyfriendDropDown:PsychUIDropDownMenu;
+	var characterList:Array<String> = [];
+	var fileDialog:FileDialogHandler = new FileDialogHandler();
+	var colorPickers:Array<DropShadowColorPicker> = [];
+	var holdingColorPicker:DropShadowColorPicker;
+	var holdingColorPickerSprite:FlxSprite;
+	var holdingPickerRawPosition:Bool = false;
+	var storedPickerColor:FlxColor = FlxColor.WHITE;
+
+	public function new(?stageToLoad:String = null)
+	{
+		curStage = DropShadowData.stageName(stageToLoad);
+		super();
+	}
+
+	override function create()
+	{
         /**
             quick check
             erm please if there's a better way to do this please do change it!!!
         **/
-        if(PlayState.SONG == null)
-            Song.loadFromJson('tutorial');
-        FlxG.mouse.visible = true;
-        camGame = initPsychCamera();
 
-        stageData = StageData.getStageFile(PlayState.curStage);
+		// ok - Mily
 
-        BF_X = stageData.boyfriend[0];
-		BF_Y = stageData.boyfriend[1];
-		GF_X = stageData.girlfriend[0];
-		GF_Y = stageData.girlfriend[1];
-		DAD_X = stageData.opponent[0];
-		DAD_Y = stageData.opponent[1];
+		FlxG.mouse.visible = true;
+		Paths.clearStoredMemory();
+		Paths.clearUnusedMemory();
 
-        switch (PlayState.curStage) {
-			case 'stage': new StageWeek1(); 						//Week 1
-			case 'spooky': new Spooky();							//Week 2
-			case 'philly': new Philly();							//Week 3
-			case 'limo': new Limo();								//Week 4
-			case 'mall': new Mall();								//Week 5 - Cocoa, Eggnog
-			case 'mallEvil': new MallEvil();						//Week 5 - Winter Horrorland
-			case 'school': new School();							//Week 6 - Senpai, Roses
-			case 'schoolEvil': new SchoolEvil();					//Week 6 - Thorns
-			case 'tank': new Tank();								//Week 7 - Ugh, Guns, Stress
-			case 'phillyStreets': new PhillyStreets(); 				//Weekend 1 - Darnell, Lit Up, 2Hot
-			case 'phillyBlazin': new PhillyBlazin();				//Weekend 1 - Blazin
-			case 'mallErect': new MallErect();						//Week 5 (Erect) - Cocoa Erect, Eggnog Erect, Cocoa (Pico Mix), Eggnog (Pico Mix)
-			case 'phillyStreetsErect': new PhillyStreetsErect(); 	//Weekend 1 (Erect) - Darnell Erect, Darnell (BF Mix), Lit Up (BF Mix) // se mata shiho te amo
-			default: new BaseStage();
-		}
-
-        stagesFunc(function(stage:BaseStage) stage.createPost());
-
-        boyfriendGroup = new FlxSpriteGroup(BF_X, BF_Y);
-		dadGroup = new FlxSpriteGroup(DAD_X, DAD_Y);
-		gfGroup = new FlxSpriteGroup(GF_X, GF_Y);
-
-        if (!stageData.hide_girlfriend) {
-			if(PlayState.SONG.gfVersion == null || PlayState.SONG.gfVersion.length < 1) PlayState.SONG.gfVersion = 'gf'; //Fix for the Chart Editor
-			girlfriend = new Character(0, 0, PlayState.SONG.gfVersion);
-            startCharacterPos(girlfriend);
-			gfGroup.scrollFactor.set(0.95, 0.95);
-			gfGroup.add(girlfriend);
-            characters.push(girlfriend);
-		}
-
-        dad = new Character(0, 0, PlayState.SONG.player2);
-        startCharacterPos(dad, true);
-		dadGroup.add(dad);
-        characters.push(dad);
-
-		boyfriend = new Character(0, 0, PlayState.SONG.player1, true);
-        startCharacterPos(boyfriend);
-		boyfriendGroup.add(boyfriend);
-        characters.push(boyfriend);
-
-        add(gfGroup);
-        add(dadGroup);
-        add(boyfriendGroup);
-
-        for(character in characters)
-        {
-            var dropShadow:DropShadowShader = new DropShadowShader(character);
-            
-            character.shader = dropShadow;
-            character.dropShadow = dropShadow;
-        }
-
-        playCharactersAnimation('idle');
-
-        initPsychCamera();
+		camGame = initPsychCamera();
 		camUI = new FlxCamera();
 		camUI.bgColor.alpha = 0;
 		FlxG.cameras.add(camUI, false);
 
-        var mainBoxWidth:Int = 300;
-        var mainBoxHeight:Int = 400;
-        var mainBoxPosition:FlxPoint = new FlxPoint(FlxG.width - mainBoxWidth - 50, 50);
-        mainBox = new PsychUIBox(mainBoxPosition.x, mainBoxPosition.y, 300, 280, ['Shader', 'Dad', 'Boyfriend', 'Girlfriend']);
-		mainBox.selectedName = 'Shader';
+		stageData = StageData.getStageFile(curStage);
+		loadJsonAssetDirectory();
+		readStagePositions();
+
+		boyfriendGroup = new FlxSpriteGroup(BF_X, BF_Y);
+		dadGroup = new FlxSpriteGroup(DAD_X, DAD_Y);
+		gfGroup = new FlxSpriteGroup(GF_X, GF_Y);
+
+		gf = new Character(0, 0, editorMetaCharacter('gf', 'gf'));
+		gf.visible = !stageData.hide_girlfriend;
+		startCharacterPos(gf, 'gf');
+		gfGroup.add(gf);
+
+		dad = new Character(0, 0, editorMetaCharacter('dad', 'dad'));
+		startCharacterPos(dad, 'dad');
+		dadGroup.add(dad);
+
+		boyfriend = new Character(0, 0, editorMetaCharacter('boyfriend', 'bf'), true);
+		startCharacterPos(boyfriend, 'boyfriend');
+		boyfriendGroup.add(boyfriend);
+
+		var previewObjects:Array<Dynamic> = filterPreviewStageObjects(stageData.objects);
+		if(previewObjects.length > 0)
+			StageData.addObjectsToState(previewObjects, null, null, null, this, true);
+		else
+		{
+			if(!stageData.hide_girlfriend)
+				add(gfGroup);
+			add(dadGroup);
+			add(boyfriendGroup);
+		}
+		addPreviewGroupIfMissing(gfGroup, !stageData.hide_girlfriend);
+		addPreviewGroupIfMissing(dadGroup);
+		addPreviewGroupIfMissing(boyfriendGroup);
+
+		dropShadowData = new DropShadowData(curStage);
+		applyAllDropShadows();
+		playCharactersAnimation('idle');
+
+		FlxG.camera.zoom = stageData.defaultZoom;
+		focusCameraOnBoyfriend();
+
+		buildUI();
+		super.create();
+	}
+
+	function buildUI():Void
+	{
+		mainBox = new PsychUIBox(FlxG.width - 430, 40, 410, 500, ['Stage', 'Dad', 'Boyfriend', 'Girlfriend']);
+		mainBox.selectedName = 'Dad';
 		mainBox.scrollFactor.set();
 		mainBox.cameras = [camUI];
 		add(mainBox);
 
-        upperBox = new PsychUIBox(0, 0, 465, 300, ['File']);
+		upperBox = new PsychUIBox(0, 0, 465, 300, ['File']);
 		upperBox.scrollFactor.set();
 		upperBox.isMinimized = true;
 		upperBox.minimizeOnFocusLost = true;
@@ -184,7 +152,7 @@ class DropShadowEditor extends ScriptedState implements PsychUIEventHandler.Psyc
 		upperBox.bg.visible = false;
 		add(upperBox);
 
-        outputTxt = new FlxText(25, FlxG.height - 50, FlxG.width - 50, '', 20);
+		outputTxt = new FlxText(25, FlxG.height - 50, FlxG.width - 50, '', 20);
 		outputTxt.borderSize = 2;
 		outputTxt.borderStyle = OUTLINE_FAST;
 		outputTxt.scrollFactor.set();
@@ -192,572 +160,789 @@ class DropShadowEditor extends ScriptedState implements PsychUIEventHandler.Psyc
 		outputTxt.alpha = 0;
 		add(outputTxt);
 
-        //songName = Paths.formatToSongPath(PlayState.SONG.song);
-		//if(PlayState.SONG.stage == null || PlayState.SONG.stage.length < 1)
-			//PlayState.SONG.stage = StageData.vanillaSongStage(Paths.formatToSongPath(Song.loadedSongName));
+		reloadCharacterList();
+		addFileTab();
+		addStageTab();
+		addCharacterTab('Dad', dad, dropShadowData.dad);
+		addCharacterTab('Boyfriend', boyfriend, dropShadowData.boyfriend);
+		addCharacterTab('Girlfriend', gf, dropShadowData.girlfriend);
+	}
 
-		//curStage = PlayState.SONG.stage;
-
-		
-        addFileTab();
-        addShaderTab();
-        addDadTab();
-        addGirlfriendTab();
-        addBoyfriendTab();
-    }
-
-    function addFileTab()
-    {
-        var tab = upperBox.getTab('File');
+	function addFileTab():Void
+	{
+		var tab = upperBox.getTab('File');
 		var tab_group = tab.menu;
 		var btnX = tab.x - upperBox.x;
-		var btnY = 1;
 		var btnWid = Std.int(tab.width);
 
-        btnY += 20;
-		var btn:PsychUIButton = new PsychUIButton(btnX, btnY, #if sys '  Save as...' #else '  Download' #end, function()
+		var saveButton:PsychUIButton = new PsychUIButton(btnX, 20, #if sys '  Save XML as...' #else '  Download XML' #end, saveDropshadow, btnWid);
+		saveButton.text.alignment = LEFT;
+		tab_group.add(saveButton);
+	}
+
+	function addStageTab():Void
+	{
+		var tab_group = mainBox.getTab('Stage').menu;
+
+		stageDropDown = new PsychUIDropDownMenu(10, 30, getStageList(), function(sel:Int, selected:String)
 		{
-			if(!fileDialog.completed) return;
-			upperBox.isMinimized = true;
-			upperBox.bg.visible = false;
+			if(selected != null && selected.length > 0 && selected != curStage)
+				MusicBeatState.switchState(new DropShadowEditor(selected));
+		}, 150);
+		stageDropDown.selectedLabel = curStage;
+		tab_group.add(new FlxText(stageDropDown.x, stageDropDown.y - 18, 100, 'Stage:'));
+		tab_group.add(stageDropDown);
 
-			saveDropshadow();
-		},btnWid);
-		btn.text.alignment = LEFT;
-		tab_group.add(btn);
-    }
+		var reloadButton:PsychUIButton = new PsychUIButton(180, 30, 'Reload Stage', function()
+		{
+			MusicBeatState.switchState(new DropShadowEditor(curStage));
+		}, 120);
+		tab_group.add(reloadButton);
 
-    var fileDialog:FileDialogHandler = new FileDialogHandler();
+		var objY:Int = 95;
+		dadDropDown = characterDropdown(10, objY, dad.curCharacter, function(character:String)
+		{
+			changePreviewCharacter(dad, character, dropShadowData.dad, 'dad');
+			dadDropDown.selectedLabel = dad.curCharacter;
+		});
+		tab_group.add(new FlxText(dadDropDown.x, dadDropDown.y - 18, 100, 'Dad:'));
+		tab_group.add(dadDropDown);
 
-    function saveDropshadow()
-    {
-        var fileName:String = '${PlayState.curStage}-dropshadow.json';
-        var fileData:String = PsychJsonPrinter.print(dropShadowData.setDataToFile());
-        //if(Song.chartPath != null) chartName = Song.chartPath.substr(Song.chartPath.lastIndexOf('/')).trim();
-        fileDialog.save(fileName, fileData,
-            function()
-            {
-                #if sys
-                var newPath:String = fileDialog.path;
-                
-                showOutput('Chart saved successfully to: $newPath');
-                #else
-                showOutput('Chart downloaded successfully');
-                #end
+		objY += 55;
+		gfDropDown = characterDropdown(10, objY, gf.curCharacter, function(character:String)
+		{
+			changePreviewCharacter(gf, character, dropShadowData.girlfriend, 'gf');
+			gfDropDown.selectedLabel = gf.curCharacter;
+		});
+		tab_group.add(new FlxText(gfDropDown.x, gfDropDown.y - 18, 100, 'Girlfriend:'));
+		tab_group.add(gfDropDown);
 
-            }, null, function() showOutput('Error on saving chart!', true)
-        );
-    }
+		objY += 55;
+		boyfriendDropDown = characterDropdown(10, objY, boyfriend.curCharacter, function(character:String)
+		{
+			changePreviewCharacter(boyfriend, character, dropShadowData.boyfriend, 'boyfriend');
+			boyfriendDropDown.selectedLabel = boyfriend.curCharacter;
+		});
+		tab_group.add(new FlxText(boyfriendDropDown.x, boyfriendDropDown.y - 18, 100, 'Boyfriend:'));
+		tab_group.add(boyfriendDropDown);
+	}
 
-    function showOutput(message:String, isError:Bool = false)
+	function addCharacterTab(tabName:String, character:Character, data:CharacterSpecificData):Void
+	{
+		var tab_group = mainBox.getTab(tabName).menu;
+		var leftX:Int = 10;
+		var rightX:Int = 240;
+		var objY:Int = 18;
+		var row:Int = 48;
+		var picker:DropShadowColorPicker = null;
+		var distanceSlider:PsychUISlider = null;
+		var angleSlider:PsychUISlider = null;
+		var strengthSlider:PsychUISlider = null;
+		var thresholdSlider:PsychUISlider = null;
+		var antialiasSlider:PsychUISlider = null;
+		var brightnessStepper:PsychUINumericStepper = null;
+		var hueStepper:PsychUINumericStepper = null;
+		var saturationStepper:PsychUINumericStepper = null;
+		var contrastStepper:PsychUINumericStepper = null;
+		var maskThresholdSlider:PsychUISlider = null;
+		var useAltMaskCheckbox:PsychUICheckBox = null;
+		var altMaskInput:PsychUIInputText = null;
+		var enabledCheckbox:PsychUICheckBox = null;
+
+		function syncControlsToData():Void
+		{
+			if(enabledCheckbox != null) enabledCheckbox.checked = data.enabled;
+			if(distanceSlider != null) distanceSlider.value = data.distance;
+			if(angleSlider != null) angleSlider.value = data.angle;
+			if(strengthSlider != null) strengthSlider.value = data.strength;
+			if(thresholdSlider != null) thresholdSlider.value = data.threshold;
+			if(antialiasSlider != null) antialiasSlider.value = data.antialiasAmt;
+			if(brightnessStepper != null) brightnessStepper.value = data.brightness;
+			if(hueStepper != null) hueStepper.value = data.hue;
+			if(saturationStepper != null) saturationStepper.value = data.saturation;
+			if(contrastStepper != null) contrastStepper.value = data.contrast;
+			if(useAltMaskCheckbox != null) useAltMaskCheckbox.checked = data.useAltMask;
+			if(maskThresholdSlider != null) maskThresholdSlider.value = data.maskThreshold;
+			if(altMaskInput != null) altMaskInput.text = data.altMaskPath ?? '';
+			updateColorPicker(picker);
+		}
+
+		function addCopyButton(label:String, source:CharacterSpecificData, x:Float):Void
+		{
+			tab_group.add(new PsychUIButton(x, objY, label, function()
+			{
+				copyCharacterPreset(source, data);
+				refreshCharacterShadow(character, data);
+				syncControlsToData();
+				showOutput('Copied $label preset to $tabName.');
+			}, 50));
+		}
+
+		enabledCheckbox = new PsychUICheckBox(leftX, objY, 'Enabled', 100, function()
+		{
+			data.enabled = enabledCheckbox.checked;
+			refreshCharacterShadow(character, data);
+		});
+		enabledCheckbox.checked = data.enabled;
+		tab_group.add(enabledCheckbox);
+		tab_group.add(new FlxText(122, objY + 2, 70, 'Copy from:'));
+		addCopyButton('Dad', dropShadowData.dad, 190);
+		addCopyButton('BF', dropShadowData.boyfriend, 243);
+		addCopyButton('GF', dropShadowData.girlfriend, 296);
+
+		tab_group.add(new FlxText(leftX, 43, 120, 'Color:'));
+		picker = addColorPicker(tabName, tab_group, leftX, 62, character, data);
+
+		distanceSlider = addSlider(tab_group, rightX, 58, 'Distance', data.distance, 0, 100, 0, function(value:Float)
+		{
+			data.distance = value;
+			refreshCharacterShadow(character, data);
+		});
+		angleSlider = addSlider(tab_group, rightX, 58 + row, 'Angle', data.angle, -360, 360, 0, function(value:Float)
+		{
+			data.angle = value;
+			refreshCharacterShadow(character, data);
+		});
+		strengthSlider = addSlider(tab_group, rightX, 58 + row * 2, 'Strength', data.strength, 0, 5, 2, function(value:Float)
+		{
+			data.strength = value;
+			refreshCharacterShadow(character, data);
+		});
+		thresholdSlider = addSlider(tab_group, rightX, 58 + row * 3, 'Threshold', data.threshold, 0, 1, 2, function(value:Float)
+		{
+			data.threshold = value;
+			refreshCharacterShadow(character, data);
+		});
+		antialiasSlider = addSlider(tab_group, rightX, 58 + row * 4, 'Antialiasing', data.antialiasAmt, 0, 8, 0, function(value:Float)
+		{
+			data.antialiasAmt = value;
+			refreshCharacterShadow(character, data);
+		});
+
+		objY = 300;
+		brightnessStepper = addStepper(tab_group, leftX, objY, 'Brightness:', 5, data.brightness, -9999, 9999, 0, function(value:Float)
+		{
+			data.brightness = value;
+			refreshCharacterShadow(character, data);
+		}, 80);
+		hueStepper = addStepper(tab_group, leftX + 95, objY, 'Hue:', 5, data.hue, -9999, 9999, 0, function(value:Float)
+		{
+			data.hue = value;
+			refreshCharacterShadow(character, data);
+		}, 80);
+		saturationStepper = addStepper(tab_group, leftX + 190, objY, 'Saturation:', 5, data.saturation, -9999, 9999, 0, function(value:Float)
+		{
+			data.saturation = value;
+			refreshCharacterShadow(character, data);
+		}, 80);
+		contrastStepper = addStepper(tab_group, leftX + 285, objY, 'Contrast:', 5, data.contrast, -9999, 9999, 0, function(value:Float)
+		{
+			data.contrast = value;
+			refreshCharacterShadow(character, data);
+		}, 80);
+
+		objY += row + 4;
+		useAltMaskCheckbox = new PsychUICheckBox(leftX, objY, 'Use Alt Mask', 100, function()
+		{
+			data.useAltMask = useAltMaskCheckbox.checked;
+			refreshCharacterShadow(character, data);
+		});
+		useAltMaskCheckbox.checked = data.useAltMask;
+		tab_group.add(useAltMaskCheckbox);
+		maskThresholdSlider = addSlider(tab_group, leftX + 155, objY - 5, 'Mask Threshold', data.maskThreshold, 0, 1, 2, function(value:Float)
+		{
+			data.maskThreshold = value;
+			refreshCharacterShadow(character, data);
+		}, 155);
+
+		objY += row;
+		tab_group.add(new FlxText(leftX, objY - 15, 120, 'Alt Mask Image:'));
+		altMaskInput = new PsychUIInputText(leftX, objY, 210, data.altMaskPath ?? '', 8);
+		altMaskInput.onChange = function(old:String, cur:String)
+		{
+			data.altMaskPath = cur;
+		};
+		var reloadMaskButton = new PsychUIButton(leftX + 225, objY, 'Reload Mask', function()
+		{
+			data.altMaskPath = altMaskInput.text;
+			refreshCharacterShadow(character, data);
+		}, 115);
+		tab_group.add(altMaskInput);
+		tab_group.add(reloadMaskButton);
+	}
+
+	function addColorPicker(tabName:String, tab_group:FlxSpriteGroup, x:Float, y:Float, character:Character, data:CharacterSpecificData):DropShadowColorPicker
+	{
+		var colorGradient = FlxGradient.createGradientFlxSprite(18, 118, [FlxColor.WHITE, FlxColor.BLACK]);
+		colorGradient.setPosition(x, y);
+
+		var colorGradientSelector = new FlxSprite(colorGradient.x - 4, colorGradient.y).makeGraphic(26, 6, FlxColor.WHITE);
+		colorGradientSelector.offset.y = 3;
+
+		var colorWheel = new FlxSprite(x + 30, y).loadGraphic(Paths.image('noteColorMenu/colorWheel'));
+		colorWheel.setGraphicSize(118, 118);
+		colorWheel.updateHitbox();
+
+		var colorWheelSelector = new FlxShapeCircle(0, 0, 5, {thickness: 0}, FlxColor.WHITE);
+		colorWheelSelector.offset.set(5, 5);
+		colorWheelSelector.alpha = 0.72;
+
+		var colorPreview = new FlxSprite(x + 166, y).makeGraphic(44, 44, FlxColor.WHITE);
+		var colorHexText = new FlxText(x + 150, y + 50, 76, colorHex(data.color), 12);
+		colorHexText.alignment = CENTER;
+
+		var picker:DropShadowColorPicker = {
+			tabName: tabName,
+			character: character,
+			data: data,
+			gradient: colorGradient,
+			gradientSelector: colorGradientSelector,
+			wheel: colorWheel,
+			wheelSelector: colorWheelSelector,
+			preview: colorPreview,
+			hexText: colorHexText
+		};
+
+		var copyColor:PsychUIButton = new PsychUIButton(x + 150, y + 76, 'Copy', function()
+		{
+			Clipboard.text = colorHex(data.color);
+			showOutput('Copied ${colorHex(data.color)}');
+		}, 76);
+
+		var pasteColor:PsychUIButton = new PsychUIButton(x + 150, y + 100, 'Paste', function()
+		{
+			var parsed:Null<FlxColor> = parseColor(Clipboard.text);
+			if(parsed == null)
+			{
+				showOutput('Clipboard does not contain a color.', true);
+				return;
+			}
+			setPickerColor(picker, parsed);
+		}, 76);
+
+		tab_group.add(colorGradient);
+		tab_group.add(colorWheel);
+		tab_group.add(colorGradientSelector);
+		tab_group.add(colorWheelSelector);
+		tab_group.add(colorPreview);
+		tab_group.add(colorHexText);
+		tab_group.add(copyColor);
+		tab_group.add(pasteColor);
+
+		colorPickers.push(picker);
+		updateColorPicker(picker);
+		return picker;
+	}
+
+	function addStepper(tab_group:FlxSpriteGroup, x:Float, y:Float, label:String, step:Float, value:Float, min:Float, max:Float, decimals:Int, onChange:Float->Void, ?width:Int = 76):PsychUINumericStepper
+	{
+		var text = new FlxText(x, y - 15, 110, label);
+		var stepper = new PsychUINumericStepper(x, y, step, value, min, max, decimals, width);
+		stepper.onValueChange = function()
+		{
+			if(onChange != null)
+				onChange(stepper.value);
+		};
+		tab_group.add(text);
+		tab_group.add(stepper);
+		return stepper;
+	}
+
+	function addSlider(tab_group:FlxSpriteGroup, x:Float, y:Float, label:String, value:Float, min:Float, max:Float, decimals:Int, onChange:Float->Void, ?width:Int = 150):PsychUISlider
+	{
+		var slider:PsychUISlider = new PsychUISlider(x, y, function(raw:Float)
+		{
+			var rounded:Float = FlxMath.roundDecimal(raw, decimals);
+			if(onChange != null)
+				onChange(rounded);
+		}, value, min, max, width);
+		slider.decimals = decimals;
+		slider.label = label;
+		tab_group.add(slider);
+		return slider;
+	}
+
+	function characterDropdown(x:Float, y:Float, selected:String, onPick:String->Void):PsychUIDropDownMenu
+	{
+		var dropdown = new PsychUIDropDownMenu(x, y, characterList, function(id:Int, character:String)
+		{
+			if(character != null && character.length > 0 && onPick != null)
+				onPick(character);
+		}, 155);
+		dropdown.selectedLabel = selected;
+		return dropdown;
+	}
+
+	function saveDropshadow():Void
+	{
+		if(!fileDialog.completed)
+			return;
+
+		upperBox.isMinimized = true;
+		upperBox.bg.visible = false;
+
+		fileDialog.save('$curStage.xml', dropShadowData.buildXml(curStage), function()
+		{
+			#if sys
+			showOutput('Dropshadow XML saved to: ${fileDialog.path}. Put it in data/stages/$curStage.xml to load with the stage.');
+			#else
+			showOutput('Dropshadow XML downloaded.');
+			#end
+		}, null, function() showOutput('Error saving dropshadow XML.', true));
+	}
+
+	function showOutput(message:String, isError:Bool = false):Void
 	{
 		trace(message);
 		outputTxt.text = message;
 		outputTxt.y = FlxG.height - outputTxt.height - 30;
+		outputTxt.color = isError ? FlxColor.RED : FlxColor.WHITE;
 		outputAlpha = 4;
-		if(isError)
-		{
-			if(ClientPrefs.data.editorSFX)
-				FlxG.sound.play(Paths.uiSound('cancelMenu'), 0.6);
-			outputTxt.color = FlxColor.RED;
-		}
-		else
-		{
-			if(ClientPrefs.data.editorSFX)
-				FlxG.sound.play(Paths.uiSound('scrollMenu'), 0.6);
-			outputTxt.color = FlxColor.WHITE;
-		}
+
+		if(ClientPrefs.data.editorSFX)
+			FlxG.sound.play(Paths.uiSound(isError ? 'cancelMenu' : 'scrollMenu'), 0.6);
 	}
 
-    function startCharacterPos(char:Character, ?gfCheck:Bool = false)
-    {
-        if(gfCheck && char.curCharacter.startsWith('gf'))
-        { //IF DAD IS GIRLFRIEND, HE GOES TO HER POSITION
-			char.setPosition(GF_X, GF_Y);
-			char.scrollFactor.set(0.95, 0.95);
-			char.danceEveryNumBeats = 2;
+	function readStagePositions():Void
+	{
+		BF_X = readStagePoint(stageData.boyfriend, 0, 770);
+		BF_Y = readStagePoint(stageData.boyfriend, 1, 100);
+		GF_X = readStagePoint(stageData.girlfriend, 0, 400);
+		GF_Y = readStagePoint(stageData.girlfriend, 1, 130);
+		DAD_X = readStagePoint(stageData.opponent, 0, 100);
+		DAD_Y = readStagePoint(stageData.opponent, 1, 100);
+	}
+
+	function readStagePoint(values:Array<Dynamic>, index:Int, fallback:Float):Float
+	{
+		if(values == null || values.length <= index)
+			return fallback;
+		var parsed:Float = Std.parseFloat(Std.string(values[index]));
+		return Math.isNaN(parsed) ? fallback : parsed;
+	}
+
+	function loadJsonAssetDirectory():Void
+	{
+		var directory:String = 'shared';
+		if(stageData != null && stageData.directory != null && stageData.directory.trim().length > 0)
+			directory = stageData.directory;
+
+		Paths.setCurrentLevel(directory);
+	}
+
+	function filterPreviewStageObjects(objects:Array<Dynamic>):Array<Dynamic>
+	{
+		var filtered:Array<Dynamic> = [];
+		if(objects == null)
+			return filtered;
+
+		for(data in objects)
+		{
+			var type:String = Std.string(Reflect.field(data, 'type'));
+			var name:String = Std.string(Reflect.field(data, 'name'));
+			if(StageData.reservedNames.contains(type) || StageData.reservedNames.contains(name))
+				continue;
+			filtered.push(data);
 		}
+		return filtered;
+	}
+
+	function addPreviewGroupIfMissing(group:FlxSpriteGroup, addGroup:Bool = true):Void
+	{
+		if(addGroup && group != null && !members.contains(group))
+			add(group);
+	}
+
+	function editorMetaCharacter(field:String, fallback:String):String
+	{
+		if(stageData != null && stageData._editorMeta != null && Reflect.hasField(stageData._editorMeta, field))
+		{
+			var value:String = Std.string(Reflect.field(stageData._editorMeta, field));
+			if(value != null && value.trim().length > 0)
+				return value;
+		}
+		return fallback;
+	}
+
+	function reloadCharacterList():Void
+	{
+		characterList = Mods.mergeAllTextsNamed('data/characterList.txt');
+		Character.appendCharacterFileList(characterList);
+		if(characterList.length < 1)
+			characterList.push('');
+	}
+
+	function getStageList():Array<String>
+	{
+		var stageList:Array<String> = ['stage', 'spooky', 'philly', 'limo', 'mall', 'mallEvil', 'school', 'schoolEvil', 'tank', 'phillyStreets', 'phillyBlazin', 'mallErect', 'phillyStreetsErect']; // i will probably remove this
+		#if sys
+		function pushStageFromFile(file:String, extension:String):Void
+		{
+			if(!file.toLowerCase().endsWith(extension))
+				return;
+
+			var stageToCheck:String = file.substr(0, file.length - extension.length);
+			if(!stageList.contains(stageToCheck))
+				stageList.push(stageToCheck);
+		}
+
+		for(folder in Mods.directoriesWithFile(Paths.getSharedPath(), 'data/stages/'))
+			for(file in FileSystem.readDirectory(folder))
+			{
+				pushStageFromFile(file, '.json');
+				pushStageFromFile(file, '.xml');
+			}
+		#end
+		return stageList;
+	}
+
+	function startCharacterPos(char:Character, ?role:String = ''):Void
+	{
+		if(char == null)
+			return;
+
+		resetPreviewGroupPosition(role, char);
+		char.setPosition(0, 0);
 		char.x += char.positionArray[0];
 		char.y += char.positionArray[1];
 	}
 
-    var enabledCheckbox:PsychUICheckBox;
-    var colorInput:PsychUIInputText;
-    var distanceStepper:PsychUINumericStepper;
-    var antialiasingAmountStepper:PsychUINumericStepper;
-    var strengthStepper:PsychUINumericStepper;
-    var thresholdStepper:PsychUINumericStepper;
-    var brightnessStepper:PsychUINumericStepper;
-    var hueStepper:PsychUINumericStepper;
-    var saturationStepper:PsychUINumericStepper;
-    var contrastStepper:PsychUINumericStepper;
-    function addShaderTab()
-    {
-
-        var tab_group = mainBox.getTab('Shader').menu;
-		var objX:Int = 10;
-		var objY:Int = 20;
-        var addY:Int = 40;
-
-        enabledCheckbox = new PsychUICheckBox(objX, objY, 'Enabled', function()
-        {
-            /*
-            for(character in characters)
-            {
-                character.dropShadow.enabled = enabledCheckbox.checked;
-                
-            }
-                */
-            dropShadowData.enabled = enabledCheckbox.checked;
-
-        });
-        tab_group.add(enabledCheckbox);
-
-        objY += addY;
-		colorInput = new PsychUIInputText(objX, objY, 120, 'FFFFFF');
-        colorInput.onChange = function(old:String, cur:String)
+	function resetPreviewGroupPosition(role:String, char:Character):Void
+	{
+		switch(role)
 		{
-			for(character in characters)
-            {
-                character.dropShadow.color = FlxColor.fromString('#$cur');
-                dropShadowData.color = FlxColor.fromString('#$cur');
-            }
+			case 'gf':
+				if(gfGroup != null)
+				{
+					gfGroup.setPosition(GF_X, GF_Y);
+					gfGroup.scrollFactor.set(0.95, 0.95);
+				}
+
+			case 'dad':
+				if(dadGroup != null)
+				{
+					if(char != null && char.curCharacter.startsWith('gf'))
+					{
+						dadGroup.setPosition(GF_X, GF_Y);
+						dadGroup.scrollFactor.set(0.95, 0.95);
+						char.danceEveryNumBeats = 2;
+					}
+					else
+					{
+						dadGroup.setPosition(DAD_X, DAD_Y);
+						dadGroup.scrollFactor.set(1, 1);
+					}
+				}
+
+			case 'boyfriend':
+				if(boyfriendGroup != null)
+				{
+					boyfriendGroup.setPosition(BF_X, BF_Y);
+					boyfriendGroup.scrollFactor.set(1, 1);
+				}
 		}
-        tab_group.add(colorInput);
-        tab_group.add(new FlxText(colorInput.x, colorInput.y - 15, 80, 'Color:'));
-
-        
-
-        objY += addY;
-        distanceStepper = new PsychUINumericStepper(objX, objY, 1, 0, -9999, 9999, 0);
-        distanceStepper.onValueChange = function()
-        {
-            for(character in characters)
-            {
-                character.dropShadow.distance = distanceStepper.value;
-                dropShadowData.distance = distanceStepper.value;
-            }
-        }
-        tab_group.add(distanceStepper);
-        tab_group.add(new FlxText(distanceStepper.x, distanceStepper.y - 15, 80, 'Distance:'));
-
-        objY += addY;
-        antialiasingAmountStepper = new PsychUINumericStepper(objX, objY, 0.1, 0, -9999, 9999, 2);
-        antialiasingAmountStepper.onValueChange = function()
-        {
-            for(character in characters)
-            {
-                character.dropShadow.antialiasAmt = antialiasingAmountStepper.value;
-                dropShadowData.antialiasAmt = antialiasingAmountStepper.value;
-            }
-        }
-        tab_group.add(antialiasingAmountStepper);
-        tab_group.add(new FlxText(antialiasingAmountStepper.x, antialiasingAmountStepper.y - 15, 80, 'Antialiasing Amount:'));
-
-        objY += addY;
-        strengthStepper = new PsychUINumericStepper(objX, objY, 0.1, 0, -9999, 9999, 0);
-        strengthStepper.onValueChange = function()
-        {
-            for(character in characters)
-            {
-                character.dropShadow.strength = strengthStepper.value;
-                dropShadowData.strength = strengthStepper.value;
-            }
-        }
-        tab_group.add(strengthStepper);
-        tab_group.add(new FlxText(strengthStepper.x, strengthStepper.y - 15, 80, 'Strength:'));
-
-        objY += addY;
-        thresholdStepper = new PsychUINumericStepper(objX, objY, 0.05, 0, -9999, 9999, 2);
-        thresholdStepper.onValueChange = function()
-        {
-            for(character in characters)
-            {
-                character.dropShadow.threshold = thresholdStepper.value;
-                dropShadowData.threshold = thresholdStepper.value;
-            }
-        }
-        tab_group.add(thresholdStepper);
-        tab_group.add(new FlxText(thresholdStepper.x, thresholdStepper.y - 15, 80, 'Threshold:'));
-
-        objY += addY;
-        var addColorsY:Float = 80;
-        brightnessStepper = new PsychUINumericStepper(objX, objY, 1, 0, -9999, 9999, 0);
-        brightnessStepper.onValueChange = function()
-        {
-            for(character in characters)
-            {
-                character.dropShadow.baseBrightness = brightnessStepper.value;
-                dropShadowData.brightness = brightnessStepper.value;
-            }
-        }
-        tab_group.add(brightnessStepper);
-        tab_group.add(new FlxText(brightnessStepper.x, brightnessStepper.y - 15, 80, 'Brightness:'));
-
-        hueStepper = new PsychUINumericStepper(objX + addColorsY, objY, 1, 0, -9999, 9999, 0);
-        hueStepper.onValueChange = function()
-        {
-            for(character in characters)
-            {
-                character.dropShadow.baseHue = hueStepper.value;
-                dropShadowData.hue = hueStepper.value;
-            }
-        }
-        tab_group.add(hueStepper);
-        tab_group.add(new FlxText(hueStepper.x, hueStepper.y - 15, 80, 'Hue:'));
-
-        saturationStepper = new PsychUINumericStepper(objX + addColorsY * 2, objY, 1, 0, -9999, 9999, 0);
-        saturationStepper.onValueChange = function()
-        {
-            for(character in characters)
-            {
-                character.dropShadow.baseSaturation = saturationStepper.value;
-                dropShadowData.saturation = saturationStepper.value;
-            }
-        }
-        tab_group.add(saturationStepper);
-        tab_group.add(new FlxText(saturationStepper.x, saturationStepper.y - 15, 80, 'Saturation:'));
-
-        contrastStepper = new PsychUINumericStepper(objX + addColorsY * 3, objY, 1, 0, -9999, 9999, 0);
-        contrastStepper.onValueChange = function()
-        {
-            for(character in characters)
-            {
-                character.dropShadow.baseContrast = contrastStepper.value;
-                dropShadowData.contrast = contrastStepper.value;
-            }
-        }
-        tab_group.add(contrastStepper);
-        tab_group.add(new FlxText(contrastStepper.x, contrastStepper.y - 15, 80, 'Contrast:'));
-    }
-
-    var dadEnabledCheckbox:PsychUICheckBox;
-    var dadUseAltMaskCheckbox:PsychUICheckBox;
-    var dadAngleStepper:PsychUINumericStepper;
-    var dadMaskThresholdStepper:PsychUINumericStepper;
-    var dadAltMaskImageInput:PsychUIInputText;
-    var reloadDadAltMaskButton:PsychUIButton;
-    function addDadTab()
-    {
-        var tab_group = mainBox.getTab('Dad').menu;
-		var objX:Int = 10;
-		var objY:Int = 20;
-        var addY:Int = 40;
-
-        dadEnabledCheckbox = new PsychUICheckBox(objX, objY, 'Enabled', function()
-        {
-            dad.dropShadow.enabled = dadEnabledCheckbox.checked;
-            dropShadowData.dad.enabled = dadEnabledCheckbox.checked;
-        });
-        tab_group.add(dadEnabledCheckbox);
-
-        objY += addY;
-        dadUseAltMaskCheckbox = new PsychUICheckBox(objX + 150, objY, 'Use Alt Mask', function()
-        {
-            dad.dropShadow.useAltMask = dadUseAltMaskCheckbox.checked;
-            dropShadowData.dad.useAltMask = dadUseAltMaskCheckbox.checked;
-        });
-        tab_group.add(dadUseAltMaskCheckbox);
-
-
-        objY += addY;
-        dadAngleStepper = new PsychUINumericStepper(objX, objY, 1, 0, 0, 270, 0);
-        dadAngleStepper.onValueChange = function()
-        {
-            dad.dropShadow.angle = dadAngleStepper.value;
-            dropShadowData.dad.angle = dadAngleStepper.value;
-        };
-        tab_group.add(dadAngleStepper);
-        tab_group.add(new FlxText(dadAngleStepper.x, dadAngleStepper.y - 15, 80, 'Angle:'));
-
-        objY += addY;
-        dadMaskThresholdStepper = new PsychUINumericStepper(objX, objY, 0.05, 0, -9999, 9999, 2);
-        dadMaskThresholdStepper.onValueChange = function()
-        {
-            dad.dropShadow.maskThreshold = dadMaskThresholdStepper.value;
-            dropShadowData.dad.maskThreshold = dadMaskThresholdStepper.value;
-        };
-        tab_group.add(dadMaskThresholdStepper);
-        tab_group.add(new FlxText(dadMaskThresholdStepper.x, dadMaskThresholdStepper.y - 15, 120, 'Mask Threshold:'));
-
-        objY += addY;
-        dadAltMaskImageInput = new PsychUIInputText(objX, objY, 120, '');
-        tab_group.add(dadAltMaskImageInput);
-
-        reloadDadAltMaskButton = new PsychUIButton(objX + 140, objY, 'Reload Alt Mask', function()
-        {
-            dropShadowData.dad.altMaskPath= dadAltMaskImageInput.text;
-            var useAltMask:Bool = dad.dropShadow.useAltMask;
-            if(useAltMask) dad.dropShadow.loadAltMask(dadAltMaskImageInput.text);
-        });
-        tab_group.add(reloadDadAltMaskButton);
-
-    }
-
-    var girlfriendEnabledCheckbox:PsychUICheckBox;
-    var girlfriendUseAltMaskCheckbox:PsychUICheckBox;
-    var girlfriendAngleStepper:PsychUINumericStepper;
-    var girlfriendMaskThresholdStepper:PsychUINumericStepper;
-    var girlfriendAltMaskImageInput:PsychUIInputText;
-    var reloadGirlfriendAltMaskButton:PsychUIButton;
-    function addGirlfriendTab()
-    {
-        var tab_group = mainBox.getTab('Girlfriend').menu;
-		var objX:Int = 10;
-		var objY:Int = 20;
-        var addY:Int = 40;
-
-        girlfriendEnabledCheckbox = new PsychUICheckBox(objX, objY, 'Enabled', function()
-        {
-            girlfriend.dropShadow.enabled = girlfriendEnabledCheckbox.checked;
-            dropShadowData.girlfriend.enabled = girlfriendEnabledCheckbox.checked;
-        });
-        tab_group.add(girlfriendEnabledCheckbox);
-
-        objY += addY;
-        girlfriendUseAltMaskCheckbox = new PsychUICheckBox(objX + 150, objY, 'Use Alt Mask', function()
-        {
-            girlfriend.dropShadow.useAltMask = girlfriendUseAltMaskCheckbox.checked;
-            dropShadowData.girlfriend.useAltMask = girlfriendUseAltMaskCheckbox.checked;
-        });
-        tab_group.add(girlfriendUseAltMaskCheckbox);
-
-
-        objY += addY;
-        girlfriendAngleStepper = new PsychUINumericStepper(objX, objY, 1, 0, 0, 270, 0);
-        girlfriendAngleStepper.onValueChange = function()
-        {
-            girlfriend.dropShadow.angle = girlfriendAngleStepper.value;
-            dropShadowData.girlfriend.angle = girlfriendAngleStepper.value;
-        };
-        tab_group.add(girlfriendAngleStepper);
-        tab_group.add(new FlxText(girlfriendAngleStepper.x, girlfriendAngleStepper.y - 15, 80, 'Angle:'));
-
-        objY += addY;
-        girlfriendMaskThresholdStepper = new PsychUINumericStepper(objX, objY, 0.05, 0, -9999, 9999, 2);
-        girlfriendMaskThresholdStepper.onValueChange = function()
-        {
-            girlfriend.dropShadow.maskThreshold = girlfriendMaskThresholdStepper.value;
-            dropShadowData.girlfriend.maskThreshold = girlfriendMaskThresholdStepper.value;
-        };
-        tab_group.add(girlfriendMaskThresholdStepper);
-        tab_group.add(new FlxText(girlfriendMaskThresholdStepper.x, girlfriendMaskThresholdStepper.y - 15, 120, 'Mask Threshold:'));
-
-        objY += addY;
-        girlfriendAltMaskImageInput = new PsychUIInputText(objX, objY, 120, '');
-        tab_group.add(girlfriendAltMaskImageInput);
-
-        reloadGirlfriendAltMaskButton = new PsychUIButton(objX + 140, objY, 'Reload Alt Mask', function()
-        {
-            dropShadowData.girlfriend.altMaskPath = girlfriendAltMaskImageInput.text;
-            var useAltMask:Bool = girlfriend.dropShadow.useAltMask;
-            if(useAltMask) girlfriend.dropShadow.loadAltMask(girlfriendAltMaskImageInput.text);
-        });
-        tab_group.add(reloadGirlfriendAltMaskButton);
-    }
-
-    var boyfriendEnabledCheckbox:PsychUICheckBox;
-    var boyfriendUseAltMaskCheckbox:PsychUICheckBox;
-    var boyfriendAngleStepper:PsychUINumericStepper;
-    var boyfriendMaskThresholdStepper:PsychUINumericStepper;
-    var boyfriendAltMaskImageInput:PsychUIInputText;
-    var reloadBoyfriendAltMaskButton:PsychUIButton;
-    function addBoyfriendTab()
-    {
-        var tab_group = mainBox.getTab('Boyfriend').menu;
-		var objX:Int = 10;
-		var objY:Int = 20;
-        var addY:Int = 40;
-
-        boyfriendEnabledCheckbox = new PsychUICheckBox(objX, objY, 'Enabled', function()
-        {
-            boyfriend.dropShadow.enabled = boyfriendEnabledCheckbox.checked;
-            dropShadowData.boyfriend.enabled = boyfriendEnabledCheckbox.checked;
-        });
-        tab_group.add(boyfriendEnabledCheckbox);
-
-        objY += addY;
-        boyfriendUseAltMaskCheckbox = new PsychUICheckBox(objX + 150, objY, 'Use Alt Mask', function()
-        {
-            boyfriend.dropShadow.useAltMask = boyfriendUseAltMaskCheckbox.checked;
-            dropShadowData.boyfriend.useAltMask = boyfriendUseAltMaskCheckbox.checked;
-        });
-        tab_group.add(boyfriendUseAltMaskCheckbox);
-
-
-        objY += addY;
-        boyfriendAngleStepper = new PsychUINumericStepper(objX, objY, 1, 0, 0, 270, 0);
-        boyfriendAngleStepper.onValueChange = function()
-        {
-            boyfriend.dropShadow.angle = boyfriendAngleStepper.value;
-            dropShadowData.boyfriend.angle = boyfriendAngleStepper.value;
-        };
-        tab_group.add(boyfriendAngleStepper);
-        tab_group.add(new FlxText(boyfriendAngleStepper.x, boyfriendAngleStepper.y - 15, 80, 'Angle:'));
-
-        objY += addY;
-        boyfriendMaskThresholdStepper = new PsychUINumericStepper(objX, objY, 0.05, 0, -9999, 9999, 2);
-        boyfriendMaskThresholdStepper.onValueChange = function()
-        {
-            boyfriend.dropShadow.maskThreshold = boyfriendMaskThresholdStepper.value;
-            dropShadowData.boyfriend.maskThreshold = boyfriendMaskThresholdStepper.value;
-        };
-        tab_group.add(boyfriendMaskThresholdStepper);
-        tab_group.add(new FlxText(boyfriendMaskThresholdStepper.x, boyfriendMaskThresholdStepper.y - 15, 120, 'Mask Threshold:'));
-
-        objY += addY;
-        boyfriendAltMaskImageInput = new PsychUIInputText(objX, objY, 120, '');
-        tab_group.add(boyfriendAltMaskImageInput);
-
-        reloadBoyfriendAltMaskButton = new PsychUIButton(objX + 140, objY, 'Reload Alt Mask', function()
-        {
-            dropShadowData.boyfriend.altMaskPath = boyfriendAltMaskImageInput.text;
-            var useAltMask:Bool = boyfriend.dropShadow.useAltMask;
-            if(useAltMask) boyfriend.dropShadow.loadAltMask(boyfriendAltMaskImageInput.text);
-        });
-        tab_group.add(reloadBoyfriendAltMaskButton);
-    }
-
-    override function update(elapsed:Float)
-    {
-        super.update(elapsed);
-
-        outputAlpha = Math.max(0, outputAlpha - elapsed);
-
-        if(FlxG.keys.justPressed.ESCAPE)
-        {
-            if(ClientPrefs.data.editorSFX)
-                FlxG.sound.play(Paths.uiSound('cancelMenu'));
-            MusicBeatState.switchState(new MainMenuState());
-        }
-
-        if(FlxG.keys.justPressed.SPACE)
-        {
-            playCharactersAnimation('idle');
-        }
-
-        var shiftMult:Float = 1;
-		var ctrlMult:Float = 1;
-		var shiftMultBig:Float = 1;
-		if(FlxG.keys.pressed.SHIFT)
-		{
-			shiftMult = 4;
-			shiftMultBig = 10;
-		}
-		if(FlxG.keys.pressed.CONTROL) ctrlMult = 0.25;
-
-		// CAMERA CONTROLS
-		if (FlxG.keys.pressed.J) FlxG.camera.scroll.x -= elapsed * 500 * shiftMult * ctrlMult;
-		if (FlxG.keys.pressed.K) FlxG.camera.scroll.y += elapsed * 500 * shiftMult * ctrlMult;
-		if (FlxG.keys.pressed.L) FlxG.camera.scroll.x += elapsed * 500 * shiftMult * ctrlMult;
-		if (FlxG.keys.pressed.I) FlxG.camera.scroll.y -= elapsed * 500 * shiftMult * ctrlMult;
-
-		var lastZoom = FlxG.camera.zoom;
-		if(FlxG.keys.justPressed.R && !FlxG.keys.pressed.CONTROL) FlxG.camera.zoom = 1;
-		else if (FlxG.keys.pressed.E && FlxG.camera.zoom < 3) {
-			FlxG.camera.zoom += elapsed * FlxG.camera.zoom * shiftMult * ctrlMult;
-			if(FlxG.camera.zoom > 3) FlxG.camera.zoom = 3;
-		}
-		else if (FlxG.keys.pressed.Q && FlxG.camera.zoom > 0.1) {
-			FlxG.camera.zoom -= elapsed * FlxG.camera.zoom * shiftMult * ctrlMult;
-			if(FlxG.camera.zoom < 0.1) FlxG.camera.zoom = 0.1;
-		}
-    }
-
-    function playCharactersAnimation(name:String)
-    {
-        for(character in characters)
-                character.playAnim(name);
-    }
-
-    public function UIEvent(id:String, sender:Dynamic)
-    {
-        /*
-		//trace(id, sender);
-		if(id == PsychUICheckBox.CLICK_EVENT)
-			unsavedProgress = true;
-
-		if(id == PsychUIInputText.CHANGE_EVENT)
-		{
-			if(sender == healthIconInputText) {
-				var lastIcon = healthIcon.getCharacter();
-				healthIcon.changeIcon(healthIconInputText.text, false);
-				character.healthIcon = healthIconInputText.text;
-				if(lastIcon != healthIcon.getCharacter()) updatePresence();
-				unsavedProgress = true;
-			}
-			else if(sender == vocalsInputText)
-			{
-				character.vocalsFile = vocalsInputText.text;
-				unsavedProgress = true;
-			}
-			else if(sender == imageInputText)
-			{
-				character.imageFile = imageInputText.text;
-				unsavedProgress = true;
-			}
-		}
-		else if(id == PsychUINumericStepper.CHANGE_EVENT)
-		{
-			if (sender == scaleStepper)
-			{
-				reloadCharacterImage();
-				character.jsonScale = sender.value;
-				character.scale.set(character.jsonScale, character.jsonScale);
-				character.updateHitbox();
-				updatePointerPos(false);
-				unsavedProgress = true;
-			}
-			else if(sender == positionXStepper)
-			{
-				character.positionArray[0] = positionXStepper.value;
-				updateCharacterPositions();
-				unsavedProgress = true;
-			}
-			else if(sender == positionYStepper)
-			{
-				character.positionArray[1] = positionYStepper.value;
-				updateCharacterPositions();
-				unsavedProgress = true;
-			}
-			else if(sender == singDurationStepper)
-			{
-				character.singDuration = singDurationStepper.value;
-				unsavedProgress = true;
-			}
-			else if(sender == positionCameraXStepper)
-			{
-				character.cameraPosition[0] = positionCameraXStepper.value;
-				updatePointerPos();
-				unsavedProgress = true;
-			}
-			else if(sender == positionCameraYStepper)
-			{
-				character.cameraPosition[1] = positionCameraYStepper.value;
-				updatePointerPos();
-				unsavedProgress = true;
-			}
-			else if(sender == healthColorStepperR)
-			{
-				character.healthColorArray[0] = Math.round(healthColorStepperR.value);
-				updateHealthBar();
-				unsavedProgress = true;
-			}
-			else if(sender == healthColorStepperG)
-			{
-				character.healthColorArray[1] = Math.round(healthColorStepperG.value);
-				updateHealthBar();
-				unsavedProgress = true;
-			}
-			else if(sender == healthColorStepperB)
-			{
-				character.healthColorArray[2] = Math.round(healthColorStepperB.value);
-				updateHealthBar();
-				unsavedProgress = true;
-			}
-		}
-            */ 
-
 	}
 
+	function changePreviewCharacter(character:Character, next:String, data:CharacterSpecificData, metaField:String):Void
+	{
+		if(character == null || next == null || next.length < 1)
+			return;
+
+		character.changeCharacter(next);
+		startCharacterPos(character, metaField);
+		character.dance();
+		if(stageData._editorMeta == null)
+			stageData._editorMeta = {dad: 'dad', gf: 'gf', boyfriend: 'bf'};
+		Reflect.setField(stageData._editorMeta, metaField, next);
+		refreshCharacterShadow(character, data);
+		focusCameraOnBoyfriend();
+	}
+
+	function applyAllDropShadows():Void
+	{
+		refreshCharacterShadow(dad, dropShadowData.dad);
+		refreshCharacterShadow(gf, dropShadowData.girlfriend);
+		refreshCharacterShadow(boyfriend, dropShadowData.boyfriend);
+	}
+
+	function refreshCharacterShadow(character:Character, data:CharacterSpecificData):Void
+	{
+		DropShadowData.applyToCharacter(character, data, true);
+	}
+
+	function copyCharacterPreset(source:CharacterSpecificData, target:CharacterSpecificData):Void
+	{
+		if(source == null || target == null)
+			return;
+
+		target.enabled = source.enabled;
+		target.color = source.color;
+		target.distance = source.distance;
+		target.strength = source.strength;
+		target.threshold = source.threshold;
+		target.antialiasAmt = source.antialiasAmt;
+		target.hue = source.hue;
+		target.saturation = source.saturation;
+		target.brightness = source.brightness;
+		target.contrast = source.contrast;
+		target.angle = source.angle;
+		target.altMaskImage = source.altMaskImage;
+		target.altMaskPath = source.altMaskPath;
+		target.useAltMask = source.useAltMask;
+		target.maskThreshold = source.maskThreshold;
+	}
+
+	function playCharactersAnimation(name:String):Void
+	{
+		for(character in [gf, dad, boyfriend])
+			if(character != null && character.hasAnimation(name))
+				character.playAnim(name, true);
+	}
+
+	function focusCameraOnBoyfriend():Void
+	{
+		if(boyfriend == null)
+			return;
+
+		var point:FlxPoint = boyfriend.getMidpoint();
+		FlxG.camera.scroll.set(point.x - FlxG.width / 2, point.y - FlxG.height / 2);
+		point.put();
+	}
+
+	function setPickerColor(picker:DropShadowColorPicker, color:FlxColor, ?wheelColor:Null<FlxColor>):Void
+	{
+		if(picker == null)
+			return;
+
+		picker.data.color = color;
+		refreshCharacterShadow(picker.character, picker.data);
+		updateColorPicker(picker, wheelColor);
+	}
+
+	function updateColorPicker(picker:DropShadowColorPicker, ?specific:Null<FlxColor>):Void
+	{
+		if(picker == null || picker.wheel == null)
+			return;
+
+		var color:FlxColor = picker.data.color;
+		var wheelColor:FlxColor = specific == null ? color : specific;
+		picker.preview.color = color;
+		picker.hexText.text = colorHex(color);
+		picker.wheel.color = FlxColor.fromHSB(0, 0, color.brightness);
+
+		picker.wheelSelector.setPosition(picker.wheel.x + picker.wheel.width / 2, picker.wheel.y + picker.wheel.height / 2);
+		if(wheelColor.brightness != 0)
+		{
+			var hueWrap:Float = wheelColor.hue * Math.PI / 180;
+			picker.wheelSelector.x += Math.sin(hueWrap) * picker.wheel.width / 2 * wheelColor.saturation;
+			picker.wheelSelector.y -= Math.cos(hueWrap) * picker.wheel.height / 2 * wheelColor.saturation;
+		}
+		picker.gradientSelector.y = picker.gradient.y + picker.gradient.height * (1 - color.brightness);
+	}
+
+	function updateColorPickerInput():Void
+	{
+		if(holdingColorPicker == null || holdingColorPickerSprite == null)
+			return;
+
+		if(holdingColorPickerSprite == holdingColorPicker.gradient)
+		{
+			var mouse:FlxPoint = getPickerMouse();
+			var newBrightness:Float = 1 - FlxMath.bound((mouse.y - pickerScreenY(holdingColorPicker.gradient)) / holdingColorPicker.gradient.height, 0, 1);
+			mouse.put();
+			if(storedPickerColor.brightness == 0)
+				setPickerColor(holdingColorPicker, FlxColor.fromRGBFloat(newBrightness, newBrightness, newBrightness), storedPickerColor);
+			else
+				setPickerColor(holdingColorPicker, FlxColor.fromHSB(storedPickerColor.hue, storedPickerColor.saturation, newBrightness), storedPickerColor);
+		}
+		else if(holdingColorPickerSprite == holdingColorPicker.wheel)
+		{
+			var center:FlxPoint = FlxPoint.get(pickerScreenX(holdingColorPicker.wheel) + holdingColorPicker.wheel.width / 2, pickerScreenY(holdingColorPicker.wheel) + holdingColorPicker.wheel.height / 2);
+			var mouse:FlxPoint = getPickerMouse();
+			var cX:Float = (center.x - mouse.x) / holdingColorPicker.wheel.width * 2;
+			var cY:Float = (center.y - mouse.y) / holdingColorPicker.wheel.height * 2;
+			var hue:Float = FlxMath.wrap(FlxMath.wrap(Std.int(mouse.degreesTo(center)), 0, 360) - 90, 0, 360);
+			var saturation:Float = FlxMath.bound(Math.sqrt(cX * cX + cY * cY), 0, 1);
+			if(saturation != 0)
+				setPickerColor(holdingColorPicker, FlxColor.fromHSB(hue, saturation, storedPickerColor.brightness));
+			else
+				setPickerColor(holdingColorPicker, FlxColor.fromRGBFloat(storedPickerColor.brightness, storedPickerColor.brightness, storedPickerColor.brightness));
+			center.put();
+			mouse.put();
+		}
+	}
+
+	function updateColorPickerHold():Void
+	{
+		if(mainBox == null || mainBox.isMinimized)
+			return;
+
+		var activePicker:DropShadowColorPicker = holdingColorPicker != null ? holdingColorPicker : getColorPickerForTab(mainBox.selectedName);
+		if(activePicker == null)
+			return;
+
+		if(FlxG.mouse.justPressed)
+		{
+			if(mouseOverPickerSprite(activePicker.wheel))
+			{
+				holdingColorPicker = activePicker;
+				holdingColorPickerSprite = activePicker.wheel;
+			}
+			else if(mouseOverPickerSprite(activePicker.gradient))
+			{
+				holdingColorPicker = activePicker;
+				holdingColorPickerSprite = activePicker.gradient;
+			}
+			else
+			{
+				holdingColorPicker = null;
+				holdingColorPickerSprite = null;
+			}
+
+			if(holdingColorPicker != null)
+			{
+				storedPickerColor = holdingColorPicker.data.color;
+				updateColorPickerInput();
+			}
+		}
+		else if(holdingColorPicker != null)
+		{
+			if(FlxG.mouse.justReleased)
+			{
+				holdingColorPickerSprite = null;
+				storedPickerColor = holdingColorPicker.data.color;
+				updateColorPicker(holdingColorPicker);
+				holdingColorPicker = null;
+				if(ClientPrefs.data.editorSFX)
+					FlxG.sound.play(Paths.uiSound('scrollMenu'), 0.45);
+			}
+			else if(FlxG.mouse.pressed && (FlxG.mouse.justMoved || FlxG.mouse.deltaViewX != 0 || FlxG.mouse.deltaViewY != 0))
+				updateColorPickerInput();
+		}
+	}
+
+	function getColorPickerForTab(tabName:String):DropShadowColorPicker
+	{
+		for(picker in colorPickers)
+			if(picker.tabName == tabName)
+				return picker;
+		return null;
+	}
+
+	function mouseOverPickerSprite(sprite:FlxSprite):Bool
+	{
+		if(sprite == null)
+			return false;
+
+		var mouse:FlxPoint = getPickerMouse();
+		if(FlxG.mouse.overlaps(sprite, sprite.camera))
+		{
+			holdingPickerRawPosition = mouseOverBounds(mouse.x, mouse.y, sprite.x, sprite.y, sprite.width, sprite.height);
+			mouse.put();
+			return true;
+		}
+
+		if(mouseOverBounds(mouse.x, mouse.y, sprite.x, sprite.y, sprite.width, sprite.height))
+		{
+			holdingPickerRawPosition = true;
+			mouse.put();
+			return true;
+		}
+
+		var result:Bool = mouseOverBounds(mouse.x, mouse.y, menuScreenX(sprite), menuScreenY(sprite), sprite.width, sprite.height);
+		if(result)
+			holdingPickerRawPosition = false;
+		mouse.put();
+		return result;
+	}
+
+	function mouseOverBounds(mouseX:Float, mouseY:Float, x:Float, y:Float, width:Float, height:Float):Bool
+		return mouseX >= x && mouseX <= x + width && mouseY >= y && mouseY <= y + height;
+
+	function getPickerMouse():FlxPoint
+		return FlxG.mouse.getViewPosition(camUI != null ? camUI : FlxG.camera);
+
+	function pickerScreenX(sprite:FlxSprite):Float
+		return holdingPickerRawPosition ? sprite.x : menuScreenX(sprite);
+
+	function pickerScreenY(sprite:FlxSprite):Float
+		return holdingPickerRawPosition ? sprite.y : menuScreenY(sprite);
+
+	function menuScreenX(sprite:FlxSprite):Float
+		return mainBox.x + sprite.x;
+
+	function menuScreenY(sprite:FlxSprite):Float
+		return mainBox.y + mainBox.tabHeight + sprite.y;
+
+	function colorHex(color:FlxColor):String
+		return '#' + color.toHexString(false, false);
+
+	function parseColor(raw:String):Null<FlxColor>
+	{
+		if(raw == null)
+			return null;
+		raw = raw.trim();
+		if(raw.length < 1)
+			return null;
+
+		if(raw.indexOf(',') > -1)
+		{
+			var split:Array<String> = raw.split(',');
+			if(split.length >= 3)
+			{
+				var rgb:Array<Int> = [];
+				for(i in 0...3)
+				{
+					var parsed:Null<Int> = Std.parseInt(split[i].trim());
+					if(parsed == null)
+						return null;
+					rgb.push(Std.int(FlxMath.bound(parsed, 0, 255)));
+				}
+				return FlxColor.fromRGB(rgb[0], rgb[1], rgb[2]);
+			}
+		}
+
+		if(!raw.startsWith('#') && !raw.startsWith('0x') && !raw.startsWith('0X'))
+			raw = '#' + raw;
+		return FlxColor.fromString(raw);
+	}
+
+	override function update(elapsed:Float)
+	{
+		super.update(elapsed);
+
+		outputAlpha = Math.max(0, outputAlpha - elapsed);
+		if(outputTxt != null)
+			outputTxt.alpha = Math.min(1, outputAlpha);
+
+		updateColorPickerHold();
+
+		if(FlxG.keys.justPressed.ESCAPE)
+		{
+			if(ClientPrefs.data.editorSFX)
+				FlxG.sound.play(Paths.uiSound('cancelMenu'));
+			MusicBeatState.switchState(new MainMenuState());
+			return;
+		}
+
+		if(FlxG.keys.justPressed.SPACE)
+			playCharactersAnimation('idle');
+
+		var shiftMult:Float = FlxG.keys.pressed.SHIFT ? 4 : 1;
+		var ctrlMult:Float = FlxG.keys.pressed.CONTROL ? 0.25 : 1;
+
+		if(FlxG.keys.pressed.J) FlxG.camera.scroll.x -= elapsed * 500 * shiftMult * ctrlMult;
+		if(FlxG.keys.pressed.K) FlxG.camera.scroll.y += elapsed * 500 * shiftMult * ctrlMult;
+		if(FlxG.keys.pressed.L) FlxG.camera.scroll.x += elapsed * 500 * shiftMult * ctrlMult;
+		if(FlxG.keys.pressed.I) FlxG.camera.scroll.y -= elapsed * 500 * shiftMult * ctrlMult;
+
+		if(FlxG.keys.justPressed.R && !FlxG.keys.pressed.CONTROL)
+			FlxG.camera.zoom = stageData.defaultZoom;
+		else if(FlxG.keys.pressed.E && FlxG.camera.zoom < 3)
+			FlxG.camera.zoom = Math.min(3, FlxG.camera.zoom + elapsed * FlxG.camera.zoom * shiftMult * ctrlMult);
+		else if(FlxG.keys.pressed.Q && FlxG.camera.zoom > 0.1)
+			FlxG.camera.zoom = Math.max(0.1, FlxG.camera.zoom - elapsed * FlxG.camera.zoom * shiftMult * ctrlMult);
+	}
+
+	public function UIEvent(id:String, sender:Dynamic) {}
 }

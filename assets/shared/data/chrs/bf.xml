@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<character assetPath="characters/bf" icon="bf" scale="1" singDuration="4" x="290" y="140" cameraX="140" cameraY="420" flipX="true" noAntialiasing="false" healthColor="#31B0D1" vocalsFile="" vsliceHolds="true">
+<character assetPath="characters/bf" icon="bf" scale="1" singDuration="4" x="290" y="140" cameraX="140" cameraY="420" flipX="true" noAntialiasing="false" healthColor="#31B0D1" vocalsFile="" vsliceHolds="true" isEditor_Icons="bfpixel" isEditor_Name="Boyfriend">
 	<assets>
 		<asset path="characters/bf"/>
 	</assets>

@@ -155,9 +155,7 @@ class HScript extends Iris {
 		Iris.proxyImports.set('funkin.game.shaders.OverlayShader', funkin.objects.shader.OverlayShader);
 		Iris.proxyImports.set('funkin.utils.AtlasUtil', backend.AtlasUtil);
 		//Iris.proxyImports.set('funkin.graphics.FunkinSprite', funkin.graphics.FunkinSprite);
-		#if flxanimate
 		Iris.proxyImports.set('animate.internal.elements.FlxSpriteElement', animate.internal.elements.FlxSpriteElement);
-		#end
 		Iris.proxyImports.set('funkin.utils.CameraUtil', funkin.utils.CameraUtil);
 		Iris.proxyImports.set('funkin.utils.CoolUtil', funkin.utils.CoolUtil);
 		Iris.proxyImports.set('funkin.states.PlayState', states.PlayState);
@@ -476,10 +474,8 @@ class HScript extends Iris {
 			HIGH: openfl.filters.BitmapFilterQuality.HIGH
 		});
 		set('StringTools', StringTools);
-		#if flxanimate
 		set('FlxAnimate', FlxAnimate);
 		set('FlxSpriteElement', animate.internal.elements.FlxSpriteElement);
-		#end
 		set('controls', Controls.instance);
 		
 		if (parentState != null && !(parentState is ScriptedSubState))
@@ -625,6 +621,24 @@ class HScript extends Iris {
 		set('tweenResFrom', function(fromWidth:Int, fromHeight:Int, toWidth:Int, toHeight:Int, duration:Float = 1, ease:String = 'linear', resizable:Bool = true)
 			return backend.ResolutionManager.tweenResFrom(fromWidth, fromHeight, toWidth, toHeight, duration, LuaUtils.getTweenEaseByString(ease), resizable));
 		set('cancelTweenRes', function() backend.ResolutionManager.cancelTweenRes());
+		set('resolution', { // hi haxe users
+			set: function(width:Int, height:Int, resizable:Bool = true) return backend.ResolutionManager.changeRes(width, height, resizable),
+			change: function(width:Int, height:Int, resizable:Bool = true) return backend.ResolutionManager.changeRes(width, height, resizable),
+			reset: function() return backend.ResolutionManager.reset(),
+			tween: function(width:Int, height:Int, duration:Float = 1, ease:String = 'linear', resizable:Bool = true)
+				return backend.ResolutionManager.tweenRes(width, height, duration, LuaUtils.getTweenEaseByString(ease), resizable),
+			tweenFrom: function(fromWidth:Int, fromHeight:Int, toWidth:Int, toHeight:Int, duration:Float = 1, ease:String = 'linear', resizable:Bool = true)
+				return backend.ResolutionManager.tweenResFrom(fromWidth, fromHeight, toWidth, toHeight, duration, LuaUtils.getTweenEaseByString(ease), resizable),
+			cancelTween: function() backend.ResolutionManager.cancelTweenRes(),
+			cancel: function() backend.ResolutionManager.cancelTweenRes(),
+			hasCustom: function() return backend.ResolutionManager.hasCustomResolution(),
+			hasRememberedCustom: function() return backend.ResolutionManager.hasRememberedCustomResolution(),
+			isSuspendedForEditor: function() return backend.ResolutionManager.isSuspendedForEditor(),
+			getWidth: function() return backend.ResolutionManager.width,
+			getHeight: function() return backend.ResolutionManager.height,
+			getWindowWidth: function(pixels:Bool = false) return pixels ? backend.VignetteUtil.windowPixelWidth() : backend.VignetteUtil.windowWidth(),
+			getWindowHeight: function(pixels:Bool = false) return pixels ? backend.VignetteUtil.windowPixelHeight() : backend.VignetteUtil.windowHeight()
+		});
 		set('preloadVideo', function(name:String) return LoadingState.preloadVideo(name) != null);
 		set('precacheVideo', function(name:String) return LoadingState.preloadVideo(name) != null);
 		set('getSongPosition', function() return Conductor.songPosition);
@@ -888,21 +902,14 @@ class HScript extends Iris {
 
 			if(obj.animation != null)
 			{
-				obj.animation.addByPrefix(name, prefix, framerate, loop);
+				if(Std.isOfType(obj, FlxAnimate))
+					AtlasUtil.addAnimation(obj, name, prefix, null, framerate, loop);
+				else
+					obj.animation.addByPrefix(name, prefix, framerate, loop);
 				if(obj.animation.curAnim == null)
 				{
 					if(obj.playAnim != null) obj.playAnim(name, true);
 					else obj.animation.play(name, true);
-				}
-				return true;
-			}
-			if(obj.anim != null)
-			{
-				obj.anim.addByPrefix(name, prefix, framerate, loop);
-				if(obj.hasActiveAtlasAnimation == null || !obj.hasActiveAtlasAnimation())
-				{
-					if(obj.playAnim != null) obj.playAnim(name, true);
-					else obj.anim.play(name, true);
 				}
 				return true;
 			}
@@ -918,7 +925,6 @@ class HScript extends Iris {
 				if(spr.shader != null && Std.isOfType(spr.shader, FlxShader))
 					return cast spr.shader;
 			}
-			#if flxanimate
 			var atlas:Dynamic = backend.AtlasUtil.getAtlas(obj);
 			if(atlas != null)
 			{
@@ -926,12 +932,10 @@ class HScript extends Iris {
 				if(Std.isOfType(shader, FlxShader))
 					return cast shader;
 			}
-			#end
 			return null;
 		};
 		set('getObject', getObject);
 		set('getObjectDirectly', getObject);
-		#if flxanimate
 		var getAtlasFallbackTarget = function():Dynamic {
 			return characterScriptCharacter;
 		};
@@ -1005,7 +1009,6 @@ class HScript extends Iris {
 			return backend.AtlasUtil.getFrame(getAtlasTarget(objName)));
 		set('getAtlasCurFrame', function(objName:Dynamic = null)
 			return backend.AtlasUtil.getFrame(getAtlasTarget(objName)));
-		#end
 		set('setObjectShaderObject', function(objName:String, shaderName:String)
 			return backend.AtlasUtil.setShader(getObject(objName), getShaderObject(shaderName)));
 		set('copyObjectShader', function(sourceName:String, targetName:String)
@@ -1222,7 +1225,7 @@ class HScript extends Iris {
 		set('removeObject', removeSpriteFunc);
 		var spriteExistsFunc = function(tag:String) {
 			var obj:Dynamic = scriptVariables()?.get(tag);
-			return obj != null && (Std.isOfType(obj, ModchartSprite) #if flxanimate || Std.isOfType(obj, ModchartAnimateSprite) #end);
+			return obj != null && (Std.isOfType(obj, ModchartSprite) || Std.isOfType(obj, ModchartAnimateSprite));
 		};
 		set('luaSpriteExists', spriteExistsFunc);
 		set('spriteExists', spriteExistsFunc);
@@ -1362,6 +1365,10 @@ class HScript extends Iris {
 				return false;
 			if(front) PlayState.instance.add(video);
 			else PlayState.instance.insert(0, video);
+			if(video.playOnAdd) {
+				video.playOnAdd = false;
+				video.play();
+			}
 			return true;
 		});
 		set('removeVideo', function(tag:String, destroy:Bool = true) {
@@ -1482,6 +1489,14 @@ class HScript extends Iris {
 			return backend.CustomCursor.reloadFromMods());
 		set('resetCustomCursor', function() {
 			backend.CustomCursor.reset();
+		});
+		set('cursor', { // hi haxe users 2
+			set: function(image:String = 'cursor', scale:Float = 1, hotspotX:Int = 0, hotspotY:Int = 0)
+				return backend.CustomCursor.set(image, scale, hotspotX, hotspotY),
+			reload: function() return backend.CustomCursor.reloadFromMods(),
+			reset: function() backend.CustomCursor.reset(),
+			isCustom: function() return backend.CustomCursor.ativo,
+			getPath: function() return backend.CustomCursor.curPath
 		});
 
 		set('gamepadAnalogX', function(id:Int, ?leftStick:Bool = true) {
@@ -1612,6 +1627,28 @@ class HScript extends Iris {
 		set('windowHeight', backend.VignetteUtil.windowHeight());
 		set('windowPixelWidth', backend.VignetteUtil.windowPixelWidth());
 		set('windowPixelHeight', backend.VignetteUtil.windowPixelHeight());
+		set('window', { // hi haxe users 3
+			getWidth: function(pixels:Bool = false) return pixels ? backend.VignetteUtil.windowPixelWidth() : backend.VignetteUtil.windowWidth(),
+			getHeight: function(pixels:Bool = false) return pixels ? backend.VignetteUtil.windowPixelHeight() : backend.VignetteUtil.windowHeight(),
+			setTitle: function(title:String) {
+				if (Lib.application != null && Lib.application.window != null)
+					Lib.application.window.title = title;
+				return title;
+			},
+			getTitle: function() return Lib.application != null && Lib.application.window != null ? Lib.application.window.title : '',
+			setResizable: function(value:Bool = true) {
+				if (Lib.application != null && Lib.application.window != null)
+					Lib.application.window.resizable = value;
+				return value;
+			},
+			isResizable: function() return Lib.application != null && Lib.application.window != null ? Lib.application.window.resizable : true,
+			setFullscreen: function(value:Bool = true) {
+				if (Lib.application != null && Lib.application.window != null)
+					Lib.application.window.fullscreen = value;
+				return value;
+			},
+			isFullscreen: function() return Lib.application != null && Lib.application.window != null ? Lib.application.window.fullscreen : false
+		});
 		set('fullScreenX', backend.CameraResizeFix.pegarFSX(LuaUtils.cameraFromString('other')));
 		set('fullScreenY', backend.CameraResizeFix.pegarFSY(LuaUtils.cameraFromString('other')));
 		set('fullScreenWidth', backend.CameraResizeFix.pegarFSL(LuaUtils.cameraFromString('other')));
@@ -1669,7 +1706,7 @@ class HScript extends Iris {
 	{
 		if (exists('onLoad'))
 			call('onLoad');
-		if (exists('onCreate'))
+		if (exists('onCreate')) // idk if i want, but i prob should delete the onCreate funct
 			call('onCreate');
 	}
 

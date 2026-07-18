@@ -25,6 +25,7 @@ class VideoSprite extends FlxSpriteGroup {
 	public var tag:String = null;
 	public var pauseWithGame:Bool = true;
 	public var syncWithSong:Bool = false;
+	public var playOnAdd:Bool = false;
 	public var holdingTime:Float = 0;
 	public var skipSprite:FlxPieDial;
 	public var cover:FlxSprite;

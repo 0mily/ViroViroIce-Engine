@@ -200,12 +200,19 @@ class DropShadowShader extends FlxShader
 
   function set_attachedSprite(spr:FlxSprite):FlxSprite
   {
-    attachedSprite = spr;
-    updateFrameInfo(attachedSprite.frame);
+    if (attachedSprite != null && attachedSprite.animation != null)
+      attachedSprite.animation.onFrameChange.remove(onAttachedFrame);
 
-    attachedSprite.animation.callback = function(name, frameNumber, frameIndex) {
-        onAttachedFrame(name, frameNumber, frameIndex);
-    };
+    attachedSprite = spr;
+
+    if (attachedSprite != null)
+    {
+      updateFrameInfo(attachedSprite.frame);
+      if (attachedSprite.animation != null)
+        attachedSprite.animation.onFrameChange.add(onAttachedFrame);
+    }
+    else
+      useFullFrameBounds();
 
     return spr;
   }
@@ -218,12 +225,25 @@ class DropShadowShader extends FlxShader
    */
   public function loadAltMask(path:String):Void
   {
-    altMaskImage = BitmapData.fromFile(Paths.getPath('images/$path', IMAGE));
+    if(path == null || path.trim().length < 1)
+    {
+      altMaskImage = null;
+      useAltMask = false;
+      return;
+    }
+
+    try
+      altMaskImage = BitmapData.fromFile(Paths.getPath('images/$path', IMAGE))
+    catch(e:Dynamic)
+    {
+      trace('Could not load drop shadow alt mask "$path": $e');
+      altMaskImage = null;
+      useAltMask = false;
+    }
   }
 
   /**
-   * Should be called on the animation.callback of the attached sprite.
-   * TODO: figure out why the reference to the attachedSprite breaks on web??
+   * Should be called when the attached sprite changes frame.
    *
    * @param name The name of the animation
    * @param frameNum The current frame number
@@ -248,6 +268,14 @@ class DropShadowShader extends FlxShader
         // if a frame is rotated the shader will look completely wrong lol
         angOffset.value = [frame.angle * FlxAngle.TO_RAD];
     }
+    else
+      useFullFrameBounds();
+  }
+
+  public function useFullFrameBounds(?angleOffset:Float = 0):Void
+  {
+    uFrameBounds.value = [0, 0, 1, 1];
+    angOffset.value = [angleOffset];
   }
 
   function set_altMaskImage(_bitmapData:BitmapData):BitmapData
@@ -430,8 +458,9 @@ class DropShadowShader extends FlxShader
           dropShadowAmount = texture2D(bitmap, checkedPixel).a;
 			  }
 
-        // add the dropshadow color  based on the amount, strength, and intensity
-        col.rgb += dropColor.rgb * ((1.0 - (dropShadowAmount * str))*intensity);
+        // add the rim light based on how far the sampled pixel is from the sprite alpha
+        float rimAmount = clamp(1.0 - dropShadowAmount, 0.0, 1.0) * str * intensity;
+        col.rgb += dropColor.rgb * rimAmount;
 
         return col;
       }

@@ -2,6 +2,7 @@ package states.editors.content;
 
 import backend.Song;
 import backend.Difficulty;
+import backend.StageData;
 
 import flixel.math.FlxMath;
 import flixel.util.FlxSort;
@@ -96,6 +97,9 @@ class VSlice
 		var timeChanges:Array<VSliceTimeChange> = normalizeTimeChanges(metadata.timeChanges);
 		var songBpm:Float = readFloat(timeChanges[0], ['bpm'], 100);
 		var stage:String = mapVSliceStage(readString(metadata.playData, ['stage'], 'stage'));
+		var stageZoom:Float = StageData.getStageFile(stage).defaultZoom;
+		if(Math.isNaN(stageZoom) || stageZoom <= 0)
+			stageZoom = StageData.dummy().defaultZoom;
 		var difficulties:Array<String> = getDifficulties(chart, metadata);
 		var lastNoteTime:Float = 0;
 		var notesMap:Map<String, Array<Dynamic>> = [];
@@ -227,14 +231,54 @@ class VSlice
 		{
 			for (num => event in allEvents)
 			{
-				var fields:Array<Dynamic> = convertVSliceEvent(event);
+				var fields:Array<Dynamic> = convertVSliceEvent(event, stageZoom);
 				if(fields != null && fields.length > 0)
-					fileEvents.push([readFloat(event, ['t', 'time'], 0), [fields]]);
+					addPsychEvent(fileEvents, readFloat(event, ['t', 'time'], 0), fields);
 			}
 			fileEvents.sort(sortByTime);
-			pack.events = {events: fileEvents, format: 'psych_v1_convert'};
+			for (_ => swagSong in songDifficulties)
+				swagSong.events = clonePsychEvents(fileEvents);
 		}
 		return pack;
+	}
+
+	static function addPsychEvent(events:Array<Dynamic>, time:Float, fields:Array<Dynamic>):Void
+	{
+		for(event in events)
+		{
+			if(event != null && Math.abs(readFloat(event, ['t', 'time'], -999999) - time) < 0.001)
+			{
+				if(event[1] == null)
+					event[1] = [];
+				cast(event[1], Array<Dynamic>).push(fields);
+				return;
+			}
+		}
+		events.push([time, [fields]]);
+	}
+
+	static function clonePsychEvents(events:Array<Dynamic>):Array<Dynamic>
+	{
+		var cloned:Array<Dynamic> = [];
+		if(events == null)
+			return cloned;
+
+		for(event in events)
+		{
+			var subEvents:Array<Dynamic> = [];
+			if(event != null && event[1] != null)
+			{
+				for(subEvent in cast(event[1], Array<Dynamic>))
+				{
+					if(Std.isOfType(subEvent, Array))
+						subEvents.push(cast(subEvent, Array<Dynamic>).copy());
+					else
+						subEvents.push(subEvent);
+				}
+			}
+			cloned.push([event != null ? event[0] : 0, subEvents]);
+		}
+		return cloned;
 	}
 
 	static function normalizeTimeChanges(timeChanges:Array<VSliceTimeChange>):Array<VSliceTimeChange>
@@ -339,7 +383,7 @@ class VSlice
 		return null;
 	}
 
-	static function convertVSliceEvent(event:Dynamic):Array<Dynamic>
+	static function convertVSliceEvent(event:Dynamic, stageZoom:Float):Array<Dynamic>
 	{
 		var eventName:String = readString(event, ['e', 'eventKind'], '').trim();
 		var value:Dynamic = Reflect.field(event, 'v');
@@ -354,27 +398,35 @@ class VSlice
 				var y:String = eventFloatString(value, ['y'], 0);
 				var duration:String = eventFloatString(value, ['duration'], 4);
 				var ease:String = normalizeVSliceEase(readString(value, ['ease'], 'CLASSIC'), readString(value, ['easeDir'], ''));
+				if(ease.toLowerCase().trim() == 'classic')
+					duration = '0';
 				return ['Focus Camera', '$target, $x, $y', '$ease, $duration'];
 
 			case 'zoomcamera':
-				var zoom:String = eventFloatString(value, ['zoom'], 1);
+				var zoom:Float = eventFloat(value, ['zoom'], 1);
 				var duration:String = eventFloatString(value, ['duration'], 4);
 				var ease:String = normalizeVSliceEase(readString(value, ['ease'], 'linear'), readString(value, ['easeDir'], 'InOut'));
+				if(ease.toLowerCase().trim() == 'classic')
+					duration = '0';
 				var mode:String = readString(value, ['mode'], 'direct').toLowerCase().trim();
+				if(mode == 'stage')
+					zoom *= stageZoom;
 				var psychMode:String = switch(mode)
 				{
 					case 'relative' | 'add' | 'mr': 'mr';
 					case 'subtract' | 'sub' | 'lss': 'lss';
 					default: 'nll';
 				}
-				return ['Camera Zoom', '$zoom, $duration', '$ease, $psychMode'];
+				return ['Camera Zoom', '${formatFloat(zoom)}, $duration', '$ease, $psychMode'];
 
 			case 'setcamerabop':
+				var intensity:Float = eventFloat(value, ['intensity'], 1);
+				var rate:String = eventFloatString(value, ['rate'], 4);
+				var offset:String = eventFloatString(value, ['offset'], 0);
 				return [
-					'Set Camera Bop',
-					eventFloatString(value, ['intensity'], 1),
-					eventFloatString(value, ['rate'], 4),
-					eventFloatString(value, ['offset'], 0)
+					'Camera Module Bop',
+					'$rate, beat, $offset',
+					'${formatFloat(0.015 * intensity)}, ${formatFloat(0.03 * intensity)}'
 				];
 
 			case 'playanimation':
@@ -405,6 +457,9 @@ class VSlice
 	}
 
 	static function eventFloatString(value:Dynamic, fields:Array<String>, fallback:Float):String
+		return formatFloat(eventFloat(value, fields, fallback));
+
+	static function eventFloat(value:Dynamic, fields:Array<String>, fallback:Float):Float
 	{
 		var raw:Dynamic = getFirstField(value, fields);
 		if(raw == null && isScalar(value))
@@ -413,7 +468,15 @@ class VSlice
 		var parsed:Float = parseFloat(raw, fallback);
 		if(Math.isNaN(parsed))
 			parsed = fallback;
-		return Std.string(parsed);
+		return parsed;
+	}
+
+	static function formatFloat(value:Float):String
+	{
+		if(Math.isNaN(value))
+			return '0';
+		var rounded:Float = Math.round(value * 1000000) / 1000000;
+		return Std.string(rounded);
 	}
 
 	static function isScalar(value:Dynamic):Bool
@@ -503,7 +566,11 @@ class VSlice
 	}
 
 	static function readFloat(source:Dynamic, fields:Array<String>, fallback:Float):Float
+	{
+		if(Std.isOfType(source, Array))
+			return parseFloat(cast(source, Array<Dynamic>)[0], fallback);
 		return parseFloat(getFirstField(source, fields), fallback);
+	}
 
 	static function readInt(source:Dynamic, fields:Array<String>, fallback:Int):Int
 	{
@@ -596,6 +663,7 @@ class VSlice
 				keys.push(key);
 		return keys;
 	}
+
 
 	public static function export(songData:SwagSong, ?difficultyName:String = null):VSlicePackage
 	{

@@ -56,7 +56,6 @@ echo "----------------------------------------------------------"
 haxelib git hxCodec https://github.com/polybiusproxy/hxCodec.git 0a51aed0d9523d22a83e453ce7b593ec7fed4742
 haxelib git flxsoundfilters https://github.com/TheZoroForce240/FlxSoundFilters
 haxelib git hscript-iris https://github.com/pisayesiwsi/hscript-iris.git dev
-haxelib git flxanimate https://github.com/Dot-Stuff/flxanimate.git dev
 haxelib git linc_luajit https://github.com/superpowers04/linc_luajit.git
 haxelib git funkin.vis https://github.com/FunkinCrew/funkVis.git 1966f8fbbbc509ed90d4b520f3c49c084fc92fd6
 haxelib git grig.audio https://gitlab.com/haxe-grig/grig.audio.git

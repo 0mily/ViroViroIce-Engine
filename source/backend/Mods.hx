@@ -70,6 +70,7 @@ class Mods
 		'weeks',
 		'fonts',
 		'achievements',
+		//'global',
 		'packagemod',
 		'packagemods'
 	];
@@ -131,6 +132,9 @@ class Mods
 	inline public static function contentModDirectory(content:String, modFolder:String):String
 		return contentRootDirectory(content) + '/' + normalizeFolderKey(modFolder);
 
+	inline public static function contentGlobalDirectory(content:String):String
+		return contentRootDirectory(content) + '/global';
+
 	public static function getSelectedContentDirectory():String
 	{
 		syncSelectedContentFromPrefs();
@@ -151,12 +155,18 @@ class Mods
 	public static function selectContent(?folder:String):Bool
 	{
 		folder = normalizeFolderKey(folder ?? '');
+		var oldContent:String = getSelectedContentDirectory();
 		if (folder.length > 0 && !getContentDirectories().contains(folder))
 		{
 			clearContentCaches();
 			if (!getContentDirectories().contains(folder))
 				return false;
 		}
+
+		#if GLOBAL_SCRIPTS
+		if (oldContent != folder)
+			psychlua.GlobalScriptHandler.destroyScripts();
+		#end
 
 		selectedContentDirectory = folder;
 		ClientPrefs.selectedContent = folder;
@@ -182,6 +192,11 @@ class Mods
 
 	public static function clearSelectedContent():Void
 	{
+		#if GLOBAL_SCRIPTS
+		if (getSelectedContentDirectory().length > 0)
+			psychlua.GlobalScriptHandler.destroyScripts();
+		#end
+
 		selectedContentDirectory = '';
 		ClientPrefs.selectedContent = '';
 		ClientPrefs.pendingSelectedContent = '';
@@ -251,6 +266,21 @@ class Mods
 		activeModDirectoriesCache = null;
 		var contentMods:Array<String> = getContentModDirectories();
 		var primaryContentMod:String = contentMods.length > 0 ? contentMods[0] : '';
+		var selectedContent:String = getSelectedContentDirectory();
+
+		if (selectedContent.length > 0)
+		{
+			var contentGlobal:String = contentGlobalDirectory(selectedContent);
+			if (contentGlobalRunsGlobally(selectedContent) && !globalMods.contains(contentGlobal))
+				globalMods.push(contentGlobal);
+
+			for(packageFolder in getPackageDirectories(contentGlobal))
+			{
+				var packagePack:PackageModData = getPackagePack(packageFolder);
+				if(packagePack != null && packagePack.global == true && !globalPackageMods.contains(packageFolder))
+					globalPackageMods.push(packageFolder);
+			}
+		}
 
 		for (mod in contentMods)
 		{
@@ -285,6 +315,28 @@ class Mods
 			}
 		}
 		return globalMods;
+	}
+
+	static function contentGlobalRunsGlobally(content:String):Bool
+	{
+		#if ADDONS_ALLOWED
+		content = normalizeFolderKey(content);
+		if (content.length < 1)
+			return false;
+
+		var contentGlobal:String = contentGlobalDirectory(content);
+		var absolute:String = Paths.mods(contentGlobal);
+		if (!FileSystem.exists(absolute) || !FileSystem.isDirectory(absolute))
+			return false;
+
+		var pack:Dynamic = getPack(contentGlobal);
+		if (pack != null && Reflect.hasField(pack, 'runsGlobally'))
+			return pack.runsGlobally == true;
+
+		return true;
+		#else
+		return false;
+		#end
 	}
 
 	inline public static function clearPackageDirectory():Void

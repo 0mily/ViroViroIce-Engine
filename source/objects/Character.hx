@@ -1,9 +1,7 @@
 package objects;
 
-import backend.animation.PsychAnimationController;
-
 import flixel.util.FlxSort;
-import flixel.util.FlxDestroyUtil;
+import flixel.graphics.frames.FlxFramesCollection;
 
 import openfl.utils.AssetType;
 import openfl.utils.Assets;
@@ -20,6 +18,8 @@ typedef CharacterFile = {
 	var scale:Float;
 	var sing_duration:Float;
 	var healthicon:String;
+	@:optional var isEditor_Icons:Null<String>;
+	@:optional var isEditor_Name:Null<String>;
 
 	var position:Array<Float>;
 	var camera_position:Array<Float>;
@@ -50,7 +50,18 @@ typedef CharacterDataCacheEntry = {
 	var data:Dynamic;
 }
 
-class Character extends FlxSprite
+typedef CharacterEditorIconData = {
+	var id:String;
+	var icon:String;
+	var displayName:String;
+}
+
+typedef CharacterEditorIconCacheEntry = {
+	var stamp:Float;
+	var data:CharacterEditorIconData;
+}
+
+class Character extends FlxAnimate
 {
 	static inline final CULL_PADDING:Float = 512;
 
@@ -78,6 +89,8 @@ class Character extends FlxSprite
 	public var skipDance:Bool = false;
 
 	public var healthIcon:String = 'face';
+	public var isEditor_Icons:String = '';
+	public var isEditor_Name:String = '';
 	public var animationsArray:Array<AnimArray> = [];
 
 	public var positionArray:Array<Float> = [0, 0];
@@ -103,15 +116,68 @@ class Character extends FlxSprite
 	public var comboNoteCounts:Array<Int> = [];
 	public var dropNoteCounts:Array<Int> = [];
 
-    public var dropShadow:DropShadowShader = new DropShadowShader();
+	public var dropShadow:DropShadowShader = new DropShadowShader();
+
+	@:noCompletion
+	override function set_frames(newFrames:FlxFramesCollection):FlxFramesCollection
+	{
+		#if !flash
+		@:privateAccess _renderTexture = FlxDestroyUtil.destroy(_renderTexture);
+		#end
+		var loadedFrames:FlxFramesCollection = super.set_frames(newFrames);
+		useRenderTexture = library != null;
+		@:privateAccess _renderTextureDirty = true;
+
+		if(newFrames == null)
+		{
+			width = 0;
+			height = 0;
+			if(origin != null) origin.set();
+		}
+		else if(library != null)
+			updateCharacterHitbox();
+		return loadedFrames;
+	}
+
+	public function updateCharacterHitbox():Void
+	{
+		if(library != null)
+		{
+			width = 0;
+			height = 0;
+			origin.set();
+			return;
+		}
+		updateHitbox();
+	}
+
+	override function checkRenderTexture():Bool
+		return (isAnimate && useRenderTexture) || super.checkRenderTexture();
+
+	override public function getGraphicMidpoint(?point:FlxPoint):FlxPoint
+	{
+		if(library == null)
+			return super.getGraphicMidpoint(point);
+		if(point == null)
+			point = FlxPoint.get();
+		return point.set(x, y);
+	}
+
+	override public function destroy():Void
+	{
+		if(dropShadow != null && dropShadow.attachedSprite == this)
+			dropShadow.attachedSprite = null;
+
+		animation = null;
+		super.destroy();
+		dropShadow = null;
+	}
 
 	public function new(x:Float, y:Float, ?character:String = 'bf', ?isPlayer:Bool = false)
 	{
 		super(x, y);
 
         //shader = dropShadow;
-
-		animation = new PsychAnimationController(this);
 
 		animOffsets = new Map<String, Array<Dynamic>>();
 		this.isPlayer = isPlayer;
@@ -187,6 +253,9 @@ class Character extends FlxSprite
 	static inline final NONE_CHARACTER_PATH:String = '\x01';
 	static var characterPathCache:Map<String, String> = new Map<String, String>();
 	static var characterDataCache:Map<String, CharacterDataCacheEntry> = new Map<String, CharacterDataCacheEntry>();
+	static var editorIconDataCache:Map<String, CharacterEditorIconCacheEntry> = new Map<String, CharacterEditorIconCacheEntry>();
+	static var editorIconListCache:Array<CharacterEditorIconData> = null;
+	static var editorIconListSignature:String = null;
 	static var characterCacheContext:String = null;
 
 	static function getCharacterCacheContext():String
@@ -212,6 +281,14 @@ class Character extends FlxSprite
 		characterCacheContext = context;
 		characterPathCache = new Map<String, String>();
 		characterDataCache = new Map<String, CharacterDataCacheEntry>();
+		invalidateEditorIconCache();
+	}
+
+	public static function invalidateEditorIconCache():Void
+	{
+		editorIconDataCache = new Map<String, CharacterEditorIconCacheEntry>();
+		editorIconListCache = null;
+		editorIconListSignature = null;
 	}
 
 	static function getCharacterCacheKey(character:String):String
@@ -337,6 +414,102 @@ class Character extends FlxSprite
 		return list;
 	}
 
+
+	public static function getEditorIconData(character:String):CharacterEditorIconData
+	{
+		character = normalizeCharacterName(character);
+		if(character.length < 1)
+			character = DEFAULT_CHARACTER;
+
+		var path:String = getCharacterPath(character);
+		var stamp:Float = getCharacterFileStamp(path);
+		var cacheKey:String = getCharacterCacheKey(character);
+		var cached = editorIconDataCache.get(cacheKey);
+		if(cached != null && cached.stamp == stamp)
+			return cloneEditorIconData(cached.data);
+
+		var icon:String = '';
+		var displayName:String = '';
+		try
+		{
+			var data:Dynamic = path != null ? getCharacterData(path) : null;
+			if(data != null)
+			{
+				icon = readString(firstField(data, ['isEditor_Icons']), '');
+				displayName = readString(firstField(data, ['isEditor_Name']), '');
+			}
+		}
+		catch(e:Dynamic) {}
+
+		if(icon == null || icon.trim().length < 1)
+			icon = character;
+		if(displayName == null || displayName.trim().length < 1)
+			displayName = character;
+
+		var result:CharacterEditorIconData = {
+			id: character,
+			icon: icon,
+			displayName: displayName
+		};
+		editorIconDataCache.set(cacheKey, {stamp: stamp, data: result});
+		return cloneEditorIconData(result);
+	}
+
+	public static function collectEditorIconData():Array<CharacterEditorIconData>
+	{
+		var characters:Array<String> = [];
+		appendCharacterFileList(characters);
+		var signature = editorIconSignature(characters);
+		if(editorIconListCache != null && editorIconListSignature == signature)
+			return cloneEditorIconList(editorIconListCache);
+
+		var output:Array<CharacterEditorIconData> = [];
+		for(character in characters)
+		{
+			var data = getEditorIconData(character);
+			if(data != null && data.id.length > 0)
+				output.push(data);
+		}
+
+		output.sort(function(a:CharacterEditorIconData, b:CharacterEditorIconData):Int
+		{
+			return Reflect.compare(a.displayName.toLowerCase(), b.displayName.toLowerCase());
+		});
+		editorIconListSignature = signature;
+		editorIconListCache = cloneEditorIconList(output);
+		return output;
+	}
+
+	static function editorIconSignature(characters:Array<String>):String
+	{
+		var out = new StringBuf();
+		out.add(characterCacheContext);
+		out.add('\n');
+		for(character in characters)
+		{
+			var path = getCharacterPath(character);
+			out.add(character);
+			out.add(':');
+			out.add(path ?? '');
+			out.add(':');
+			out.add(Std.string(getCharacterFileStamp(path)));
+			out.add('\n');
+		}
+		return out.toString();
+	}
+
+	static function cloneEditorIconList(list:Array<CharacterEditorIconData>):Array<CharacterEditorIconData>
+		return [for(data in list) cloneEditorIconData(data)];
+
+	static function cloneEditorIconData(data:CharacterEditorIconData):CharacterEditorIconData
+	{
+		return {
+			id: data.id,
+			icon: data.icon,
+			displayName: data.displayName
+		};
+	}
+
 	public static function readCharacterPath(path:String):String
 	{
 		#if ADDONS_ALLOWED
@@ -370,6 +543,8 @@ class Character extends FlxSprite
 			scale: 1,
 			sing_duration: 4,
 			healthicon: NONE_CHARACTER,
+			isEditor_Icons: NONE_CHARACTER,
+			isEditor_Name: 'None',
 			position: [0, 0],
 			camera_position: [0, 0],
 			flip_x: false,
@@ -580,6 +755,8 @@ class Character extends FlxSprite
 			scale: readFloat(xmlAttr(root, ['scale']), 1),
 			sing_duration: readFloat(xmlAttr(root, ['singDuration', 'sing_duration', 'singTime']), 4),
 			healthicon: xmlAttr(root, ['icon', 'healthIcon', 'healthicon'], 'face'),
+			isEditor_Icons: xmlAttr(root, ['isEditor_Icons', 'isEditorIcon', 'editorIcon'], ''),
+			isEditor_Name: xmlAttr(root, ['isEditor_Name', 'isEditorName', 'editorName'], ''),
 			position: [
 				readFloat(xmlAttr(root, ['x', 'positionX']), 0),
 				readFloat(xmlAttr(root, ['y', 'positionY']), 0)
@@ -712,6 +889,8 @@ class Character extends FlxSprite
 			scale: readFloat(firstField(data, ['scale']), 1),
 			sing_duration: readFloat(firstField(data, ['sing_duration', 'singTime']), 4),
 			healthicon: healthIcon,
+			isEditor_Icons: readString(firstField(data, ['isEditor_Icons', 'isEditorIcon', 'editorIcon', 'editor_icon']), ''),
+			isEditor_Name: readString(firstField(data, ['isEditor_Name', 'isEditorName', 'editorName', 'editor_name']), ''),
 			position: readFloatArray(firstField(data, ['position', 'offsets']), [0, 0]),
 			camera_position: readFloatArray(firstField(data, ['camera_position', 'cameraOffsets']), [0, 0]),
 			flip_x: readBool(firstField(data, ['flip_x', 'flipX']), false),
@@ -728,11 +907,8 @@ class Character extends FlxSprite
 		missingCharacter = false;
 		missingText?.kill();
 
-		#if flxanimate
-		atlas = null;
-		#end
-		isAnimateAtlas = false;
 		animation.destroyAnimations();
+		frames = null;
 		makeGraphic(1, 1, 0x00000000);
 
 		imageFile = '';
@@ -744,6 +920,8 @@ class Character extends FlxSprite
 		cameraPosition = [0, 0];
 
 		healthIcon = NONE_CHARACTER;
+		isEditor_Icons = NONE_CHARACTER;
+		isEditor_Name = 'None';
 		healthColorArray = [161, 161, 161];
 		vocalsFile = '';
 		singDuration = 4;
@@ -775,30 +953,22 @@ class Character extends FlxSprite
 		isNullCharacter = false;
 		json = normalizeCharacterFile(json);
 
-		isAnimateAtlas = false;
-
-		isAnimateAtlas = false;
-
-		#if flxanimate
-		isAnimateAtlas = Paths.isAnimateAtlas(json.image);
-		#end
+		animation.destroyAnimations();
+		frames = null;
+		var useAnimateAtlas:Bool = Paths.isAnimateAtlas(json.image);
 
 		scale.set(1, 1);
 		updateHitbox();
 
-		if(!isAnimateAtlas)
+		if(!useAnimateAtlas)
 		{
 			frames = Paths.getMultiAtlas(json.image.split(','));
 		}
-		#if flxanimate
 		else
 		{
-			atlas = new FlxAnimate();
-			atlas.showPivot = false;
-			setupCharacterAtlas();
 			try
 			{
-				Paths.loadAnimateAtlas(atlas, json.image);
+				Paths.loadAnimateAtlas(this, json.image);
 			}
 			catch(e:haxe.Exception)
 			{
@@ -806,13 +976,12 @@ class Character extends FlxSprite
 				trace(e.stack);
 			}
 		}
-		#end
 
 		imageFile = json.image;
 		jsonScale = readFloat(json.scale, 1);
 		if(jsonScale != 1) {
 			scale.set(jsonScale, jsonScale);
-			updateHitbox();
+			updateCharacterHitbox();
 		}
 
 		// positioning
@@ -821,6 +990,8 @@ class Character extends FlxSprite
 
 		// data
 		healthIcon = json.healthicon;
+		isEditor_Icons = json.isEditor_Icons != null ? json.isEditor_Icons : '';
+		isEditor_Name = json.isEditor_Name != null ? json.isEditor_Name : '';
 		singDuration = readFloat(json.sing_duration, 4);
 		flipX = (json.flip_x != isPlayer);
 		healthColorArray = (json.healthbar_colors != null && json.healthbar_colors.length > 2) ? json.healthbar_colors : [161, 161, 161];
@@ -851,19 +1022,14 @@ class Character extends FlxSprite
 		comboNoteCounts = findCountAnims('combo');
 		dropNoteCounts = findCountAnims('drop');
 		
-		#if flxanimate
-		if (isAnimateAtlas) copyAtlasValues();
-		#end
 		//trace('Loaded file to character ' + curCharacter);
 	}
 
 	override function update(elapsed:Float)
 	{
-		if(isAnimateAtlas) atlas.update(elapsed);
-
-		if(debugMode || (!isAnimateAtlas && animation.curAnim == null) || (isAnimateAtlas && !atlas.hasActiveAtlasAnimation()))
+		if(debugMode || animation.curAnim == null)
 		{
-			super.update(elapsed);
+			updateFlxAnimate(elapsed);
 			return;
 		}
 
@@ -921,12 +1087,20 @@ class Character extends FlxSprite
 		if(isAnimationFinished() && hasAnimation('$name-loop'))
 			playAnim('$name-loop');
 
+		updateFlxAnimate(elapsed);
+	}
+
+	function updateFlxAnimate(elapsed:Float):Void
+	{
+		var previousTimeScale:Float = animation.timeScale;
+		animation.timeScale = previousTimeScale * FlxG.animationTimeScale;
 		super.update(elapsed);
+		animation.timeScale = previousTimeScale;
 	}
 
 	inline public function isAnimationNull():Bool
 	{
-		return !isAnimateAtlas ? (animation.curAnim == null) : !atlas.hasActiveAtlasAnimation();
+		return animation == null || animation.curAnim == null || animation.curAnim.numFrames <= 0;
 	}
 
 	var _lastPlayedAnimation:String;
@@ -938,20 +1112,21 @@ class Character extends FlxSprite
 	public function isAnimationFinished():Bool
 	{
 		if(isAnimationNull()) return false;
-		return !isAnimateAtlas ? animation.curAnim.finished : atlas.anim.finished;
+		return animation.curAnim.finished;
 	}
 
 	public function finishAnimation():Void
 	{
 		if(isAnimationNull()) return;
 
-		if(!isAnimateAtlas) animation.curAnim.finish();
-		else atlas.finishAtlasAnimation();
+		animation.curAnim.finish();
 	}
 
 	public function hasAnimation(anim:String):Bool
 	{
-		return animOffsets.exists(anim);
+		if(animation == null || anim == null || !animation.exists(anim)) return false;
+		var loadedAnimation = animation.getByName(anim);
+		return loadedAnimation != null && loadedAnimation.numFrames > 0;
 	}
 
 	public function playSingAnimation(animToPlay:String, isSustainNote:Bool):Bool
@@ -1035,17 +1210,12 @@ class Character extends FlxSprite
 	private function get_animPaused():Bool
 	{
 		if(isAnimationNull()) return false;
-		return !isAnimateAtlas ? animation.curAnim.paused : atlas.anim.curAnim.paused;
+		return animation.curAnim.paused;
 	}
 	private function set_animPaused(value:Bool):Bool
 	{
 		if(isAnimationNull()) return value;
-		if(!isAnimateAtlas) animation.curAnim.paused = value;
-		else
-		{
-			if(value) atlas.pauseAnimation();
-			else atlas.resumeAnimation();
-		}
+		animation.curAnim.paused = value;
 
 		return value;
 	}
@@ -1127,18 +1297,10 @@ class Character extends FlxSprite
 		if(isNullCharacter || AnimName == null) return;
 
 		specialAnim = false;
-		if(!isAnimateAtlas)
-		{
-			animation.play(AnimName, Force, Reversed, Frame);
-		}
-		else
-		{
-			atlas.anim.play(AnimName, Force, Reversed, Frame);
-			atlas.update(0);
-		}
+		animation.play(AnimName, Force, Reversed, Frame);
 		_lastPlayedAnimation = AnimName;
 
-		if (hasAnimation(AnimName))
+		if (animOffsets.exists(AnimName))
 		{
 			var daOffset = animOffsets.get(AnimName);
 			offset.set(daOffset[0], daOffset[1]);
@@ -1258,16 +1420,7 @@ class Character extends FlxSprite
 
 	public function reloadAnimationsForCurrentSide():Void
 	{
-		if(!isAnimateAtlas)
-			animation.destroyAnimations();
-		#if flxanimate
-		else if(atlas != null && atlas.anim != null)
-		{
-			for(anim in animationsArray)
-				if(anim != null && anim.anim != null)
-					atlas.anim.remove(anim.anim);
-		}
-		#end
+		animation.destroyAnimations();
 
 		for(anim in animationsArray)
 			addCharacterAnimation(anim);
@@ -1283,37 +1436,12 @@ class Character extends FlxSprite
 		var animLoop:Bool = (anim.loop == true);
 		var animIndices:Array<Int> = getCurrentAnimationIndices(anim);
 
-		if(!isAnimateAtlas)
-		{
-			if(animIndices != null && animIndices.length > 0)
-				animation.addByIndices(animAnim, animName, animIndices, "", animFps, animLoop);
-			else
-				animation.addByPrefix(animAnim, animName, animFps, animLoop);
-		}
-		#if flxanimate
-		else
-			atlas.addAtlasAnimation(animAnim, animName, animIndices, animFps, animLoop);
-		#end
+		AtlasUtil.addAnimation(this, animAnim, animName, animIndices, animFps, animLoop);
 	}
 
 	public function quickAnimAdd(name:String, anim:String)
 	{
-		animation.addByPrefix(name, anim, 24, false);
-	}
-
-	// Atlas support
-	// special thanks ne_eo for the references, you're the goat!!
-	@:allow(states.editors.CharacterEditorState)
-	public var isAnimateAtlas(default, null):Bool = false;
-	#if flxanimate
-	public var atlas:FlxAnimate;
-
-	public function setupCharacterAtlas():Void
-	{
-		if(atlas == null) return;
-		atlas.cullLimbs = false;
-		atlas.useRenderTexture = true;
-		atlas.forceRenderTexture = true;
+		AtlasUtil.addAnimation(this, name, anim, null, 24, false);
 	}
 
 	override public function isOnScreen(?camera:FlxCamera):Bool
@@ -1340,26 +1468,9 @@ class Character extends FlxSprite
 			alpha *= 0.6;
 			color = FlxColor.BLACK;
 		}
+		if(isAnimate && Std.isOfType(shader, DropShadowShader))
+			cast(shader, DropShadowShader).useFullFrameBounds();
 
-		if(isAnimateAtlas)
-		{
-			if(atlas.hasActiveAtlasAnimation())
-			{
-				copyAtlasValues();
-				atlas.draw();
-				if(missingCharacter && visible)
-				{
-					missingText.alpha = lastAlpha;
-					missingText.x = getMidpoint().x - 150;
-					missingText.y = getMidpoint().y - 10;
-					missingText.cameras = cameras;
-					missingText.draw();
-				}
-				alpha = lastAlpha;
-				color = lastColor;
-			}
-			return;
-		}
 		super.draw();
 		if(missingCharacter && visible)
 		{
@@ -1373,34 +1484,4 @@ class Character extends FlxSprite
 		}
 	}
 
-	public function copyAtlasValues()
-	{
-		setupCharacterAtlas();
-		@:privateAccess
-		{
-			atlas.cameras = cameras;
-			atlas.scrollFactor = scrollFactor;
-			atlas.scale = scale;
-			atlas.offset = offset;
-			atlas.origin = origin;
-			atlas.x = x;
-			atlas.y = y;
-			atlas.angle = angle;
-			atlas.alpha = alpha;
-			atlas.visible = visible;
-			atlas.flipX = flipX;
-			atlas.flipY = flipY;
-			atlas.shader = shader;
-			atlas.antialiasing = antialiasing;
-			atlas.colorTransform = colorTransform;
-			atlas.color = color;
-		}
-	}
-
-	public override function destroy()
-	{
-		atlas = FlxDestroyUtil.destroy(atlas);
-		super.destroy();
-	}
-	#end
 }

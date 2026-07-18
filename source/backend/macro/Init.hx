@@ -7,7 +7,7 @@ import haxe.macro.Compiler;
 class Init {
 	public static function includeClasses():Void {
 		Compiler.include('flixel', true, ['flixel.addons.nape', 'flixel.addons.editors.spine', 'flixel.system.macros']);
-		Compiler.include('haxe', true, ['haxe.atomic', 'haxe.macro']);
+		Compiler.include('haxe', true, ['haxe.atomic', 'haxe.macro', 'haxe.ui.macros']);
 		Compiler.include('shaders', true);
 		
 		if (Context.defined('sys') && Context.defined('SCRIPTS_ALLOWED')) {

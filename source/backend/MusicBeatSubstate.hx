@@ -104,16 +104,38 @@ class MusicBeatSubstate extends flixel.FlxSubState {
 	
 	public override function create() {
 		parent = _parentState;
-		ResolutionManager.resetForEditor(this);
+		ResolutionManager.syncForState(this);
 		subStateClosed.add((_) -> updatePresence());
 
+		ResolutionManager.beginStateCreateResizeLock();
 		if (!_pre) preCreate();
+		ResolutionManager.endStateCreateResizeLock();
 		super.create();
 
 		verFPSsla(true);
 		
 		updatePresence();
 		postCreate();
+	}
+
+	public override function close():Void
+	{
+		var parentState:flixel.FlxState = parent != null ? parent : _parentState;
+		super.close();
+		if(parentState != null)
+			ResolutionManager.syncForState(parentState);
+	}
+
+	public override function onResize(Width:Int, Height:Int):Void
+	{
+		super.onResize(Width, Height);
+		if(subState != null)
+			subState.onResize(Width, Height);
+
+		#if GLOBAL_SCRIPTS
+		if(_pre)
+			GlobalScriptHandler.callStateCallback('onResize', this, [Width, Height], parent != null || _parentState != null);
+		#end
 	}
 
 	function verFPSsla(created:Bool):Void

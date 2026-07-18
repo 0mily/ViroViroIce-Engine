@@ -17,9 +17,24 @@ class GlobalScriptHandler {
 	#end
 	#if LUA_ALLOWED
 	public static var luaArray:Array<FunkinLua> = [];
+	static var luaExistsCache:Map<FunkinLua, Map<String, Bool>> = [];
 	#end
 
 	static var initialized:Bool = false;
+	static final STATE_CALLBACKS:Array<String> = [
+		'onCreate',
+		'onCreatePost',
+		'onUpdate',
+		'onUpdatePost',
+		'onClose',
+		'onClosePost',
+		'onSwitch',
+		'onSwitchPost',
+		'onStepHit',
+		'onBeatHit',
+		'onSectionHit',
+		'onResize'
+	];
 
 	static function get_game():FlxState {
 		return FlxG.state;
@@ -47,16 +62,26 @@ class GlobalScriptHandler {
 
 		var elapsed:Float = FlxG.elapsed;
 		var suffix:String = post ? 'Post' : '';
-		updateSharedVariables(false, resolveTargetState());
-		call('onUpdate$suffix', [elapsed], null, false, false);
-
+		var updateFunc:String = 'onUpdate$suffix';
+		var updateStateFunc:String = 'onUpdateState$suffix';
+		var updateSubStateFunc:String = 'onUpdateSubState$suffix';
+		var updateSubstateFunc:String = 'onUpdateSubstate$suffix';
 		var state:FlxState = game;
-		if (state != null)
-			call('onUpdateState$suffix', [state, Type.getClass(state), elapsed], null, false, false);
-
 		var currentSubState:FlxState = subState;
+
+		if(!hasCallable(updateFunc)
+			&& (state == null || !hasFilteredStateCallable(updateStateFunc, state))
+			&& (currentSubState == null || currentSubState == state || (!hasFilteredStateCallable(updateSubStateFunc, currentSubState) && !hasFilteredStateCallable(updateSubstateFunc, currentSubState))))
+			return;
+
+		updateSharedVariables(false, game);
+		call(updateFunc, [elapsed], null, false, false);
+
+		if (state != null)
+			call(updateStateFunc, [state, Type.getClass(state), elapsed], null, false, false);
+
 		if (currentSubState != null && currentSubState != state)
-			call('onUpdateSubState$suffix', [currentSubState, Type.getClass(currentSubState), elapsed], null, false, false);
+			call(updateSubStateFunc, [currentSubState, Type.getClass(currentSubState), elapsed], null, false, false);
 	}
 
 	public static function refreshScripts(complete:Bool = false, allowEditor:Bool = false):Void {
@@ -89,8 +114,9 @@ class GlobalScriptHandler {
 		}
 
 		cleanupMissing(tracked);
-		updateSharedVariables(allowEditor, resolveTargetState());
+		updateSharedVariables(allowEditor, game);
 		resetting = false;
+		backend.ResolutionManager.flushPendingResolution();
 	}
 
 	static function collectScriptFiles():Array<String> {
@@ -238,10 +264,17 @@ class GlobalScriptHandler {
 		}, false);
 		if (script != null) {
 			hscriptArray.push(script);
-			if (script.exists('onCreateGlobal'))
-				script.call('onCreateGlobal');
+			callHScriptLifecycle(script, 'onGlobalStartup');
+			callHScriptLifecycle(script, 'onGlobalInit');
+			callHScriptLifecycle(script, 'onCreateGlobal');
+			callHScriptLifecycle(script, 'onGlobalStartupPost');
 		}
 		return script;
+	}
+
+	static function callHScriptLifecycle(script:HScript, func:String):Void {
+		if (script != null && !script.closed && script.exists(func))
+			script.call(func);
 	}
 
 	static function findScript(path:String):HScript {
@@ -251,6 +284,8 @@ class GlobalScriptHandler {
 	static function destroyScript(script:HScript):Void {
 		if (script == null)
 			return;
+		if (script.exists('onGlobalEnd'))
+			script.call('onGlobalEnd');
 		if (script.exists('onDestroy'))
 			script.call('onDestroy');
 		if (script.exists('onDestroyGlobal'))
@@ -261,15 +296,24 @@ class GlobalScriptHandler {
 
 	#if LUA_ALLOWED
 	public static function initLuaScript(file:String):FunkinLua {
-		var script:FunkinLua = FunkinLua.initFromFile(file, resolveTargetState(), (lua:FunkinLua) -> {
+		var script:FunkinLua = FunkinLua.initFromFile(file, game, (lua:FunkinLua) -> {
 			lua.set('editorBlock', true);
 			lua.set('isGlobalScript', true);
 		}, false);
 		if (script != null) {
 			luaArray.push(script);
-			script.call('onCreateGlobal');
+			luaExistsCache.set(script, []);
+			callLuaLifecycle(script, 'onGlobalStartup');
+			callLuaLifecycle(script, 'onGlobalInit');
+			callLuaLifecycle(script, 'onCreateGlobal');
+			callLuaLifecycle(script, 'onGlobalStartupPost');
 		}
 		return script;
+	}
+
+	static function callLuaLifecycle(script:FunkinLua, func:String):Void {
+		if (script != null && !script.closed && luaHasFunction(script, func))
+			script.call(func);
 	}
 
 	static function findLuaScript(path:String):FunkinLua {
@@ -279,8 +323,10 @@ class GlobalScriptHandler {
 	static function destroyLuaScript(script:FunkinLua):Void {
 		if (script == null)
 			return;
-		script.call('onDestroy');
-		script.call('onDestroyGlobal');
+		callLuaLifecycle(script, 'onGlobalEnd');
+		callLuaLifecycle(script, 'onDestroy');
+		callLuaLifecycle(script, 'onDestroyGlobal');
+		luaExistsCache.remove(script);
 		script.stop();
 	}
 	#end
@@ -296,20 +342,66 @@ class GlobalScriptHandler {
 		return returnVal;
 	}
 
-	public static function callStateCallback(baseName:String, state:Dynamic, ?extra:Array<Dynamic>, isSubState:Bool = false):Dynamic {
-		var args:Array<Dynamic> = [state, Type.getClass(state)];
+	public static function callStateCallback(baseName:String, state:Dynamic, ?extra:Array<Dynamic>, isSubState:Bool = false, syncVariables:Bool = true):Dynamic {
+		var fullName:String = getStateName(cast state);
+		var stateName:String = getShortStateName(fullName, state);
+		var hscriptArgs:Array<Dynamic> = [stateName, state, Type.getClass(state), fullName];
+		var luaArgs:Array<Dynamic> = [stateName, fullName];
 		if (extra != null)
-			args = args.concat(extra);
+		{
+			hscriptArgs = hscriptArgs.concat(extra);
+			luaArgs = luaArgs.concat(extra);
+		}
 
-		var ret:Dynamic = call(baseName, extra);
+		var ret:Dynamic = call(baseName, extra, null, false, syncVariables);
 		if (ret != LuaUtils.Function_Continue)
 			return ret;
 
-		ret = call(baseName + (isSubState ? 'SubState' : 'State'), args);
+		var suffix:String = isSubState ? 'SubState' : 'State';
+		ret = callFilteredStateCallback(baseName + suffix, stateName, fullName, hscriptArgs, luaArgs, syncVariables);
 		if (ret != LuaUtils.Function_Continue)
 			return ret;
 
-		return call(baseName + (isSubState ? 'Substate' : 'State'), args);
+		if (isSubState)
+			return callFilteredStateCallback(baseName + 'Substate', stateName, fullName, hscriptArgs, luaArgs, syncVariables);
+		return ret;
+	}
+
+	static function callFilteredStateCallback(func:String, stateName:String, fullName:String, hscriptArgs:Array<Dynamic>, luaArgs:Array<Dynamic>, syncVariables:Bool = true):Dynamic {
+		var ret:Dynamic = callStateFunction(func, hscriptArgs, luaArgs, syncVariables);
+		if (ret != LuaUtils.Function_Continue)
+			return ret;
+
+		var cleanBase:String = normalizeCallbackBase(func);
+		if (cleanBase == null)
+			return ret;
+
+		var specific:String = cleanBase + stateName;
+		if (specific != func)
+		{
+			ret = callStateFunction(specific, hscriptArgs, luaArgs, syncVariables);
+			if (ret != LuaUtils.Function_Continue)
+				return ret;
+		}
+
+		if (fullName != null && fullName.length > 0)
+		{
+			var fullSpecific:String = cleanBase + normalizeStateFilter(fullName, false);
+			if (fullSpecific != specific && fullSpecific != func)
+				ret = callStateFunction(fullSpecific, hscriptArgs, luaArgs, syncVariables);
+		}
+		return ret;
+	}
+
+	static function callStateFunction(func:String, hscriptArgs:Array<Dynamic>, luaArgs:Array<Dynamic>, syncVariables:Bool = true):Dynamic {
+		if (syncVariables)
+			updateSharedVariables(false, resolveTargetState(hscriptArgs));
+		var returnVal:Dynamic = callOnHScript(func, hscriptArgs);
+		#if LUA_ALLOWED
+		if (returnVal == LuaUtils.Function_Continue)
+			returnVal = callOnLuas(func, luaArgs);
+		#end
+		return returnVal;
 	}
 
 	public static function callOnHScript(func:String, ?args:Array<Dynamic>, ?excludeValues:Array<Dynamic>, allowEditor:Bool = false):Dynamic {
@@ -357,7 +449,7 @@ class GlobalScriptHandler {
 				cleanup.push(script);
 				continue;
 			}
-			if (shouldBlockForEditor(script.get('editorBlock'), allowEditor))
+			if (!luaHasFunction(script, func) || shouldBlockForEditor(script.get('editorBlock'), allowEditor))
 				continue;
 
 			var value:Dynamic = script.call(func, luaArgs);
@@ -373,11 +465,66 @@ class GlobalScriptHandler {
 
 		for (script in cleanup)
 			if (script != null)
+			{
 				luaArray.remove(script);
+				luaExistsCache.remove(script);
+			}
 
 		return returnVal;
 	}
+
+	// i'm not paid enough for this
+	static function luaHasFunction(script:FunkinLua, func:String):Bool {
+		if(script == null || script.closed)
+			return false;
+
+		var cache:Map<String, Bool> = luaExistsCache.get(script);
+		if(cache == null)
+		{
+			cache = [];
+			luaExistsCache.set(script, cache);
+		}
+
+		if(!cache.exists(func))
+			cache.set(func, script.exists(func));
+		return cache.get(func);
+	}
 	#end
+
+	static function hasCallable(func:String, allowEditor:Bool = false):Bool {
+		#if HSCRIPT_ALLOWED
+		if (hscriptArray != null)
+			for (script in hscriptArray)
+				if (script != null && !script.closed && script.exists(func) && !shouldBlockForEditor(scriptValue(script, 'editorBlock'), allowEditor))
+					return true;
+		#end
+
+		#if LUA_ALLOWED
+		if (luaArray != null)
+			for (script in luaArray)
+				if (script != null && !script.closed && luaHasFunction(script, func) && !shouldBlockForEditor(script.get('editorBlock'), allowEditor))
+					return true;
+		#end
+
+		return false;
+	}
+
+	static function hasFilteredStateCallable(func:String, state:Dynamic, allowEditor:Bool = false):Bool {
+		if(hasCallable(func, allowEditor))
+			return true;
+
+		var fullName:String = getStateName(cast state);
+		var stateName:String = getShortStateName(fullName, state);
+		var cleanBase:String = normalizeCallbackBase(func);
+		if(cleanBase == null)
+			return false;
+
+		if(stateName != null && stateName.length > 0 && hasCallable(cleanBase + stateName, allowEditor))
+			return true;
+		if(fullName != null && fullName.length > 0 && hasCallable(cleanBase + normalizeStateFilter(fullName, false), allowEditor))
+			return true;
+		return false;
+	}
 
 	public static function set(variable:String, value:Dynamic):Void {
 		setOnHScript(variable, value);
@@ -435,6 +582,8 @@ class GlobalScriptHandler {
 	static function resolveTargetState(?args:Array<Dynamic>):FlxState {
 		if (args != null && args.length > 0 && Std.isOfType(args[0], FlxState))
 			return cast args[0];
+		if (args != null && args.length > 1 && Std.isOfType(args[1], FlxState))
+			return cast args[1];
 
 		var currentSubState:FlxState = subState;
 		if (currentSubState != null)
@@ -448,7 +597,7 @@ class GlobalScriptHandler {
 		var inEditor:Bool = isEditorStateTree();
 		targetState ??= resolveTargetState();
 
-		syncParentState(targetState);
+		syncParentState(game);
 
 		set('game', game);
 		set('state', game);
@@ -497,6 +646,50 @@ class GlobalScriptHandler {
 			return '';
 		var cls = Type.getClass(state);
 		return cls == null ? '' : Type.getClassName(cls);
+	}
+
+	static function getShortStateName(fullName:String, state:Dynamic):String {
+		if (Std.isOfType(state, CustomState))
+		{
+			var customState:CustomState = cast state;
+			if (customState.stateName != null && customState.stateName.trim().length > 0)
+				return normalizeStateFilter(customState.stateName, true);
+		}
+
+		return normalizeStateFilter(fullName, true);
+	}
+
+	static function normalizeStateFilter(name:String, shortOnly:Bool):String {
+		if (name == null)
+			return '';
+		name = name.replace('\\', '/').trim();
+		if (name.length < 1)
+			return '';
+		if (name.endsWith('.lua'))
+			name = name.substr(0, name.length - 4);
+		else if (HScript.hasScriptExtension(name))
+			for(ext in HScript.SCRIPT_EXTENSIONS)
+				if (name.endsWith(ext))
+					name = name.substr(0, name.length - ext.length);
+		if (shortOnly)
+		{
+			var slash:Int = name.lastIndexOf('/');
+			if (slash >= 0)
+				name = name.substr(slash + 1);
+			var dot:Int = name.lastIndexOf('.');
+			if (dot >= 0)
+				name = name.substr(dot + 1);
+		}
+		return name;
+	}
+
+	static function normalizeCallbackBase(func:String):String {
+		for (base in STATE_CALLBACKS)
+		{
+			if (func == base + 'State' || func == base + 'SubState' || func == base + 'Substate')
+				return func;
+		}
+		return null;
 	}
 
 	#if HSCRIPT_ALLOWED

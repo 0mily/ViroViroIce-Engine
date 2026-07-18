@@ -149,6 +149,12 @@ class Note extends FlxSprite
 
 	public var noAnimation:Bool = false;
 	public var noMissAnimation:Bool = false;
+	public inline function shouldPlayAnim():Bool
+		return !noAnimation && noteType != 'No Animation'; // then the no anim note will work
+
+	public inline function shouldMissAnim():Bool
+		return !noMissAnimation && noteType != 'No Animation';
+
 	public var hitCausesMiss:Bool = false;
 	public var distance:Float = 2000; //plan on doing scroll directions soon -bb
 	

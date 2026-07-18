@@ -331,6 +331,30 @@ class MainMenuState extends ScriptedState
 		bg.scrollFactor.set(0, yScroll * .75);
 		magenta.scrollFactor.copyFrom(bg.scrollFactor);
 	}
+
+	public override function onResize(Width:Int, Height:Int):Void {
+		bg?.screenCenter();
+		magenta?.screenCenter();
+
+		if (menuItems != null)
+			positionMenuItems();
+		if (leftItem != null)
+			leftItem.setPosition(50, FlxG.height - leftItem.height - 50);
+		if (rightItem != null)
+			rightItem.setPosition(FlxG.width - rightItem.width - 50, FlxG.height - rightItem.height - 50);
+
+		if (emiVer != null)
+			emiVer.y = FlxG.height - 24;
+		if (psychVer != null)
+			psychVer.y = FlxG.height - 40;
+
+		if (camFollow != null && selectedItem != null) {
+			camFollow.x = selectedItem.x + selectedItem.width * 0.5;
+			camFollow.y = selectedItem.y + selectedItem.height * 0.5;
+		}
+
+		super.onResize(Width, Height);
+	}
 	
 	var selectedSomethin:Bool = false;
 	

@@ -4,6 +4,12 @@ import flixel.FlxCamera;
 import flixel.FlxG;
 import flixel.math.FlxPoint;
 
+/*
+ * i UHM, MADE THIS?
+ * THIS LOOKS HORRIBLE
+*/
+
+
 class CameraResizeFix
 {
 	public static var enabled:Bool = true;
@@ -170,7 +176,7 @@ class CameraResizeFix
 
 	static function precisaCentraliza(camera:FlxCamera):Bool
 	{
-		var playState = states.PlayState.instance;
+		var playState = currentPlayState();
 		if(playState == null)
 			return ResolutionManager.hasCustomResolution();
 
@@ -179,7 +185,7 @@ class CameraResizeFix
 
 	static function pegarCentroBaseX(camera:FlxCamera):Float
 	{
-		var playState = states.PlayState.instance;
+		var playState = currentPlayState();
 		if(playState != null && camera == playState.camGame)
 		{
 			if(DeveloperMode.isMobileLike())
@@ -191,7 +197,7 @@ class CameraResizeFix
 
 	static function pegarCentroBaseY(camera:FlxCamera):Float
 	{
-		var playState = states.PlayState.instance;
+		var playState = currentPlayState();
 		if(playState != null && camera == playState.camGame)
 			return baseHeight();
 		return FlxG.height;
@@ -216,7 +222,7 @@ class CameraResizeFix
 		if(!enabled)
 			return;
 
-		var playState = states.PlayState.instance;
+		var playState = currentPlayState();
 		if(playState != null)
 		{
 			aplyGameCamera(playState.camGame);
@@ -234,6 +240,14 @@ class CameraResizeFix
 		}
 		else
 			aplyStateCameras();
+	}
+
+	static function currentPlayState():states.PlayState //this is just lazy          //ik but worked (most of the tim)
+	{
+		var playState = states.PlayState.instance;
+		if(playState == null || FlxG.state != playState)
+			return null;
+		return playState;
 	}
 
 	static function aplyStateCameras():Void

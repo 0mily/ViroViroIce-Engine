@@ -2,7 +2,7 @@ package psychlua;
 
 import openfl.utils.Assets;
 
-#if (LUA_ALLOWED && flxanimate)
+#if LUA_ALLOWED
 class FlxAnimateFunctions {
 	public static function implement() {
 		var makeAtlasSprite = function(tag:String, ?first:Dynamic = 0, ?second:Dynamic = 0, ?third:Dynamic = null) {
@@ -57,11 +57,11 @@ class FlxAnimateFunctions {
 
 			var symbolName:String = symbol;
 			if(symbolName == null || symbolName.length < 1)
-				symbolName = spr.getAtlasDefaultSymbol();
+				symbolName = AtlasUtil.getDefaultSymbol(spr);
 			if(symbolName == null || symbolName.length < 1)
 				symbolName = folder;
 
-			spr.addAtlasAnimation('lipsync', symbolName, null, framerate, false);
+			AtlasUtil.addAnimation(spr, 'lipsync', symbolName, null, framerate, false);
 			spr.playAnim('lipsync', true);
 			spr.active = true;
 			MusicBeatState.getVariables().set(tag, spr);
@@ -74,11 +74,10 @@ class FlxAnimateFunctions {
 			var obj:FlxAnimate = LuaUtils.getObjectDirectly(tag);
 			if (obj == null) return false;
 
-			obj.addAtlasAnimation(name, symbol, null, framerate, loop, matX, matY);
-			if(!obj.hasActiveAtlasAnimation()) {
-				var obj2:ModchartAnimateSprite = cast (obj, ModchartAnimateSprite);
-				if(obj2 != null) obj2.playAnim(name, true); //is ModchartAnimateSprite
-				else obj.anim.play(name, true);
+			AtlasUtil.addAnimation(obj, name, symbol, null, framerate, loop);
+			if(!AtlasUtil.hasActiveAnimation(obj)) {
+				if(Std.isOfType(obj, ModchartAnimateSprite)) cast(obj, ModchartAnimateSprite).playAnim(name, true);
+				else obj.animation.play(name, true);
 			}
 			return true;
 		};
@@ -103,12 +102,11 @@ class FlxAnimateFunctions {
 			}
 
 			var animIndices:Array<Int> = cast indices;
-			obj.addAtlasAnimation(name, symbol, animIndices, framerate, loop, matX, matY);
-			if(!obj.hasActiveAtlasAnimation())
+			AtlasUtil.addAnimation(obj, name, symbol, animIndices, framerate, loop);
+			if(!AtlasUtil.hasActiveAnimation(obj))
 			{
-				var obj2:ModchartAnimateSprite = cast (obj, ModchartAnimateSprite);
-				if(obj2 != null) obj2.playAnim(name, true); //is ModchartAnimateSprite
-				else obj.anim.play(name, true);
+				if(Std.isOfType(obj, ModchartAnimateSprite)) cast(obj, ModchartAnimateSprite).playAnim(name, true);
+				else obj.animation.play(name, true);
 			}
 			return true;
 		};
@@ -124,7 +122,7 @@ class FlxAnimateFunctions {
 			return backend.AtlasUtil.listSymbols(getAtlasObject(tag)));
 		FunkinLua.registerFunction("getAtlasFrameKeywordCount", function(tag:String, keyword:String) {
 			var atlas:FlxAnimate = cast backend.AtlasUtil.getAtlas(getAtlasObject(tag));
-			return atlas != null ? atlas.getAtlasFramesWithKeyword(keyword).length : 0;
+			return atlas != null ? backend.AtlasUtil.getFramesWithKeyword(atlas, keyword).length : 0;
 		});
 		var addAtlasSpriteElement = function(atlasOrSpriteTag:String, spriteOrKeyword:String, ?keyword:String = null, ?insertIndex:Int = -1, ?symbolKeyword:String = null, ?exact:Bool = false, ?elementActive:Bool = true) {
 			var atlasTarget:Dynamic = null;

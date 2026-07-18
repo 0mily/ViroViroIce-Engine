@@ -101,6 +101,15 @@ class TextFunctions
 			FunkinLua.luaTrace("setTextItalic: Object " + tag + " doesn't exist!", false, false, ERROR);
 			return false;
 		});
+		FunkinLua.registerFunction("setTextPixel", function(tag:String, pixel:Bool = true) {
+			var obj:FlxText = LuaUtils.getObjectDirectly(tag);
+			if (obj != null) {
+				obj.pixelText = pixel;
+				return true;
+			}
+			FunkinLua.luaTrace("setTextPixel: Object " + tag + " doesn't exist!", false, false, ERROR);
+			return false;
+		});
 		FunkinLua.registerFunction("setTextAlignment", function(tag:String, alignment:String = 'left') {
 			var obj:FlxText = LuaUtils.getObjectDirectly(tag);
 			if (obj != null) {

@@ -1,7 +1,7 @@
 package backend.ui; //aé
 
 import flixel.FlxSprite;
-import flixel.text.FlxText;
+import backend.ViroText as FlxText; // ISSO FUNCIONA???????????
 import flixel.util.FlxColor;
 import flixel.util.FlxSpriteUtil;
 

@@ -63,10 +63,7 @@ import objects.PerspectiveSprite;
 import states.PlayState;
 import states.LoadingState;
 
-#if flxanimate
 import animate.*;
-import flxanimate.PsychFlxAnimate as FlxAnimate;
-#end
 
 //Flixel
 import flixel.sound.FlxSound;
@@ -80,7 +77,11 @@ import flixel.math.FlxMath;
 import flixel.math.FlxPoint;
 import flixel.util.FlxColor;
 import flixel.util.FlxTimer;
-import flixel.text.FlxText;
+import backend.ViroText as FlxText;
+import flixel.text.FlxText.FlxTextAlign;
+import flixel.text.FlxText.FlxTextBorderStyle;
+import flixel.text.FlxText.FlxTextFormat;
+import flixel.text.FlxText.FlxTextFormatMarkerPair;
 import flixel.tweens.FlxEase;
 import flixel.tweens.FlxTween;
 import flixel.group.FlxSpriteGroup;

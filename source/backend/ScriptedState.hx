@@ -42,6 +42,7 @@ class ScriptedState extends ScriptedSubState {
 		MusicBeatState.timePassedOnState = 0;
 	}
 	public override function preCreate():Void {
+		ResolutionManager.syncForState(this);
 		#if GLOBAL_SCRIPTS GlobalScriptHandler.refreshScripts(); #end
 		
 		if (camOther == null) {

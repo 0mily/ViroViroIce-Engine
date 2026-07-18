@@ -654,7 +654,7 @@ class FunkinLua {
 		CustomSubstate.implement();
 		ReflectionFunctions.implement();
 		DeprecatedFunctions.implement();
-		#if flxanimate FlxAnimateFunctions.implement(); #end
+		FlxAnimateFunctions.implement();
 		
 		#if (!HSCRIPT_ALLOWED) HScript.implement(); #end
 		#if DISCORD_ALLOWED DiscordClient.implement(); #end
@@ -1862,19 +1862,13 @@ class FunkinLua {
 			
 			if (obj != null) {
 				if (obj.animation != null) {
-					obj.animation.addByPrefix(name, prefix, framerate, loop);
+					if(Std.isOfType(obj, FlxAnimate))
+						AtlasUtil.addAnimation(obj, name, prefix, null, framerate, loop);
+					else
+						obj.animation.addByPrefix(name, prefix, framerate, loop);
 					if (obj.animation.curAnim == null) {
 						if (obj.playAnim != null) obj.playAnim(name, true);
 						else obj.animation.play(name, true);
-					}
-					return true;
-				}
-
-				if (obj.anim != null) {
-					obj.anim.addByPrefix(name, prefix, framerate, loop);
-					if (obj.hasActiveAtlasAnimation == null || !obj.hasActiveAtlasAnimation()) {
-						if (obj.playAnim != null) obj.playAnim(name, true);
-						else obj.anim.play(name, true);
 					}
 					return true;
 				}
@@ -2351,6 +2345,10 @@ class FunkinLua {
 			}
 			if(front) game.add(video);
 			else game.insert(0, video);
+			if(video.playOnAdd) {
+				video.playOnAdd = false;
+				video.play();
+			}
 			return true;
 		});
 		registerFunction('removeVideo', function(tag:String, ?destroy:Bool = true) {

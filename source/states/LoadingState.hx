@@ -802,14 +802,9 @@ class LoadingState extends ScriptedState
 			var path:String = Paths.getPath('characters/$char.json', TEXT);
 			var character:Dynamic = Json.parse(Paths.getTextFromFile(path));
 			
-			var isAnimateAtlas:Bool = false;
 			var img:String = character.image;
 			img = img.trim();
-			#if flxanimate
-			var animToFind:String = Paths.getPath('images/$img/Animation.json', TEXT);
-			if (#if ADDONS_ALLOWED FileSystem.exists(animToFind) || #end Assets.exists(animToFind))
-				isAnimateAtlas = true;
-			#end
+			var isAnimateAtlas:Bool = Paths.isAnimateAtlas(img);
 
 			if(!isAnimateAtlas)
 			{
@@ -819,7 +814,6 @@ class LoadingState extends ScriptedState
 					imagesToPrepare.push(file.trim());
 				}
 			}
-			#if flxanimate
 			else
 			{
 				for (i in 0...10)
@@ -835,7 +829,6 @@ class LoadingState extends ScriptedState
 					}
 				}
 			}
-			#end
 	
 			if (prefixVocals != null && character.vocals_file != null && character.vocals_file.length > 0)
 			{

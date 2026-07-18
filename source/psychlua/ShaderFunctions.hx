@@ -226,7 +226,6 @@ class ShaderFunctions
 				return cast sprite.shader;
 		}
 
-		#if flxanimate
 		var atlas:Dynamic = backend.AtlasUtil.getAtlas(obj);
 		if (atlas != null)
 		{
@@ -234,8 +233,6 @@ class ShaderFunctions
 			if (Std.isOfType(shader, FlxShader))
 				return cast shader;
 		}
-		#end
-
 		return null;
 	}
 

@@ -53,6 +53,28 @@ void getHandle() {
 		curHandle = data.handle;
 	}
 }
+
+bool centerCurrentWindow() {
+	getHandle();
+	if (curHandle == (HWND)0) return false;
+
+	RECT windowRect;
+	MONITORINFO monitorInfo;
+	monitorInfo.cbSize = sizeof(MONITORINFO);
+	HMONITOR monitor = MonitorFromWindow(curHandle, MONITOR_DEFAULTTONEAREST);
+	if (!GetWindowRect(curHandle, &windowRect) || !GetMonitorInfo(monitor, &monitorInfo)) return false;
+
+	const int windowWidth = windowRect.right - windowRect.left;
+	const int windowHeight = windowRect.bottom - windowRect.top;
+	const RECT workArea = monitorInfo.rcWork;
+	const int x = workArea.left + ((workArea.right - workArea.left) - windowWidth) / 2;
+	const int y = workArea.top + ((workArea.bottom - workArea.top) - windowHeight) / 2;
+
+	return SetWindowPos(curHandle, NULL, x, y, 0, 0,
+		SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE) != 0;
+
+	// fucking evil C++, never coding at this shit
+}
 ')
 #end
 class Native
@@ -97,8 +119,8 @@ class Native
 			@:privateAccess Application.current.window.width = Std.int(Main.game.width * dpiScale);
 			@:privateAccess Application.current.window.height = Std.int(Main.game.height * dpiScale);
 
-			Application.current.window.x = Std.int((Application.current.window.display.bounds.width - Application.current.window.width) / 2);
-			Application.current.window.y = Std.int((Application.current.window.display.bounds.height - Application.current.window.height) / 2);
+			//Application.current.window.x = Std.int((Application.current.window.display.bounds.width - Application.current.window.width) / 2);
+			//Application.current.window.y = Std.int((Application.current.window.display.bounds.height - Application.current.window.height) / 2);
 		}
 
 		untyped __cpp__('
@@ -111,6 +133,17 @@ class Native
 				ReleaseDC(curHandle, curHDC);
 			}
 		');
+		centerWindow();
+		#end
+	}
+
+	/** it SHOULD center everything right */
+	public static function centerWindow():Bool
+	{
+		#if (cpp && windows)
+		return untyped __cpp__('centerCurrentWindow()');
+		#else
+		return false;
 		#end
 	}
 }

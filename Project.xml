@@ -30,8 +30,6 @@
 	<define name="TRANSLATIONS_ALLOWED" />
 	<define name="IRIS_DEBUG" />
 	<define name="EMIMOD"/>
-	<define name="flxanimate" />
-	
 	<define name="INCLUDE_ALL_CLASSES" /> <!-- Removes DCE and compiles (most) classes, for use in scripting -->
 	<!-- multirhead is option now bozo -->
 	<define name="SHOW_LOADING_SCREEN" />
@@ -126,6 +124,8 @@
 
 	<haxelib name="flixel" />
 	<haxelib name="flixel-addons" />
+	<haxelib name="haxeui-core" />
+	<haxelib name="haxeui-flixel" />
 	<haxelib name="nape-haxe4" /> <!-- bf doin -->
 	<haxelib name="android-manager" if="android" />
 	<haxelib name="tjson" />
@@ -144,7 +144,7 @@
 	<haxelib name="moonchart" />
 	<haxelib name="flxgif" />
 	<haxelib name="yagp" />
-	<haxelib name="flxsoundfilters" />
+	<haxelib name="flxsoundfilters" url="https://github.com/TheZoroForce240/FlxSoundFilters" ref="main" />
 
 	<!-- Other -->
 	<haxelib name="grig.audio" />
@@ -159,6 +159,9 @@
 
 	<!-- Disable Discord IO Thread -->
 	<haxedef name="DISCORD_DISABLE_IO_THREAD" if="hxdiscord_rpc" />
+	<haxedef name="haxeui_no_mouse_reset" />
+	<haxedef name="haxeui_focus_out_on_click" />
+	<haxedef name="haxeui_dont_impose_base_class" />
 	<haxedef name="NO_PRECOMPILED_HEADERS" />
 
 	<!-- Enables a terminal log prompt on debug builds -->

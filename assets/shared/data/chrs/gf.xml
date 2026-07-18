@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<character assetPath="characters/gf" icon="gf" scale="1" singDuration="4" x="-240" y="-300" cameraX="330" cameraY="550" flipX="false" noAntialiasing="false" healthColor="#A5004D" vocalsFile="" vsliceHolds="false">
+<character assetPath="characters/gf" icon="gf" scale="1" singDuration="4" x="-240" y="-300" cameraX="330" cameraY="550" flipX="false" noAntialiasing="false" healthColor="#A5004D" vocalsFile="" vsliceHolds="false" isEditor_Icons="gfpixel" isEditor_Name="Girlfriend">
 	<assets>
 		<asset path="characters/gf"/>
 	</assets>

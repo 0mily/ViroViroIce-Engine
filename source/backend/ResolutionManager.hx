@@ -17,12 +17,29 @@ class ResolutionManager
 	static var resolutionTween:FlxTween = null;
 	static var tweenProxy:Dynamic = null;
 	static var postResizeTimer:FlxTimer = null; // there, Julie
+	static var rememberedWidth:Int = DEFAULT_WIDTH;
+	static var rememberedHeight:Int = DEFAULT_HEIGHT;
+	static var rememberedResizable:Bool = DEFAULT_RESIZABLE;
+	static var suspendedForEditor:Bool = false;
+	static var pendingWidth:Int = DEFAULT_WIDTH;
+	static var pendingHeight:Int = DEFAULT_HEIGHT;
+	static var pendingResizable:Bool = DEFAULT_RESIZABLE;
+	static var hasPendingResolution:Bool = false;
+	static var applyingPendingResolution:Bool = false;
+	static var stateCreateResizeLock:Int = 0;
+	static var suppressWindowResizeCenter:Bool = false;
+	static var resolutionStateContext:Dynamic = null;
+	static var windowCenterTimer:FlxTimer = null;
 
 	public static function init():Void
 	{
 		if(initialized)
 			return;
 		initialized = true;
+		FlxG.signals.preStateCreate.add(function(state)
+		{
+			syncForState(state);
+		});
 
 		#if desktop
 		var window = Lib.application.window;
@@ -30,7 +47,8 @@ class ResolutionManager
 		{
 			window.onResize.add(function(windowWidth:Int, windowHeight:Int)
 			{
-				centerWindow(window);
+				if(!suppressWindowResizeCenter)
+					requestWindowCenter(windowWidth, windowHeight);
 			});
 		}
 		#end
@@ -41,10 +59,84 @@ class ResolutionManager
 		width = Std.int(Math.max(1, width));
 		height = Std.int(Math.max(1, height));
 
+		rememberedWidth = width;
+		rememberedHeight = height;
+		rememberedResizable = resizable;
+		changedByScript = width != DEFAULT_WIDTH || height != DEFAULT_HEIGHT || resizable != DEFAULT_RESIZABLE;
+
+		if(shouldKeepDefaultResolutionActive())
+		{
+			suspendedForEditor = changedByScript;
+			if(shouldDeferResolutionChange())
+			{
+				pendingWidth = DEFAULT_WIDTH;
+				pendingHeight = DEFAULT_HEIGHT;
+				pendingResizable = DEFAULT_RESIZABLE;
+				hasPendingResolution = true;
+				return true;
+			}
+			return applyResolution(DEFAULT_WIDTH, DEFAULT_HEIGHT, DEFAULT_RESIZABLE);
+		}
+
+		suspendedForEditor = false;
+		if(shouldDeferResolutionChange())
+		{
+			pendingWidth = width;
+			pendingHeight = height;
+			pendingResizable = resizable;
+			hasPendingResolution = true;
+			return true;
+		}
+		return applyResolution(width, height, resizable);
+	}
+
+	public static function beginStateCreateResizeLock():Void
+	{
+		stateCreateResizeLock++;
+	}
+
+	public static function endStateCreateResizeLock():Void
+	{
+		stateCreateResizeLock = Std.int(Math.max(0, stateCreateResizeLock - 1));
+		flushPendingResolution();
+	}
+
+	public static function flushPendingResolution():Void
+	{
+		if(!hasPendingResolution || stateCreateResizeLock > 0)
+			return;
+
+		hasPendingResolution = false;
+		applyingPendingResolution = true;
+		applyResolution(pendingWidth, pendingHeight, pendingResizable);
+		applyingPendingResolution = false;
+	}
+
+	static function shouldDeferResolutionChange():Bool
+	{
+		if(applyingPendingResolution)
+			return false;
+		if(stateCreateResizeLock > 0)
+			return true;
+		#if GLOBAL_SCRIPTS
+		return psychlua.GlobalScriptHandler.resetting;
+		#else
+		return false;
+		#end
+	}
+
+	static function shouldKeepDefaultResolutionActive():Bool
+		return suspendedForEditor || shouldUseDefaultResolution(getResolutionStateContext());
+
+	static function applyResolution(width:Int, height:Int, resizable:Bool = true):Bool
+	{
+		var sameResolution:Bool = ResolutionManager.width == width && ResolutionManager.height == height && ResolutionManager.resizable == resizable;
 		ResolutionManager.width = width;
 		ResolutionManager.height = height;
 		ResolutionManager.resizable = resizable;
-		changedByScript = width != DEFAULT_WIDTH || height != DEFAULT_HEIGHT || resizable != DEFAULT_RESIZABLE;
+
+		if(sameResolution)
+			return true;
 
 		var measureWidth:Int = getStageWidth(width);
 		var measureHeight:Int = getStageHeight(height);
@@ -70,8 +162,18 @@ class ResolutionManager
 			window.resizable = resizable;
 			if(resizePhysicalWindow)
 			{
-				window.resize(width, height);
-				centerWindow(window);
+				suppressWindowResizeCenter = true;
+				try
+				{
+					window.resize(width, height);
+					requestWindowCenter(width, height);
+				}
+				catch(e:Dynamic)
+				{
+					suppressWindowResizeCenter = false;
+					throw e;
+				}
+				suppressWindowResizeCenter = false;
 				measureWidth = width;
 				measureHeight = height;
 			}
@@ -113,9 +215,11 @@ class ResolutionManager
 			},
 			onComplete: function(twn:FlxTween)
 			{
-				changeRes(targetWidth, targetHeight, resizable);
 				resolutionTween = null;
 				tweenProxy = null;
+				changeRes(targetWidth, targetHeight, resizable);
+				requestWindowCenter(ResolutionManager.width, ResolutionManager.height);
+				applyPostResizeFix();
 				if(onComplete != null)
 					onComplete(twn);
 			}
@@ -142,24 +246,68 @@ class ResolutionManager
 
 	public static function reset():Bool
 	{
-		var changed:Bool = changeRes(DEFAULT_WIDTH, DEFAULT_HEIGHT, DEFAULT_RESIZABLE);
+		cancelTweenRes();
+		rememberedWidth = DEFAULT_WIDTH;
+		rememberedHeight = DEFAULT_HEIGHT;
+		rememberedResizable = DEFAULT_RESIZABLE;
+		suspendedForEditor = false;
 		changedByScript = false;
-		return changed;
+		if(shouldDeferResolutionChange())
+		{
+			pendingWidth = DEFAULT_WIDTH;
+			pendingHeight = DEFAULT_HEIGHT;
+			pendingResizable = DEFAULT_RESIZABLE;
+			hasPendingResolution = true;
+			return true;
+		}
+		return applyResolution(DEFAULT_WIDTH, DEFAULT_HEIGHT, DEFAULT_RESIZABLE);
 	}
 
 	public static function resetForEditor(state:Dynamic):Void
 	{
+		resolutionStateContext = state;
 		if(!changedByScript || state == null)
 			return;
 
-		var cls = Type.getClass(state);
-		var className:String = cls == null ? '' : Type.getClassName(cls);
-		if(className != null && className.startsWith('states.editors.'))
-			reset();
+		if(shouldUseDefaultResolution(state))
+		{
+			suspendedForEditor = true;
+			applyResolution(DEFAULT_WIDTH, DEFAULT_HEIGHT, DEFAULT_RESIZABLE);
+		}
+	}
+
+	public static function restoreAfterEditor(state:Dynamic):Void
+	{
+		resolutionStateContext = state;
+		if(!suspendedForEditor || !changedByScript || state == null || shouldUseDefaultResolution(state))
+			return;
+
+		suspendedForEditor = false;
+		applyResolution(rememberedWidth, rememberedHeight, rememberedResizable);
+	}
+
+	public static function syncForState(state:Dynamic):Void
+	{
+		if(state != null)
+			resolutionStateContext = state;
+
+		if(shouldUseDefaultResolution(state))
+			resetForEditor(state);
+		else
+			restoreAfterEditor(state);
 	}
 
 	public static inline function hasCustomResolution():Bool
 		return width != DEFAULT_WIDTH || height != DEFAULT_HEIGHT;
+
+	public static inline function hasRememberedCustomResolution():Bool
+		return changedByScript;
+
+	public static inline function isSuspendedForEditor():Bool
+		return suspendedForEditor;
+
+	public static inline function isTweening():Bool
+		return resolutionTween != null;
 
 	public static function windowWidth(?fallback:Int = 0):Int
 		return logicalWindowSize(true, fallback);
@@ -215,17 +363,30 @@ class ResolutionManager
 
 	static function applyPostResizeFix():Void
 	{
-		CameraResizeFix.aplyAll();
-		shaders.ShaderResizeFix.fixAll();
+		notifyPlayStateResize();
+
+		if(resolutionTween != null)
+			return;
 
 		if(postResizeTimer != null)
+		{
 			postResizeTimer.cancel();
+			postResizeTimer = null;
+		}
 		postResizeTimer = new FlxTimer().start(0, function(_)
 		{
 			CameraResizeFix.aplyAll();
 			shaders.ShaderResizeFix.fixAll();
+			notifyPlayStateResize();
 			postResizeTimer = null;
 		});
+	}
+
+	static function notifyPlayStateResize():Void
+	{
+		var playState = states.PlayState.instance;
+		if(playState != null && (FlxG.state == playState || resolutionStateContext == playState))
+			playState.applyResolutionLayout();
 	}
 
 	static inline function getStageWidth(fallback:Int):Int
@@ -264,11 +425,43 @@ class ResolutionManager
 	static inline function getApplicationWindow():Dynamic
 		return Lib.application != null ? Lib.application.window : null;
 
-	static function centerWindow(window:Dynamic):Void
+	static function requestWindowCenter(?targetWidth:Int, ?targetHeight:Int):Void
+	{
+		#if desktop
+		var window = getApplicationWindow();
+		if(window == null)
+			return;
+
+		centerWindow(window, targetWidth, targetHeight);
+
+		if(resolutionTween != null)
+			return;
+
+		if(windowCenterTimer != null)
+		{
+			windowCenterTimer.cancel();
+			windowCenterTimer = null;
+		}
+
+		windowCenterTimer = new FlxTimer().start(0.01, function(_)
+		{
+			centerWindow(window);
+			windowCenterTimer = null;
+		});
+		#end
+	}
+
+	static function centerWindow(window:Dynamic, ?targetWidth:Int, ?targetHeight:Int):Void
 	{
 		#if desktop
 		if(window == null || window.fullscreen || window.maximized)
 			return;
+
+		#if (cpp && windows)
+		// Win32 works with the actual outer window rectangle, so it remains exact at 125%/150% DPI
+		if(Native.centerWindow())
+			return;
+		#end
 
 		var display = window.display;
 		if(display == null)
@@ -278,10 +471,61 @@ class ResolutionManager
 		if(bounds == null)
 			return;
 
-		window.move(
-			Std.int(bounds.x + (bounds.width - window.width) / 2),
-			Std.int(bounds.y + (bounds.height - window.height) / 2)
-		);
+		var centerWidth:Int = Std.int(Math.max(1, targetWidth != null && targetWidth > 0 ? targetWidth : window.width));
+		var centerHeight:Int = Std.int(Math.max(1, targetHeight != null && targetHeight > 0 ? targetHeight : window.height));
+		var nextX:Int = Std.int(bounds.x + (bounds.width - centerWidth) / 2);
+		var nextY:Int = Std.int(bounds.y + (bounds.height - centerHeight) / 2);
+
+		if(window.x != nextX || window.y != nextY)
+			window.move(nextX, nextY);
 		#end
+	}
+
+	static function getResolutionStateContext():Dynamic
+		return resolutionStateContext != null ? resolutionStateContext : FlxG.state;
+
+	static function shouldUseDefaultResolution(state:Dynamic):Bool
+	{
+		if(state == null)
+			return false;
+
+		var cls = Type.getClass(state);
+		var className:String = cls == null ? '' : Type.getClassName(cls);
+		var scriptStateName:String = null;
+		if(Std.isOfType(state, backend.ScriptedSubState))
+			scriptStateName = cast(state, backend.ScriptedSubState).customStateName();
+		var data:Dynamic = state != null && Reflect.hasField(state, 'data') ? Reflect.field(state, 'data') : null;
+		var aliasedState:Dynamic = data != null ? Reflect.field(data, 'aliasedState') : null;
+
+		if(isDefaultResolutionStateName(className) || isDefaultResolutionStateName(scriptStateName) || isDefaultResolutionStateName(Std.string(aliasedState)))
+			return true;
+
+		return false;
+	}
+
+	static function isDefaultResolutionStateName(name:String):Bool
+	{
+		if(name == null)
+			return false;
+
+		name = name.trim();
+		if(name.length < 1 || name == 'null')
+			return false;
+
+		var shortName:String = name;
+		var dot:Int = shortName.lastIndexOf('.');
+		if(dot >= 0)
+			shortName = shortName.substr(dot + 1);
+
+		if(name == 'states.editors.MasterEditorMenu' || shortName == 'MasterEditorMenu')
+			return false;
+
+		if(name == 'states.ContentMenuState' || shortName == 'ContentMenuState')
+			return true;
+
+		if(name.startsWith('states.editors.'))
+			return true;
+
+		return shortName.indexOf('Editor') >= 0 || shortName == 'ChartingState' || shortName == 'StickerTest';
 	}
 }

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<character assetPath="characters/dad" icon="dad" scale="1" singDuration="6.1" x="0" y="0" cameraX="190" cameraY="300" flipX="false" noAntialiasing="false" healthColor="#AF66CE" vocalsFile="" vsliceHolds="true">
+<character assetPath="characters/dad" icon="dad" scale="1" singDuration="6.1" x="0" y="0" cameraX="190" cameraY="300" flipX="false" noAntialiasing="false" healthColor="#AF66CE" vocalsFile="" vsliceHolds="true" isEditor_Icons="dadpixel" isEditor_Name="Daddy Dearest">
 	<assets>
 		<asset path="characters/dad"/>
 	</assets>
