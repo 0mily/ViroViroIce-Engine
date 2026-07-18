@@ -909,6 +909,8 @@ class CharacterEditorState extends ScriptedState implements PsychUIEventHandler.
 		animationLoopCheckBox = new PsychUICheckBox(animationNameInputText.x + 170, animationNameInputText.y - 1, "Should it Loop?", 100);
 
 		animationDropDown = new PsychUIDropDownMenu(15, animationInputText.y - 55, [''], function(selectedAnimation:Int, pressed:String) {
+			if(selectedAnimation < 0 || selectedAnimation >= character.animationsArray.length) return;
+			curAnim = selectedAnimation;
 			var anim:AnimArray = character.animationsArray[selectedAnimation];
 			animationInputText.text = anim.anim;
 			animationNameInputText.text = character.getCurrentAnimationSymbol(anim);
@@ -1019,26 +1021,37 @@ class CharacterEditorState extends ScriptedState implements PsychUIEventHandler.
 		});
 
 		var removeButton:PsychUIButton = new PsychUIButton(180, animationIndicesInputText.y + 60, "Remove", function() {
-			for (anim in character.animationsArray)
-				if(animationInputText.text == anim.anim)
+			var animationName:String = animationInputText.text;
+			var removeIndex:Int = -1;
+			for(index => anim in character.animationsArray)
+				if(anim != null && animationName == anim.anim)
 				{
-					var resetAnim:Bool = false;
-					if(anim.anim == character.getAnimationName()) resetAnim = true;
-					if(character.hasAnimation(anim.anim))
-					{
-						character.animation.remove(anim.anim);
-						character.animOffsets.remove(anim.anim);
-						character.animationsArray.remove(anim);
-					}
-
-					if(resetAnim && character.animationsArray.length > 0) {
-						curAnim = FlxMath.wrap(curAnim, 0, anims.length-1);
-						character.playAnim(anims[curAnim].anim, true);
-					}
-					reloadAnimList();
-					trace('Removed animation: ' + animationInputText.text);
+					removeIndex = index;
 					break;
 				}
+
+			if(removeIndex < 0) return;
+
+			if(character.animation != null && character.animation.exists(animationName))
+				character.animation.remove(animationName);
+			character.animOffsets.remove(animationName);
+			character.animationsArray.splice(removeIndex, 1);
+			unsavedProgress = true;
+
+			reloadAnimList();
+			if(character.animationsArray.length > 0)
+			{
+				animationDropDown.selectedLabel = character.animationsArray[0].anim;
+				reloadCurrentAnimationInputs();
+			}
+			else
+			{
+				animationInputText.text = '';
+				animationNameInputText.text = '';
+				animationIndicesInputText.text = '';
+				playCharacterImagePreview();
+			}
+			trace('Removed animation: ' + animationName);
 		});
 		reloadAnimList();
 		animationDropDown.selectedLabel = anims[0] != null ? anims[0].anim : '';
