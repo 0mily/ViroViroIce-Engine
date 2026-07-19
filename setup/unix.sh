@@ -53,7 +53,6 @@ haxelib install flxgif 1.0.3 --skip-dependencies
 echo ""
 echo -e "${CYAN}[4/4] Installing Git repositories...${NC}"
 echo "----------------------------------------------------------"
-haxelib git hxCodec https://github.com/polybiusproxy/hxCodec.git 0a51aed0d9523d22a83e453ce7b593ec7fed4742
 haxelib git flxsoundfilters https://github.com/TheZoroForce240/FlxSoundFilters
 haxelib git hscript-iris https://github.com/pisayesiwsi/hscript-iris.git dev
 haxelib git linc_luajit https://github.com/superpowers04/linc_luajit.git

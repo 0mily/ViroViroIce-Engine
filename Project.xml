@@ -131,10 +131,7 @@
 	<haxelib name="tjson" />
 
 	<!-- Viroviro Needed -->
-	<section if="VIDEOS_ALLOWED" unless="html5">
-		<haxelib name="hxCodec" if="linux" /> <!-- fuck my stupid baka chud linux life -->
-		<haxelib name="hxvlc" unless="linux" />
-	</section>
+	<haxelib name="hxvlc" if="VIDEOS_ALLOWED" unless="html5" />
 	<haxelib name="linc_luajit" if="LUA_ALLOWED"/>
 	<haxelib name="hscript-iris" if="HSCRIPT_ALLOWED" />
 	<haxelib name="hxdiscord_rpc" if="DISCORD_ALLOWED" />
@@ -174,9 +171,6 @@
 	
 	<!--Disable the Flixel core focus lost screen-->
 	<haxedef name="FLX_NO_FOCUS_LOST_SCREEN" />
-	
-	<!-- Show debug traces for hxCodec -->
-	<haxedef name="HXC_DEBUG_TRACE" if="debug" />
 	
 	<!--Disable the Flixel core debugger. Automatically gets set whenever you compile in release mode!-->
 	<haxedef name="FLX_NO_DEBUG" unless="debug" />

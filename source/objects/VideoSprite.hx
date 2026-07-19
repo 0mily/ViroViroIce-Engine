@@ -4,11 +4,7 @@ import flixel.addons.display.FlxPieDial;
 
 #if hxvlc
 import hxvlc.flixel.FlxVideoSprite;
-#end
-#if hxCodec
-import hxcodec.flixel.FlxVideoSprite;
-#end
-#if js
+#elseif js
 import openfl.events.NetStatusEvent;
 import openfl.media.SoundTransform;
 import openfl.media.Video;
@@ -48,8 +44,6 @@ class VideoSprite extends FlxSpriteGroup {
 	var textureReady:Bool = false;
 	static inline final MAX_PLAY_ATTEMPTS:Int = 12;
 
-	private var doWeLoop:Bool = false; // for hxCodec
-
 	#if js
 	public var videoSprite:FlxVideo;
 	#else
@@ -58,7 +52,6 @@ class VideoSprite extends FlxSpriteGroup {
 	public function new(videoName:String, isWaiting:Bool, canSkip:Bool = false, shouldLoop:Dynamic = false) {
 		super();
 
-		this.doWeLoop = shouldLoop;
 		this.videoName = videoName;
 		scrollFactor.set();
 		cameras = [FlxG.cameras.list[FlxG.cameras.list.length - 1]];
@@ -330,11 +323,7 @@ class VideoSprite extends FlxSpriteGroup {
 
 	function startNativePlayback():Bool
 	{
-		#if hxvlc
 		return videoSprite != null && videoSprite.play();
-		#else
-		return videoSprite != null && videoSprite.play(videoName, doWeLoop) >= 0;
-		#end
 	}
 
 	public function resume() videoSprite?.resume();
@@ -344,13 +333,8 @@ class VideoSprite extends FlxSpriteGroup {
 
 	public function muteForPreload():Void
 	{
-		#if hxvlc
 		if(videoSprite != null && videoSprite.bitmap != null)
 			videoSprite.bitmap.volumeAdjust = 0;
-		#elseif hxCodec
-		if(videoSprite != null && videoSprite.bitmap != null)
-			videoSprite.bitmap.volume = 0;
-		#end
 	}
 
 	public function setTime(timeMs:Float):Void
