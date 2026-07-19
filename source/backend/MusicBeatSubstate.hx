@@ -504,6 +504,8 @@ class MusicBeatSubstate extends flixel.FlxSubState {
 		var lastChange = Conductor.getBPMFromSeconds(Conductor.songPosition);
 		if (lastChange == null)
 			lastChange = Conductor.defaultBPMChangeMap(Conductor.bpm)[0];
+		if(Math.abs(Conductor.bpm - lastChange.bpm) > 0.0001)
+			Conductor.setCurrentBPM(lastChange.bpm);
 
 		var shit = ((Conductor.songPosition - delay) - lastChange.songTime) / lastChange.stepCrochet;
 		curDecStep = lastChange.stepTime + shit;

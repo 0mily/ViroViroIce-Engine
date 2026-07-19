@@ -6,7 +6,7 @@ import objects.Note;
 typedef BPMChangeEvent =
 {
 	var bpm:Float;
-	var stepTime:Int;
+	var stepTime:Float;
 	var songTime:Float;
 	var sectionBeats:Int;
 	@:optional var stepCrochet:Float;
@@ -250,7 +250,7 @@ class Conductor
 	 * 
 	 * @param 	song	The chart data to map BPM changes from.
 	*/
-	public static function mapBPMChanges(?song:SwagSong) {
+	public static function mapBPMChanges(?song:SwagSong, ?extraEvents:SwagSong) {
 		if (song == null) {
 			bpmChangeMap = defaultBPMChangeMap(Conductor.bpm);
 			return;
@@ -258,38 +258,70 @@ class Conductor
 		
 		var initialBeats:Int = (song.notes[0]?.sectionBeats ?? 4);
 		bpmChangeMap = defaultBPMChangeMap(song.bpm, initialBeats);
-		
-		var curSectionBeats:Int = initialBeats;
-		var curBPM:Float = song.bpm;
-		var totalSteps:Int = 0;
-		var totalPos:Float = 0;
-		for (i in 0...song.notes.length)
+
+		var rawChanges:Array<{songTime:Float, bpm:Float, order:Int}> = [];
+		var order:Int = 0;
+		function collectTempoEvents(container:SwagSong):Void
 		{
-			var hasChange:Bool = false;
-			var sectionBeats:Int = getSectionBeats(song, i);
-			
-			if (sectionBeats != curSectionBeats) {
-				curSectionBeats = sectionBeats;
-				hasChange = true;
+			if(container?.events == null) return;
+			for(event in container.events)
+			{
+				if(event == null || event.length < 2 || event[1] == null) continue;
+				var eventTime:Float = Std.parseFloat(Std.string(event[0]));
+				if(Math.isNaN(eventTime)) continue;
+				for(subEvent in (cast event[1]:Array<Dynamic>))
+				{
+					if(subEvent == null || subEvent.length < 2 || !Song.isBPMChangeEventName(Std.string(subEvent[0]))) continue;
+					var eventBPM:Float = Std.parseFloat(Std.string(subEvent[1]));
+					if(Math.isNaN(eventBPM) || eventBPM <= 0) continue;
+					rawChanges.push({songTime: Math.max(0, eventTime), bpm: eventBPM, order: order++});
+				}
 			}
-			if (song.notes[i].changeBPM && song.notes[i].bpm != curBPM) {
-				curBPM = song.notes[i].bpm;
-				hasChange = true;
+		}
+
+		collectTempoEvents(song);
+		if(extraEvents != song) collectTempoEvents(extraEvents);
+
+		// it will make charts keep working even tho
+		if(rawChanges.length < 1)
+		{
+			var legacyBPM:Float = song.bpm;
+			var legacyTime:Float = 0;
+			for(section in song.notes)
+			{
+				if(section.changeBPM == true && section.bpm != null && section.bpm > 0 && section.bpm != legacyBPM)
+				{
+					legacyBPM = section.bpm;
+					rawChanges.push({songTime: legacyTime, bpm: legacyBPM, order: order++});
+				}
+				legacyTime += calculateCrochet(legacyBPM) * getSectionBeats(song, song.notes.indexOf(section));
 			}
-			
-			if (hasChange) {
-				bpmChangeMap.push({
-					sectionBeats: curSectionBeats,
-					stepTime: totalSteps,
-					songTime: totalPos,
-					bpm: curBPM,
-					stepCrochet: calculateCrochet(curBPM) / 4
-				});
+		}
+
+		rawChanges.sort(function(a, b)
+		{
+			if(Math.abs(a.songTime - b.songTime) < 0.0001) return a.order - b.order;
+			return a.songTime < b.songTime ? -1 : 1;
+		});
+
+		for(raw in rawChanges)
+		{
+			var last:BPMChangeEvent = bpmChangeMap[bpmChangeMap.length - 1];
+			if(Math.abs(raw.songTime - last.songTime) < 0.0001)
+			{
+				last.bpm = raw.bpm;
+				last.stepCrochet = calculateCrochet(raw.bpm) / 4;
+				continue;
 			}
 
-			var deltaSteps:Int = (sectionBeats * 4);
-			totalSteps += deltaSteps;
-			totalPos += ((60 / curBPM) * 1000 / 4) * deltaSteps;
+			var changeStep:Float = last.stepTime + (raw.songTime - last.songTime) / last.stepCrochet;
+			bpmChangeMap.push({
+				sectionBeats: last.sectionBeats,
+				stepTime: changeStep,
+				songTime: raw.songTime,
+				bpm: raw.bpm,
+				stepCrochet: calculateCrochet(raw.bpm) / 4
+			});
 		}
 		trace('Added ${bpmChangeMap.length} BPM changes');
 	}
@@ -355,15 +387,12 @@ class Conductor
 	public static function set_bpm(newBPM:Float):Float {
 		crochet = calculateCrochet(newBPM);
 		stepCrochet = crochet / 4;
-		
-		if (bpmChangeMap == null || bpmChangeMap.length == 0) {
-			bpm = newBPM;
-			mapBPMChanges();
-		} else if (Math.abs(bpm - bpmChangeMap[0].bpm) < 1) {
-			bpmChangeMap[0].stepCrochet = stepCrochet;
-			bpmChangeMap[0].bpm = bpm;
-		}
-		
 		return bpm = newBPM;
+	}
+
+	// updates the bpm without rerwringtgn the modified timeline or smr
+	public static inline function setCurrentBPM(newBPM:Float):Float
+	{
+		return set_bpm(newBPM);
 	}
 }

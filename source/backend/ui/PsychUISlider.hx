@@ -63,6 +63,7 @@ class PsychUISlider extends FlxSpriteGroup
 	override function update(elapsed:Float)
 	{
 		super.update(elapsed);
+		if(PsychUIInputText.dropdownBlocks(this)) return;
 
 		if(FlxG.mouse.justMoved || FlxG.mouse.justPressed || forceNextUpdate)
 		{

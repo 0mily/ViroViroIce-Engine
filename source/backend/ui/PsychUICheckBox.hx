@@ -43,12 +43,10 @@ class PsychUICheckBox extends FlxSpriteGroup
 	{
 		super.update(elapsed);
 
-		if(FlxG.mouse.justPressed)
+		if(FlxG.mouse.justPressed && !PsychUIInputText.dropdownBlocks(this))
 		{
-			var screenPos:FlxPoint = getScreenPosition(null, camera);
-			var mousePos:FlxPoint = FlxG.mouse.getViewPosition(camera);
-			if((mousePos.x >= screenPos.x && mousePos.x < screenPos.x + width) &&
-				(mousePos.y >= screenPos.y && mousePos.y < screenPos.y + height))
+			var inputCamera:FlxCamera = PsychUIInputText.getInputCamera(camera);
+			if(inputCamera != null && (FlxG.mouse.overlaps(box, inputCamera) || FlxG.mouse.overlaps(text, inputCamera)))
 			{
 				checked = !checked;
 				if(onClick != null) onClick();

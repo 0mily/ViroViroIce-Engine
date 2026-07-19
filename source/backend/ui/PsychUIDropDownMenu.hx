@@ -94,6 +94,7 @@ class PsychUIDropDownMenu extends PsychUIInputText
 
 		var lastFocus = PsychUIInputText.focusOn;
 		super.update(elapsed);
+		if(PsychUIInputText.dropdownBlocks(this)) return;
 		if(button == null || !button.exists)
 			return;
 

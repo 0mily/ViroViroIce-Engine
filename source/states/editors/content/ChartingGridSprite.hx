@@ -12,8 +12,10 @@ class ChartingGridSprite extends FlxSprite
 	public var stripes:Array<Int>;
 
 	var vortexLine:FlxSprite;
+	var sectionLine:FlxSprite;
 	public var vortexLineEnabled:Bool = false;
 	public var vortexLineSpace:Float = 0;
+	public var sectionLineRows:Array<Float> = [];
 
 	public function new(columns:Int, ?color1:FlxColor = 0xFFE6E6E6, ?color2:FlxColor = 0xFFD8D8D8)
 	{
@@ -33,6 +35,13 @@ class ChartingGridSprite extends FlxSprite
 		vortexLine.color = 0xFF660000;
 		vortexLine.updateHitbox();
 
+		sectionLine = new FlxSprite().makeGraphic(1, 1, FlxColor.WHITE);
+		sectionLine.scale.x = this.width;
+		sectionLine.scale.y = 3;
+		sectionLine.scrollFactor.x = 0;
+		sectionLine.color = 0xFF287DFF;
+		sectionLine.updateHitbox();
+
 		stripe = new FlxSprite().makeGraphic(1, 1, FlxColor.WHITE);
 		stripe.scrollFactor.x = 0;
 		stripe.color = FlxColor.BLACK;
@@ -51,51 +60,66 @@ class ChartingGridSprite extends FlxSprite
 
 	override function draw()
 	{
-		if(!visible || alpha == 0 || y - camera.scroll.y >= FlxG.height) return;
-		
-		scale.y = ChartingState.GRID_SIZE * Math.min(1, rows);
-		offset.y = -0.5 * (scale.y - 1);
+		if(!visible || alpha == 0 || rows <= 0 || camera == null) return;
 
 		var initialFlip:Bool = flipY;
 		var initialY:Float = y;
-		flipY = false;
-		
-		if (initialFlip) y += height - ChartingState.GRID_SIZE;
-		
-		super.draw();
-		if (rows <= 1) {
-			_drawStripes();
-			return;
-		}
-		
-		for (i in 1...Math.ceil(rows)) {
-			y += (ChartingState.GRID_SIZE + spacing) * (initialFlip ? -1 : 1);
-			if (!initialFlip && y - camera.scroll.y >= FlxG.height)
-				break;
-			else if (initialFlip && y - camera.scroll.y <= -height)
-				break;
+		var stride:Float = ChartingState.GRID_SIZE + spacing;
+		var viewTop:Float = camera.scroll.y - ChartingState.GRID_SIZE;
+		var viewBottom:Float = camera.scroll.y + camera.height + ChartingState.GRID_SIZE;
+		var baseY:Float = initialFlip ? initialY + height - ChartingState.GRID_SIZE : initialY;
+		var first:Int = initialFlip
+			? Std.int(Math.max(0, Math.floor((baseY - viewBottom) / stride)))
+			: Std.int(Math.max(0, Math.floor((viewTop - baseY) / stride)));
+		var last:Int = Math.ceil(rows);
 
+		flipY = false;
+		for(i in first...last)
+		{
+			var rowY:Float = baseY + i * stride * (initialFlip ? -1 : 1);
+			if(!initialFlip && rowY > viewBottom) break;
+			if(initialFlip && rowY + ChartingState.GRID_SIZE < viewTop) break;
+
+			y = rowY;
 			animation.play((i % 2 == 1) ? 'odd' : 'even', true);
 			scale.y = ChartingState.GRID_SIZE * Math.min(1, rows - i);
 			offset.y = -0.5 * (scale.y - 1);
 			super.draw();
 		}
+
 		animation.play('even', true);
 		flipY = initialFlip;
 		y = initialY;
 
 		_drawStripes();
+		drawGuideLines(viewTop, viewBottom, initialFlip);
+	}
 
-		if(vortexLineEnabled)
+	function drawGuideLines(viewTop:Float, viewBottom:Float, reversed:Bool):Void
+	{
+		var anchor:Float = reversed ? y + height : y;
+		var direction:Int = reversed ? -1 : 1;
+		if(vortexLineEnabled && vortexLineSpace > 0)
 		{
-			vortexLine.x = this.x;
-			vortexLine.y = this.y - 1;
-			while (true)
+			vortexLine.x = x;
+			var first:Int = Std.int(Math.max(0, Math.floor((reversed ? anchor - viewBottom : viewTop - anchor) / vortexLineSpace)));
+			var max:Int = Math.ceil(height / vortexLineSpace);
+			for(i in first...max + 1)
 			{
-				vortexLine.y += vortexLineSpace;
-				if(vortexLine.y >= this.y + this.height) break;
-
+				vortexLine.y = anchor + direction * i * vortexLineSpace - 1;
+				if(vortexLine.y < viewTop - 3 || vortexLine.y > viewBottom + 3) continue;
 				vortexLine.draw();
+			}
+		}
+
+		if(sectionLineRows != null)
+		{
+			sectionLine.x = x;
+			for(row in sectionLineRows)
+			{
+				sectionLine.y = anchor + direction * row * ChartingState.GRID_SIZE - 1;
+				if(sectionLine.y < viewTop - 4 || sectionLine.y > viewBottom + 4) continue;
+				sectionLine.draw();
 			}
 		}
 	}

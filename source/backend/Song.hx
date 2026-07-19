@@ -57,6 +57,7 @@ class Song
 {
 	public static inline final VIRO_FORMAT:String = 'viroviroice_v1';
 	public static inline final CAMERA_FOCUS_EVENT:String = 'Focus Camera';
+	public static inline final BPM_CHANGE_EVENT:String = 'BPM Change';
 
 	public var song:String;
 	public var notes:Array<SwagSection>;
@@ -152,7 +153,66 @@ class Song
 
 		normalizeSections(songJson);
 		normalizeCameraEvents(songJson);
+		normalizeBPMEvents(songJson);
 		songJson.format = VIRO_FORMAT;
+	}
+
+	/** Converter idk. */
+	static function normalizeBPMEvents(songJson:Dynamic):Void
+	{
+		var sectionsData:Array<Dynamic> = songJson.notes;
+		if(sectionsData == null) return;
+
+		var bpm:Float = parseFloat(songJson.bpm, 100);
+		if(bpm <= 0) bpm = 100;
+		for(event in (cast songJson.events:Array<Dynamic>))
+		{
+			if(event == null || event.length < 2 || event[1] == null) continue;
+			for(subEvent in (cast event[1]:Array<Dynamic>))
+				if(subEvent != null && subEvent.length > 0 && isBPMChangeEventName(Std.string(subEvent[0])))
+					subEvent[0] = BPM_CHANGE_EVENT;
+		}
+		var time:Float = 0;
+		for(section in sectionsData)
+		{
+			if(section.changeBPM == true && section.bpm != null)
+			{
+				var nextBPM:Float = parseFloat(section.bpm, bpm);
+				if(nextBPM > 0)
+				{
+					bpm = nextBPM;
+					addBPMEvent(songJson.events, time, bpm);
+				}
+			}
+
+			section.changeBPM = false;
+			var beats:Float = parseFloat(section.sectionBeats, 4);
+			if(beats <= 0) beats = 4;
+			time += (60 / bpm) * 1000 * beats;
+		}
+		sortEvents(songJson.events);
+	}
+
+	static function addBPMEvent(events:Array<Dynamic>, time:Float, bpm:Float):Void
+	{
+		for(event in events)
+		{
+			if(event == null || Math.abs(parseFloat(event[0], -999999) - time) >= 0.001) continue;
+			if(event[1] == null) event[1] = [];
+			var pack:Array<Dynamic> = event[1];
+			for(subEvent in pack)
+				if(subEvent != null && subEvent.length > 0 && isBPMChangeEventName(Std.string(subEvent[0])))
+					return;
+			pack.push([BPM_CHANGE_EVENT, Std.string(bpm), '']);
+			return;
+		}
+		events.push([time, [[BPM_CHANGE_EVENT, Std.string(bpm), '']]]);
+	}
+
+	public static function isBPMChangeEventName(eventName:String):Bool
+	{
+		var compact:String = Std.string(eventName ?? '').toLowerCase().replace(' ', '').replace('_', '').replace('-', '').trim();
+		return compact == 'bpmchange' || compact == 'changebpm' || compact == 'setbpm' || compact == 'tempochange';
 	}
 
 	static function normalizeSections(songJson:Dynamic):Void

@@ -66,6 +66,7 @@ class PsychUIButton extends FlxSpriteGroup
 			applyStyle(normalStyle);
 			_firstFrame = false;
 		}
+		if(PsychUIInputText.dropdownBlocks(this)) return;
 		
 		if(isClicked && FlxG.mouse.released)
 		{

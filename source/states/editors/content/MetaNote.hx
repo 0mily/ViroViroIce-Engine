@@ -530,6 +530,8 @@ class EventNoteGui extends FlxSpriteGroup {
 			
 			if (FlxG.mouse.justReleased) {
 				if (selection != null) { // snipe
+					var removedTempo:Bool = backend.Song.isBPMChangeEventName(selection.event[0]);
+					var oldBPMMap:Array<backend.BPMChangeEvent> = removedTempo ? Conductor.copyBPMChanges() : null;
 					if (FlxG.keys.pressed.SHIFT) {
 						charter.selectedEvents.remove(selection);
 						
@@ -555,6 +557,7 @@ class EventNoteGui extends FlxSpriteGroup {
 					charter.updateSelectedEvents();
 					charter.resetSelectedNotes();
 					selectedEventSprite = null;
+					if(removedTempo) charter.adaptNotes(oldBPMMap, false);
 					
 					return;
 				} else {

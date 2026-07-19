@@ -408,6 +408,11 @@ class PsychUIInputText extends FlxSpriteGroup
 		return null;
 	}
 
+	public static function dropdownBlocks(control:Dynamic):Bool
+	{
+		return focusOn != null && focusOn != control && Std.isOfType(focusOn, PsychUIDropDownMenu);
+	}
+
 	override function update(elapsed:Float)
 	{
 		if(!exists)
@@ -422,7 +427,7 @@ class PsychUIInputText extends FlxSpriteGroup
 		if(inputCamera == null)
 			return;
 
-		if(FlxG.mouse.justPressed)
+		if(FlxG.mouse.justPressed && !dropdownBlocks(this))
 		{
 			if(FlxG.mouse.overlaps(behindText, inputCamera))
 			{

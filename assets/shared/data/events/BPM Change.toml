@@ -1,0 +1,10 @@
+name = 'BPM Change'
+description = 'Changes the song Tempo.'
+
+[BPM]
+type = 'stepper'
+default = 120
+step = 1
+min_max = [ 1, 1000 ]
+decimals = 3
+width = 100

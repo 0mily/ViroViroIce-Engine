@@ -3361,17 +3361,15 @@ class PlayState extends ScriptedState
 		} catch(e:Dynamic) {
 			EVENTS = null;
 		}
+		Conductor.mapBPMChanges(songData, EVENTS);
+		Conductor.setCurrentBPM(Conductor.getBPMFromSeconds(0).bpm);
 
 		var oldNote:Note = null;
 		var sectionsData:Array<SwagSection> = PlayState.SONG.notes;
 		var ghostNotesCaught:Int = 0;
-		var daBpm:Float = Conductor.bpm;
 	
 		for (sectionI => section in sectionsData)
 		{
-			if (section.changeBPM != null && section.changeBPM && section.bpm != null && daBpm != section.bpm)
-				daBpm = section.bpm;
-
 			for (i => songNotes in section.sectionNotes) {
 				var spawnTime: Float = songNotes[0];
 				var noteColumn: Int = Std.int(songNotes[1] % totalColumns);
@@ -3410,15 +3408,18 @@ class PlayState extends ScriptedState
 				swagNote.scrollFactor.set();
 				unspawnNotes.push(swagNote);
 				
-				var curStepCrochet:Float = 60 / daBpm * 1000 / 4.0;
-				final roundSus:Int = Math.round(swagNote.sustainLength / curStepCrochet);
+				var sustainStartStep:Float = Conductor.getStep(spawnTime);
+				var sustainEndStep:Float = Conductor.getStep(spawnTime + swagNote.sustainLength);
+				final roundSus:Int = Math.round(sustainEndStep - sustainStartStep);
 				if(roundSus > 0)
 				{
 					for (susNote in 0...roundSus) {
 						oldNote = unspawnNotes[Std.int(unspawnNotes.length - 1)];
 
-						var sustainNote:Note = new Note(spawnTime + (curStepCrochet * susNote), noteColumn, oldNote, true);
-						sustainNote.sustainLength = curStepCrochet;
+						var sustainTime:Float = Conductor.stepToSeconds(sustainStartStep + susNote);
+						var sustainNextTime:Float = Conductor.stepToSeconds(sustainStartStep + susNote + 1);
+						var sustainNote:Note = new Note(sustainTime, noteColumn, oldNote, true);
+						sustainNote.sustainLength = sustainNextTime - sustainTime;
 						sustainNote.animSuffix = swagNote.animSuffix;
 						sustainNote.mustPress = swagNote.mustPress;
 						sustainNote.noteType = swagNote.noteType;
@@ -4495,6 +4496,14 @@ class PlayState extends ScriptedState
 		if(Math.isNaN(flValue2)) flValue2 = null;
 
 		switch(eventName) {
+			case 'BPM Change' | 'Change BPM' | 'Set BPM' | 'Tempo Change':
+				if(flValue1 != null && flValue1 > 0)
+				{
+					Conductor.setCurrentBPM(flValue1);
+					setOnScripts('curBpm', Conductor.bpm);
+					setOnScripts('crochet', Conductor.crochet);
+					setOnScripts('stepCrochet', Conductor.stepCrochet);
+				}
 			case 'Hey!':
 				var rawTarget:String = value1.toLowerCase().trim();
 				var targetName:String = switch(rawTarget) {
@@ -6526,6 +6535,14 @@ class PlayState extends ScriptedState
 	public override function stepHit(step:Int):Void {
 		if (step == lastStepHit)
 			return;
+		var mappedBPM:Float = Conductor.getBPMFromSeconds(Conductor.songPosition).bpm;
+		if(Math.abs(mappedBPM - Conductor.bpm) > 0.0001)
+		{
+			Conductor.setCurrentBPM(mappedBPM);
+			setOnScripts('curBpm', Conductor.bpm);
+			setOnScripts('crochet', Conductor.crochet);
+			setOnScripts('stepCrochet', Conductor.stepCrochet);
+		}
 		
 		super.stepHit(step);
 		applyScriptedCameraBop(step, 'step');
@@ -6652,12 +6669,6 @@ class PlayState extends ScriptedState
 				addCameraZoomBop(0.015 * camZoomingMult, 0.03 * camZoomingMult);
 			}
 
-			if (SONG.notes[section].changeBPM) {
-				Conductor.bpm = SONG.notes[section].bpm;
-				setOnScripts('curBpm', Conductor.bpm);
-				setOnScripts('crochet', Conductor.crochet);
-				setOnScripts('stepCrochet', Conductor.stepCrochet);
-			}
 			setOnScripts('altAnim', SONG.notes[section].altAnim);
 			setOnScripts('gfSection', SONG.notes[section].gfSection);
 			setOnScripts('mustHitSection', SONG.notes[section].mustHitSection);
