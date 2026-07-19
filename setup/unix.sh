@@ -41,6 +41,8 @@ haxelib install hxdiscord_rpc
 haxelib install funkin-modchart
 haxelib install moonchart
 haxelib install nape-haxe4
+haxelib install haxeui-core
+haxelib install haxeui-flixel
 
 echo ""
 echo -e "${CYAN}[3/4] Installing specific version libraries...${NC}"

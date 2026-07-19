@@ -26,6 +26,8 @@ haxelib install funkin-modchart
 haxelib install flixel-animate
 haxelib install moonchart
 haxelib install nape-haxe4
+haxelib install haxeui-core
+haxelib install haxeui-flixel
 
 echo.
 echo [2/3] Installing specific version libraries...
