@@ -114,9 +114,9 @@ class Mods
 		if (key.length < 1)
 			return #if mobile StorageSystem.getDirectory() + #end '$ADDONS_FOLDER/';
 		if (key == ADDONS_FOLDER || key.startsWith('$ADDONS_FOLDER/'))
-			return key;
+			return #if mobile StorageSystem.getDirectory() + #end key;
 		if (key == CONTENTS_FOLDER || key.startsWith('$CONTENTS_FOLDER/'))
-			return key;
+			return #if mobile StorageSystem.getDirectory() + #end key;
 		return #if mobile StorageSystem.getDirectory() + #end '$ADDONS_FOLDER/$key';
 	}
 

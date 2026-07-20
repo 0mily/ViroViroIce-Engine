@@ -211,6 +211,8 @@
 		<config:android permission="android.permission.ACCESS_WIFI_STATE"/>
 		<config:android permission="android.permission.ACCESS_NETWORK_STATE" />
         <config:android permission="android.permission.CAPTURE_AUDIO_OUTPUT" />
+        
+        <haxeflag name="--macro" value="haxe.macro.Compiler.exclude('haxe.ui.backend.OpenFileDialogImpl')" />
     
         <!--<android extension="mobile.backend.java.FileUtils" />-->
         
