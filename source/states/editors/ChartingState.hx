@@ -125,6 +125,7 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 	static inline final INFO_BOX_HEIGHT:Int = 206;
 	static inline final EDITOR_ICON_SCALE:Float = 0.58;
 	static inline final EDITOR_ICON_BUMP_SCALE:Float = 0.16;
+	static inline final SECTION_STEP_EPSILON:Float = 0.0001;
 	final BACKUP_EXT = '.bkp';
 
 	public var quantizations:Array<Int> = [
@@ -3045,7 +3046,12 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 			? worldY - gridBg.y
 			: gridBg.y + gridBg.height - worldY - GRID_SIZE;
 		var step:Float = pixels / Math.max(0.0001, GRID_SIZE * curZoom);
-		return snap ? snapChartStep(step) : step;
+		if(!snap) return step;
+
+		// mf got me angry by just not going up
+		var interval:Float = getSnapStep();
+		var normalized:Float = step / interval;
+		return (downScroll ? Math.ceil(normalized - 0.000001) : Math.floor(normalized + 0.000001)) * interval;
 	}
 
 	function chartStepToGridY(step:Float):Float
@@ -3055,22 +3061,32 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 			: gridBg.y + gridBg.height - step * GRID_SIZE * curZoom - GRID_SIZE;
 	}
 
-	function sectionAtTime(time:Float):Int
+	function sectionAtStep(step:Float):Int
 	{
 		var low:Int = 0;
-		var high:Int = Std.int(Math.max(0, cachedSectionTimes.length - 2));
+		var high:Int = Std.int(Math.max(0, cachedSectionRow.length - 2));
 		while(low < high)
 		{
 			var mid:Int = Math.ceil((low + high) * 0.5);
-			if(cachedSectionTimes[mid] <= time) low = mid;
+			if(cachedSectionRow[mid] <= step + SECTION_STEP_EPSILON) low = mid;
 			else high = mid - 1;
 		}
 		return Std.int(FlxMath.bound(low, 0, PlayState.SONG.notes.length - 1));
 	}
 
+	inline function sectionAtTime(time:Float):Int
+		return sectionAtStep(Conductor.getStep(time));
+
+	inline function stepIsInSection(step:Float, section:Int):Bool
+	{
+		if(section < 0 || section + 1 >= cachedSectionRow.length) return false;
+		return step >= cachedSectionRow[section] - SECTION_STEP_EPSILON &&
+			step < cachedSectionRow[section + 1] - SECTION_STEP_EPSILON;
+	}
+
 	inline function noteIsInSection(note:MetaNote, section:Int):Bool
 	{
-		return note != null && note.strumTime >= cachedSectionTimes[section] && note.strumTime < cachedSectionTimes[section + 1];
+		return note != null && stepIsInSection(Conductor.getStep(note.strumTime), section);
 	}
 
 	var characterData:Dynamic = {};
@@ -5924,29 +5940,27 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 		var tab_group = mainBox.getTab('Section').menu;
 		var objX = 10;
 		var objY = 10;
-		function copyNotesOnSection(?secOff:Int = 0, ?showMessage:Bool = true) //Used on "Copy Section" and "Copy Last Section" buttons
+		function copyNotesOnSection(?secOff:Int = 0, ?showMessage:Bool = true):Bool //Used on "Copy Section" and "Copy Last Section" buttons
 		{
-			var curSectionTime:Null<Float> = cachedSectionTimes[curSec - secOff];
-			if (curSectionTime == null) {
-				//showOutput('ERROR: Unknown section??', true);
-				return;
+			var sourceSection:Int = curSec - secOff;
+			if(sourceSection < 0 || sourceSection >= PlayState.SONG.notes.length || sourceSection + 1 >= cachedSectionRow.length)
+			{
+				if(showMessage) showOutput('That section does not exist!', true);
+				return false;
 			}
-			
-			var nextSectionTime:Null<Float> = cachedSectionTimes[curSec - secOff + 1];
-			if (nextSectionTime == null) nextSectionTime = Math.POSITIVE_INFINITY;
-			
-			var sectionStep:Float = Conductor.getStep(curSectionTime);
+
+			var sectionStep:Float = cachedSectionRow[sourceSection];
 			var notesCopyNum:Int = 0;
 			if(affectNotes.checked)
 			{
 				copiedNotes = [];
 				for (note in notes)
 				{
-					if(note.strumTime >= curSectionTime && note.strumTime < nextSectionTime)
+					var noteStep:Float = Conductor.getStep(note.strumTime);
+					if(stepIsInSection(noteStep, sourceSection))
 					{
 						var dataCopy:Array<Dynamic> = makeNoteDataCopy(note.songData, false);
-						
-						var noteStep:Float = Conductor.getStep(note.strumTime);
+						if(Math.abs(noteStep - sectionStep) < SECTION_STEP_EPSILON) noteStep = sectionStep;
 						dataCopy[2] = Conductor.getStep(note.strumTime + note.sustainLength) - noteStep;
 						dataCopy[0] = noteStep - sectionStep;
 						
@@ -5962,10 +5976,12 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 				copiedEvents = [];
 				for (event in events)
 				{
-					if(event.strumTime >= curSectionTime && event.strumTime < nextSectionTime)
+					var eventStep:Float = Conductor.getStep(event.strumTime);
+					if(stepIsInSection(eventStep, sourceSection))
 					{
 						var dataCopy:Array<Dynamic> = makeNoteDataCopy(event.songData, true);
-						dataCopy[0] = Conductor.getStep(event.strumTime) - sectionStep;
+						if(Math.abs(eventStep - sectionStep) < SECTION_STEP_EPSILON) eventStep = sectionStep;
+						dataCopy[0] = eventStep - sectionStep;
 						copiedEvents.push(dataCopy);
 						eventsCopyNum++;
 					}
@@ -5977,7 +5993,7 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 				if(notesCopyNum == 0 && eventsCopyNum == 0)
 				{
 					showOutput('Nothing to copy!', true);
-					return;
+					return true;
 				}
 
 				var str:String = '';
@@ -5990,6 +6006,7 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 	
 				if(str.length > 0) showOutput(str);
 			}
+			return true;
 		}
 
 		gfSectionCheckBox = new PsychUICheckBox(objX, objY, 'Girlfriend Sings', 100, function()
@@ -6040,7 +6057,9 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 		};
 
 		objY += 40;
-		var copyButton:PsychUIButton = new PsychUIButton(objX, objY, 'Copy Section', copyNotesOnSection.bind(), 74);
+		var copyButton:PsychUIButton = new PsychUIButton(objX, objY, 'Copy Section', function() {
+			copyNotesOnSection();
+		}, 74);
 		
 		affectNotes = new PsychUICheckBox(objX + 82, objY + 2, 'Notes', 60);
 		affectNotes.checked = true;
@@ -6057,8 +6076,8 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 		{
 			var lastCopiedNotes = copiedNotes;
 			var lastCopiedEvents = copiedEvents;
-			copyNotesOnSection(Std.int(copyLastSecStepper.value), false);
-			pasteCopiedNotesToSection(affectNotes.checked, affectEvents.checked);
+			if(copyNotesOnSection(Std.int(copyLastSecStepper.value), false))
+				pasteCopiedNotesToSection(affectNotes.checked, affectEvents.checked);
 			copiedNotes = lastCopiedNotes;
 			copiedEvents = lastCopiedEvents;
 		}, 74);
@@ -6298,9 +6317,8 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 			return [];
 		}
 		
-		var nextSectionTime:Float = limitToSection ? cachedSectionTimes[curSec + 1] : Math.POSITIVE_INFINITY;
-		
-		var sectionStep:Float = targetStep != null ? targetStep : Conductor.getStep(curSectionTime);
+		var sectionStep:Float = targetStep != null ? targetStep : cachedSectionRow[curSec];
+		var nextSectionStep:Float = limitToSection ? cachedSectionRow[curSec + 1] : Math.POSITIVE_INFINITY;
 		var pastesTempo:Bool = false;
 		if(canCopyEvents)
 			for(blob in copiedEvents)
@@ -6320,13 +6338,15 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 				var dataCopy:Array<Dynamic> = makeNoteDataCopy(note, false);
 				
 				var noteStep:Float = dataCopy[0] + sectionStep;
-				var strumTime:Float = Conductor.stepToSeconds(noteStep);
+				if(Math.abs(noteStep - sectionStep) < SECTION_STEP_EPSILON) noteStep = sectionStep;
 				
-				if (strumTime < nextSectionTime) {
+				if(noteStep < nextSectionStep - SECTION_STEP_EPSILON)
+				{
+					var strumTime:Float = Conductor.stepToSeconds(noteStep);
 					dataCopy[0] = strumTime;
 					dataCopy[2] = Conductor.stepToSeconds(noteStep + dataCopy[2]) - strumTime;
 					
-					var createdNote = createNote(dataCopy, sectionAtTime(strumTime));
+					var createdNote = createNote(dataCopy, sectionAtStep(noteStep));
 					notes.push(createdNote);
 					pushedNotes.push(createdNote);
 					nts.push(createdNote);
@@ -6341,11 +6361,12 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 			{
 				if(event == null) continue;
 				var dataCopy:Array<Dynamic> = makeNoteDataCopy(event, true);
-				dataCopy[0] += sectionStep;
-				
-				var strumTime:Float = Conductor.stepToSeconds(dataCopy[0]);
+				var eventStep:Float = dataCopy[0] + sectionStep;
+				if(Math.abs(eventStep - sectionStep) < SECTION_STEP_EPSILON) eventStep = sectionStep;
 
-				if (strumTime < nextSectionTime) {
+				if(eventStep < nextSectionStep - SECTION_STEP_EPSILON)
+				{
+					var strumTime:Float = Conductor.stepToSeconds(eventStep);
 					dataCopy[0] = strumTime;
 					
 					var createdEvent = createEvent(dataCopy);
@@ -8575,21 +8596,12 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 			PlayState.SONG.notes[secNum].sectionNotes = [];
 
 		notes.sort(PlayState.sortByTime);
-		var noteSec:Int = 0;
-		var nextSectionTime:Float = cachedSectionTimes[noteSec + 1];
-		var curSectionTime:Float = cachedSectionTimes[noteSec];
-
-		for (num => note in notes)
+		for (note in notes)
 		{
 			if(note == null) continue;
 
-			while(cachedSectionTimes[noteSec + 1] <= note.strumTime)
-			{
-				noteSec++;
-				nextSectionTime = cachedSectionTimes[noteSec + 1];
-				curSectionTime = cachedSectionTimes[noteSec];
-			}
-
+			var noteSec:Int = sectionAtStep(Conductor.getStep(note.strumTime));
+			note.section = noteSec;
 			var arr:Array<Dynamic> = PlayState.SONG.notes[noteSec].sectionNotes;
 			//trace('Added note with time ${note.songData[0]} at section $noteSec');
 			arr.push(note.songData);
