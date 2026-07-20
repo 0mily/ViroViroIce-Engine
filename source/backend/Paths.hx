@@ -941,7 +941,7 @@ class Paths
 	static public function modFolders(key:String)
 	{
 		key = key.replace('\\', '/');
-		if ((key.startsWith('contents/') || key.startsWith('addons/') || key.startsWith('assets/')) && FileSystem.exists(key))
+		if ((key.startsWith('contents/') || key.startsWith('addons/')) && FileSystem.exists(key))
 			return key;
 
 		if(Mods.packageSupportsKey(key) && Mods.isCurrentPackageActive())
