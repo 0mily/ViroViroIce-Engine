@@ -1,40 +1,25 @@
---[[ 
-,---.    ,---..-./`)   .---.       ____     __  _ _    .-'''-.         ,---.    ,---.    ,-----.      ______         _______   .---.  .---.    ____    .-------. ,---------.
-|    \  /    |\ .-.')  | ,_|       \   \   /  /( ' )  / _     \        |    \  /    |  .'  .-,  '.  |    _ `''.    /   __  \  |   |  |_ _|  .'  __ `. |  _ _   \\          \
-|  ,  \/  ,  |/ `-' \,-./  )        \  _. /  '(_{;}_)(`' )/`--'        |  ,  \/  ,  | / ,-.|  \ _ \ | _ | ) _  \  | ,_/  \__) |   |  ( ' ) /   '  \  \| ( ' )  | `--.  ,---'
-|  |\_   /|  | `-'`"`\  '_ '`)        _( )_ .'  (_,_)(_ o _).          |  |\_   /|  |;  \  '_ /  | :|( ''_'  ) |,-./  )       |   '-(_{;}_)|___|  /  ||(_ o _) /    |   \
-|  _( )_/ |  | .---.  > (_)  )   ___(_ o _)'         (_,_). '.         |  _( )_/ |  ||  _`,/ \ _/  || . (_) `. |\  '_ '`)     |      (_,_)    _.-`   || (_,_).' __  :_ _:
-| (_ o _) |  | |   | (  .  .-'  |   |(_,_)'         .---.  \  :        | (_ o _) |  |: (  '\_/ \   ;|(_    ._) ' > (_)  )  __ | _ _--.   | .'   _    ||  |\ \  |  | (_I_)
-|  (_,_)  |  | |   |  `-'`-'|___|   `-'  /           \    `-'  |        |  (_,_)  |  | \ `"/  \  ) / |  (_.\.' / (  .  .-'_/  )|( ' ) |   | |  _( )_  ||  | \ `'   /(_(=)_)
-|  |      |  | |   |   |        \\      /             \       /        |  |      |  |  '. \_/``".'  |       .'   `-'`-'     / (_{;}_)|   | \ (_ o _) /|  |  \    /  (_I_)
-'--'      '--' '---'   `--------` `-..-'               `-...-'         '--'      '--'    '-----'    '-----'`       `._____.'  '(_,_) '---'  '.(_,_).' ''-'   `'-'   '---'
---]]
+milyMC = milyMC or {}
 
--- =========================================================================
--- You're free to put all your stuff down here! ^^
--- =========================================================================
-
-DAD_Strum = "dad"
-BF_Strum = "bf"
-Strum_Gen = "gen"
-dad_Strum = DAD_Strum
-bf_Strum = BF_Strum
-strum_Gen = Strum_Gen
-strum_gen = Strum_Gen
+local DAD_STRUM = 'opp'
+local BF_STRUM = 'ply'
+local ALL_STRUMS = 'all'
 
 local mods = {}
+local modifierDefaults = {
+    beatIntensity = 1,
+    beatSusIntensity = 1
+}
 local modTweens = {}
-local defaultStrums = {}
-local toggleStates = {}
+local scheduledEvents = {}
+local tagBindings = {}
+local actionOwners = {}
+local tagCounter = 0
 
-local noteMods = {}
-local noteTweens = {}
+local strumValues = {}
+local defaultStrums = {}
+
 local customModifiers = {}
 local customModifierOrder = {}
-local scheduledEvents = {}
-
--- local MS_X = {90, 205, 315, 425, 730, 845, 955, 1065} -- talvez eu tenha esquecido pra que isso serve
-
 
 local VP_X = 1280 / 2
 local VP_Y = 720 / 2
@@ -42,12 +27,6 @@ local PERSPECTIVE_FL = 700
 local UPSCROLL_Y = 50
 local DOWNSCROLL_Y = 580
 local depthSortDirty = false
-local callExternalModchart = function() end
-local callLocalMilyMC = function(funcName, ...)
-    if milymc and type(milymc[funcName]) == 'function' then
-        milymc[funcName](...)
-    end
-end
 
 local function refreshViewport()
     VP_X = (screenWidth or 1280) / 2
@@ -70,11 +49,23 @@ local function refreshScrollAnchors()
     end
 end
 
+local function callLocalMilyMC(name, ...)
+    local callback = milyMC and milyMC[name]
+    if type(callback) == 'function' then callback(...) end
+end
+
+local function callExternalMilyMC(luaName, hscriptName, args)
+    args = args or {}
+    if callOnLuas then callOnLuas('milyMC.' .. luaName, args, true, true) end
+    if callOnHScript then callOnHScript(hscriptName, args, true, true) end
+end
+
 function onCreate()
-    if awesomeLuaCreate then awesomeLuaCreate() end
-    if modChartCreate then modChartCreate() end
-    callLocalMilyMC('create')
-    callExternalModchart('modChartCreate')
+    luaDebugMode = false
+    callLocalMilyMC('loadPre')
+    callExternalMilyMC('loadPre', 'onMCloadPre')
+    callLocalMilyMC('load')
+    callExternalMilyMC('load', 'onMCload')
 end
 
 function onCreatePost()
@@ -85,13 +76,13 @@ function onCreatePost()
             y = getPropertyFromGroup('strumLineNotes', i, 'y'),
             angle = getPropertyFromGroup('strumLineNotes', i, 'angle'),
             scaleX = getPropertyFromGroup('strumLineNotes', i, 'scale.x'),
-            scaleY = getPropertyFromGroup('strumLineNotes', i, 'scale.y'),
-            z = 0
+            scaleY = getPropertyFromGroup('strumLineNotes', i, 'scale.y')
+        }
+        strumValues[i] = strumValues[i] or {
+            x = 0, y = 0, z = 0, alpha = 1, angle = 0, scale = 1
         }
     end
     refreshScrollAnchors()
-    if modChartCreatePost then modChartCreatePost() end
-    callLocalMilyMC('createPost')
-    callExternalModchart('modChartCreatePost')
+    callLocalMilyMC('loadPost')
+    callExternalMilyMC('loadPost', 'onMCloadPost')
 end
-

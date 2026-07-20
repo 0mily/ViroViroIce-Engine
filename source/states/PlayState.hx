@@ -1180,23 +1180,38 @@ class PlayState extends ScriptedState
 	}
 	#end
 
-	public function addModchart(modchart:String):Dynamic
-		return callOnScripts('addModchart', [modchart], true);
+	public function setMC(name:String, value:Dynamic, ?target:Dynamic, ?tag:String):Dynamic
+		return milyMC.MilyMC.setMC(name, value, target, tag);
 
-	public function clearModchart(modchart:String):Dynamic
-		return callOnScripts('clearModchart', [modchart], true);
+	public function easeMC(name:String, value:Dynamic, time:Float, ease:String, ?target:Dynamic, ?tag:String):Dynamic
+		return milyMC.MilyMC.easeMC(name, value, time, ease, target, tag);
 
-	public function setModchart(modchart:String, value:Dynamic, ?target:Dynamic):Dynamic
-		return callOnScripts('setModchart', [modchart, value, target], true);
+	public function removeMC(tag:String, ?target:Dynamic):Dynamic
+		return milyMC.MilyMC.removeMC(tag, target);
 
-	public function easeModchart(modchart:String, value:Dynamic, duration:Float, ?ease:String = 'linear', ?target:Dynamic):Dynamic
-		return callOnScripts('easeModchart', [modchart, value, duration, ease, target], true);
+	public function setQueueMC(step:Float, name:String, value:Dynamic, ?target:Dynamic, ?tag:String):Dynamic
+		return milyMC.MilyMC.setQueueMC(step, name, value, target, tag);
 
-	public function queueSetModchart(step:Float, modchart:String, value:Dynamic, ?target:Dynamic):Dynamic
-		return callOnScripts('queueSet', [step, modchart, value, target], true);
+	public function easeQueueMC(stepRange:Dynamic, name:String, value:Dynamic, ease:String, ?target:Dynamic, ?tag:String):Dynamic
+		return milyMC.MilyMC.easeQueueMC(stepRange, name, value, ease, target, tag);
 
-	public function queueEaseModchart(step:Float, endStep:Float, modchart:String, value:Dynamic, ?ease:String = 'linear', ?target:Dynamic):Dynamic
-		return callOnScripts('queueEase', [step, endStep, modchart, value, ease, target], true);
+	public function removeQueueMC(step:Float, tag:String, ?target:Dynamic):Dynamic
+		return milyMC.MilyMC.removeQueueMC(step, tag, target);
+
+	public function kickMC(name:String, value:Dynamic, endValue:Dynamic, time:Float, ease:String, ?target:Dynamic, ?tag:String):Dynamic
+		return milyMC.MilyMC.kickMC(name, value, endValue, time, ease, target, tag);
+
+	public function setStrum(option:String, value:Dynamic, ?target:Dynamic, ?tag:String):Dynamic
+		return milyMC.MilyMC.setStrum(option, value, target, tag);
+
+	public function easeStrum(option:String, value:Dynamic, time:Float, ease:String, ?target:Dynamic, ?tag:String):Dynamic
+		return milyMC.MilyMC.easeStrum(option, value, time, ease, target, tag);
+
+	public function setQueueStrum(step:Float, option:String, value:Dynamic, ?target:Dynamic, ?tag:String):Dynamic
+		return milyMC.MilyMC.setQueueStrum(step, option, value, target, tag);
+
+	public function easeQueueStrum(stepRange:Dynamic, option:String, value:Dynamic, ease:String, ?target:Dynamic, ?tag:String):Dynamic
+		return milyMC.MilyMC.easeQueueStrum(stepRange, option, value, ease, target, tag);
 
 	function set_songSpeed(value:Float):Float
 	{

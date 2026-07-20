@@ -159,6 +159,13 @@ local function getReceptorScrollSpeed()
     return math.max(1, (crochet or ((stepCrochet or 125) * 4)) * 3)
 end
 
+local function getReceptorScrollAlpha(isSustain, drunkPressure)
+    if isSustain then
+        return drunkPressure > 0 and 0.28 or 0.4
+    end
+    return drunkPressure > 0 and 0.5 or 0.65
+end
+
 local function getNoteSpeed(group, objID, noteInfo)
     if noteInfo ~= nil and noteInfo[MILYMC_NOTE_SPEED] ~= nil then
         return tonumber(noteInfo[MILYMC_NOTE_SPEED]) or 1
@@ -318,9 +325,6 @@ local function calculateNoteState(objID, strumE, strumID, songPos, beat, distanc
         end
     end
 
-    local globalScale = math.max(0.05, 1 + getMod('globalScale', isPlayer, strumID))
-    curScaleX = curScaleX * globalScale
-    curScaleY = curScaleY * globalScale
     curAlpha = curAlpha * laneState.alpha
 
     local miniVal = getMod('mini', isPlayer, strumID)
@@ -485,11 +489,6 @@ local function calculateNoteState(objID, strumE, strumID, songPos, beat, distanc
         curX, curY, curZ, curAngle = applyRotateSet(curX, curY, curZ, curAngle, VP_X, VP_Y, 0, centerRotX, centerRotY, centerRotZ)
     end
 
-    local zVal = getMod('z', isPlayer, strumID)
-    if zVal ~= 0 then
-        curZ = curZ + zVal
-    end
-
     if strumE then
         local darkVal = clamp(getMod('dark', isPlayer, strumID), 0, 1)
         if darkVal ~= 0 then
@@ -612,14 +611,14 @@ function updateNoteMath(objID, strumE, strumID, songPos, beat, noteInfo)
         local receptorScrollVal = clamp(getMod('receptorScroll', isPlayer, strumID), 0, 1)
         if receptorScrollVal ~= 0 then
             local drunkPressure = math.abs(getMod('drunk', isPlayer, strumID))
-            local receptorAlpha = drunkPressure > 0 and 0.28 or 0.4
+            local receptorAlpha = getReceptorScrollAlpha(false, drunkPressure)
             finalAlpha = finalAlpha * lerp(1, receptorAlpha, receptorScrollVal)
         end
     end
 
     if not state.isSustainNote then
-        if _milyMCApplyNoteState then
-            _milyMCApplyNoteState(objID, strumID, state.x, state.y, state.angle, state.scaleX, state.scaleY, finalAlpha, state.brightness or 0, false, false, state.angle, 1)
+        if queueNoteState then
+            queueNoteState(objID, strumID, state.x, state.y, state.angle, state.scaleX, state.scaleY, finalAlpha, state.brightness or 0, false, false, state.angle, 1)
             return
         end
 
@@ -642,40 +641,25 @@ function updateNoteMath(objID, strumE, strumID, songPos, beat, noteInfo)
     end
     local isPlayer = (strumID > 3)
     local receptorScrollVal = clamp(getMod('receptorScroll', isPlayer, strumID), 0, 1)
-    local tangentAngle = state.angle
-    local tangentLength = sustainPixels
-    local lengthDistance = math.max(1, sustainPixels)
-    local tangentCenterDistance = state.distance + (lengthDistance * 0.5)
-    local tangentSample = math.max(4, math.min(36, sustainPixels * 0.35))
+    local segmentAngle = state.angle
+    local segmentLength = sustainPixels
+    local lengthDistance = math.max(0.001, sustainPixels)
     local beatWaveAnchor = getNoteBeatWave(false, state.distance, isPlayer, strumID)
-    local nextState = calculateNoteState(objID, strumE, strumID, songPos, beat, state.distance + lengthDistance, false, true, noteInfo, beatWaveAnchor)
-    local tangentNextState = calculateNoteState(objID, strumE, strumID, songPos, beat, tangentCenterDistance + tangentSample, false, true, noteInfo, beatWaveAnchor)
-    local tangentPrevState = calculateNoteState(objID, strumE, strumID, songPos, beat, tangentCenterDistance - tangentSample, false, true, noteInfo, beatWaveAnchor)
-    local chordAngle = tangentAngle
+    local nextState = calculateNoteState(objID, strumE, strumID, songPos, beat, state.distance + lengthDistance, true, true, noteInfo, beatWaveAnchor)
     if nextState then
         local dx = nextState.x - state.x
         local dy = nextState.y - state.y
         local distSq = (dx * dx) + (dy * dy)
-
         if distSq > 0.0001 then
-            tangentLength = math.sqrt(distSq)
-            chordAngle = math.deg(atan2(dy, dx)) - 90
-            tangentAngle = chordAngle
-        end
-
-        if tangentNextState and tangentPrevState then
-            dx = tangentNextState.x - tangentPrevState.x
-            dy = tangentNextState.y - tangentPrevState.y
-            distSq = (dx * dx) + (dy * dy)
-        end
-
-        if distSq > 0.0001 then
-            tangentAngle = math.deg(atan2(dy, dx)) - 90
+            -- Match NightmareVision's delta approach: each segment points exactly
+            -- at its successor, so strong waves cannot open gaps between tiles.
+            segmentLength = math.sqrt(distSq)
+            segmentAngle = math.deg(atan2(dy, dx)) - 90
         end
     end
 
     local drunkPressure = math.abs(getMod('drunk', isPlayer, strumID))
-    local receptorAlpha = drunkPressure > 0 and 0.28 or 0.4
+    local receptorAlpha = getReceptorScrollAlpha(true, drunkPressure)
     if receptorScrollVal ~= 0 then
         finalAlpha = finalAlpha * lerp(1, receptorAlpha, receptorScrollVal)
     end
@@ -689,14 +673,10 @@ function updateNoteMath(objID, strumE, strumID, songPos, beat, noteInfo)
         end
     end
 
-    local drawLength = math.max(1, tangentLength + overlap)
-    local angleDelta = math.abs(((tangentAngle - chordAngle + 180) % 360) - 180)
-    if canHideOverlap and angleDelta > 1 then
-        drawLength = drawLength + (clamp(angleDelta / 60, 0, 1) * 3)
-    end
+    local drawLength = math.max(1, segmentLength + overlap)
 
-    if _milyMCApplyNoteState then
-        _milyMCApplyNoteState(objID, strumID, state.x, state.y, state.angle, state.scaleX, state.scaleY, finalAlpha, state.brightness or 0, true, not isUpscroll, tangentAngle, drawLength)
+    if queueNoteState then
+        queueNoteState(objID, strumID, state.x, state.y, state.angle, state.scaleX, state.scaleY, finalAlpha, state.brightness or 0, true, not isUpscroll, segmentAngle, drawLength)
         return
     end
 
@@ -717,12 +697,14 @@ function updateNoteMath(objID, strumE, strumID, songPos, beat, noteInfo)
     setPropertyFromGroup(group, objID, 'offset.y', 0)
     setPropertyFromGroup(group, objID, 'flipX', not isUpscroll)
     setPropertyFromGroup(group, objID, 'flipY', false)
-    setPropertyFromGroup(group, objID, 'angle', tangentAngle)
+    setPropertyFromGroup(group, objID, 'angle', segmentAngle)
     setPropertyFromGroup(group, objID, 'x', state.x + ((strumWidth - frameWidth) * 0.5))
     setPropertyFromGroup(group, objID, 'y', state.y + (strumHeight * 0.5))
 
     local isSustainEnd = (noteInfo and noteInfo[MILYMC_NOTE_IS_SUSTAIN_END]) or getPropertyFromGroup(group, objID, 'isSustainEnd')
-    if not isSustainEnd and drawLength > 1 and frameHeight > 0 then
+    if isSustainEnd then
+        setPropertyFromGroup(group, objID, 'scale.y', state.scaleY)
+    elseif drawLength > 1 and frameHeight > 0 then
         local scaleY = drawLength / math.max(1, frameHeight)
         setPropertyFromGroup(group, objID, 'scale.y', math.max(0.001, scaleY))
     end

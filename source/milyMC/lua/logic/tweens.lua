@@ -1,191 +1,261 @@
-local function getTweenKey(tag, modName, target)
-    modName = normalizeModName(modName)
-    target = normalizeTarget(target or Strum_Gen)
-    return tostring(tag) .. '::' .. tostring(modName) .. '::' .. getTargetKey(target)
+local function makeTag(prefix, requested)
+    if requested ~= nil and tostring(requested) ~= '' then return tostring(requested) end
+    tagCounter = tagCounter + 1
+    return tostring(prefix or 'mc') .. '#' .. tostring(tagCounter)
 end
 
-local function clearModTweens(modName, target, exceptKey)
-    modName = normalizeModName(modName)
-    target = normalizeTarget(target or Strum_Gen)
+local function actionKey(kind, name, lane)
+    return kind .. '::' .. tostring(name) .. '::' .. tostring(lane)
+end
 
-    if isTargetList(target) then
-        eachTargetLane(target, function(i)
-            clearModTweens(modName, i, exceptKey)
-        end)
-        return
+local function actionDefault(kind, name)
+    if kind == 'strum' then return getStrumDefault(name) end
+    return getModDefaultValue(name)
+end
+
+local function getCurrentAction(kind, name, target)
+    if kind == 'strum' then return getTargetCurrentStrum(name, target) end
+    return getTargetCurrentMod(name, target)
+end
+
+local function applyAction(kind, name, value, target)
+    if kind == 'strum' then
+        applyStrumValue(name, value, target)
+    else
+        applyModValue(name, value, target)
     end
+end
 
-    for key, data in pairs(modTweens) do
-        if key ~= exceptKey and data.modName == modName and targetsOverlap(data.target or Strum_Gen, target) then
+local function clearActionTweens(kind, name, target, exceptKey)
+    for key, tween in pairs(modTweens) do
+        if key ~= exceptKey and tween.kind == kind and tween.name == name and targetsOverlap(tween.target, target) then
             modTweens[key] = nil
         end
     end
 end
 
-function addModchart(modchart)
-    initMod(modchart)
-    if debugPrint then
-        debugPrint(modchart .. " Modchart loaded successfully!")
+local function unbindKey(tag, key)
+    local bindings = tagBindings[tag]
+    if bindings == nil then return end
+    for index = #bindings, 1, -1 do
+        if bindings[index].key == key then table.remove(bindings, index) end
     end
+    if #bindings < 1 then tagBindings[tag] = nil end
 end
 
-function clearModchart(modchart)
-    modchart = normalizeModName(modchart)
+local function bindTag(tag, kind, name, target)
+    local bindings = tagBindings[tag]
+    if bindings == nil then
+        bindings = {}
+        tagBindings[tag] = bindings
+    end
 
-    if mods[modchart] then
-        mods[modchart] = nil
-        if debugPrint then
-            debugPrint("Modchart removido: " .. modchart)
+    eachTargetLane(target, function(lane)
+        local key = actionKey(kind, name, lane)
+        local previousTag = actionOwners[key]
+        if previousTag ~= nil and previousTag ~= tag then unbindKey(previousTag, key) end
+        actionOwners[key] = tag
+
+        local found = false
+        for _, binding in ipairs(bindings) do
+            if binding.key == key then
+                found = true
+                break
+            end
+        end
+        if not found then
+            bindings[#bindings + 1] = {key = key, kind = kind, name = name, lane = lane}
+        end
+    end)
+end
+
+local function setAction(kind, name, value, target, requestedTag)
+    target = normalizeTarget(target)
+    name = kind == 'strum' and normalizeStrumOption(name) or normalizeModName(name)
+    local tag = makeTag(name, requestedTag)
+    clearActionTweens(kind, name, target)
+    applyAction(kind, name, value, target)
+    bindTag(tag, kind, name, target)
+    return tag
+end
+
+local function stepsToSeconds(steps)
+    return math.max(0, tonumber(steps) or 0) * math.max(0, tonumber(stepCrochet) or 0) / 1000
+end
+
+local function easeAction(kind, name, value, time, ease, target, requestedTag)
+    target = normalizeTarget(target)
+    name = kind == 'strum' and normalizeStrumOption(name) or normalizeModName(name)
+    local tag = makeTag(name, requestedTag)
+    local duration = stepsToSeconds(time)
+    clearActionTweens(kind, name, target)
+    bindTag(tag, kind, name, target)
+
+    if duration <= 0 then
+        applyAction(kind, name, value, target)
+        return tag
+    end
+
+    eachTargetLane(target, function(lane)
+        modTweens[actionKey(kind, name, lane)] = {
+            tag = tag,
+            kind = kind,
+            name = name,
+            target = lane,
+            startValue = getCurrentAction(kind, name, lane),
+            endValue = tonumber(value) or actionDefault(kind, name),
+            duration = duration,
+            elapsed = 0,
+            ease = ease or 'linear'
+        }
+    end)
+    return tag
+end
+
+local function removeTaggedAction(tag, target)
+    tag = tostring(tag or '')
+    local bindings = tagBindings[tag]
+    local allowed = nil
+    if target ~= nil then
+        allowed = {}
+        eachTargetLane(target, function(lane) allowed[lane] = true end)
+    end
+
+    for key, tween in pairs(modTweens) do
+        if tween.tag == tag and (allowed == nil or targetsOverlap(tween.target, target)) then
+            modTweens[key] = nil
         end
     end
+
+    if bindings == nil then return false end
+    local kept = {}
+    for _, binding in ipairs(bindings) do
+        if allowed == nil or allowed[binding.lane] then
+            if actionOwners[binding.key] == tag then
+                applyAction(binding.kind, binding.name, actionDefault(binding.kind, binding.name), binding.lane)
+                actionOwners[binding.key] = nil
+            end
+        else
+            kept[#kept + 1] = binding
+        end
+    end
+    tagBindings[tag] = #kept > 0 and kept or nil
+    return true
 end
 
-function queueSet(step, modchart, value, target)
-    table.insert(scheduledEvents, {
-        kind = 'set',
-        step = step or 0,
-        modchart = modchart,
-        value = value or 0,
-        target = target
-    })
+local function queueAction(event)
+    event.order = tagCounter + #scheduledEvents + 1
+    scheduledEvents[#scheduledEvents + 1] = event
+    return event.tag
 end
 
-function queueEase(step, endStep, modchart, value, easeName, target)
-    table.insert(scheduledEvents, {
-        kind = 'ease',
-        step = step or 0,
-        endStep = endStep or step or 0,
-        modchart = modchart,
-        value = value or 0,
-        ease = easeName or 'linear',
-        target = target
-    })
-end
-
-function queueSetP(step, modchart, percent, target)
-    queueSet(step, modchart, (percent or 0) * 0.01, target)
-end
-
-function queueEaseP(step, endStep, modchart, percent, easeName, target)
-    queueEase(step, endStep, modchart, (percent or 0) * 0.01, easeName, target)
+local function readStepRange(stepRange)
+    if type(stepRange) ~= 'table' then
+        local step = tonumber(stepRange) or 0
+        return step, step
+    end
+    local first = tonumber(stepRange[1] or stepRange.start or stepRange.from) or 0
+    local last = tonumber(stepRange[2] or stepRange.finish or stepRange.to) or first
+    if last < first then first, last = last, first end
+    return first, last
 end
 
 local function runScheduledEvents()
-    for i = #scheduledEvents, 1, -1 do
-        local event = scheduledEvents[i]
+    local due = {}
+    for index = #scheduledEvents, 1, -1 do
+        local event = scheduledEvents[index]
         if curStep >= event.step then
-            if event.kind == 'ease' then
-                local steps = math.max((event.endStep or event.step) - event.step, 0)
-                local duration = (steps * (stepCrochet or 0)) / 1000
-                easeModchart('queue_' .. tostring(event.modchart) .. '_' .. tostring(event.step), event.modchart, event.value, duration, event.ease, event.target)
-            else
-                setModchart(event.modchart, event.value, event.target)
-            end
-            table.remove(scheduledEvents, i)
+            table.insert(due, 1, event)
+            table.remove(scheduledEvents, index)
+        end
+    end
+
+    for _, event in ipairs(due) do
+        if event.operation == 'remove' then
+            removeTaggedAction(event.tag, event.target)
+        elseif event.operation == 'ease' then
+            easeAction(event.kind, event.name, event.value, event.endStep - event.step, event.ease, event.target, event.tag)
+        else
+            setAction(event.kind, event.name, event.value, event.target, event.tag)
         end
     end
 end
 
-function setModchart(modchart, value, target)
-    modchart = normalizeModName(modchart)
-    target = normalizeTarget(target or Strum_Gen)
-
-    if isTargetList(target) then
-        eachTargetLane(target, function(i)
-            setModchart(modchart, value, i)
-        end)
-        return
+local function updateTweens(elapsed)
+    local finished = {}
+    local finishedTags = {}
+    for key, tween in pairs(modTweens) do
+        tween.elapsed = tween.elapsed + elapsed
+        local ratio = math.min(tween.elapsed / tween.duration, 1)
+        local value = lerp(tween.startValue, tween.endValue, getEaseValue(ratio, tween.ease))
+        applyAction(tween.kind, tween.name, value, tween.target)
+        if ratio >= 1 then
+            finished[#finished + 1] = key
+            finishedTags[tween.tag] = true
+        end
     end
-
-    clearModTweens(modchart, target)
-    applyModValue(modchart, value, target)
+    for _, key in ipairs(finished) do modTweens[key] = nil end
+    if _milyMCTweenFinished then
+        for tag in pairs(finishedTags) do
+            local stillRunning = false
+            for _, tween in pairs(modTweens) do
+                if tween.tag == tag then stillRunning = true break end
+            end
+            if not stillRunning then _milyMCTweenFinished(tag) end
+        end
+    end
 end
 
-function easeModchart(a, b, c, d, e, f)
-    local tag, modchart, intensity, duration, ease, target
+-- the fuctionsz
 
-    if type(b) == "string" then
-        tag = a
-        modchart = b
-        intensity = c
-        duration = d
-        ease = e
-        target = f
-    else
-        modchart = a
-        intensity = b
-        duration = c
-        ease = d
-        target = e
-        tag = tostring(modchart) .. "_" .. getTargetKey(target or Strum_Gen) .. "_" .. tostring(os.clock())
-    end
-
-    modchart = normalizeModName(modchart)
-    target = normalizeTarget(target or Strum_Gen)
-
-    if isTargetList(target) then
-        eachTargetLane(target, function(i)
-            easeModchart(tostring(tag) .. "_" .. tostring(i), modchart, intensity, duration, ease, i)
-        end)
-        return
-    end
-
-    initMod(modchart)
-    local tweenKey = getTweenKey(tag, modchart, target)
-
-    local startVal = getTargetCurrentMod(modchart, target)
-
-    if not duration or duration <= 0 then
-        clearModTweens(modchart, target)
-        applyModValue(modchart, intensity, target)
-        if modChartTweenFinished then modChartTweenFinished(tag) end
-        return
-    end
-
-    clearModTweens(modchart, target, tweenKey)
-    modTweens[tweenKey] = {
-        tag = tag,
-        modName = modchart,
-        target = target,
-        startVal = startVal,
-        targetVal = intensity,
-        duration = duration,
-        time = 0,
-        easeName = ease or 'linear'
-    }
+function setMC(name, value, target, tag)
+    return setAction('mod', name, value, target, tag)
 end
 
-function getMod(modchart, isPlayer, strumID)
-    modchart = normalizeModName(modchart)
-    local t = mods[modchart]
-    if not t then return 0 end
-
-    if strumID ~= nil and t[strumID] ~= nil then
-        return t[strumID]
-    end
-
-    local side = isPlayer and BF_Strum or DAD_Strum
-    if t[side] ~= nil then return t[side] end
-    if t[Strum_Gen] ~= nil then return t[Strum_Gen] end
-    return 0
+function easeMC(name, value, time, ease, target, tag)
+    return easeAction('mod', name, value, time, ease, target, tag)
 end
 
-function getModDef(modchart, isPlayer, defaultVal, strumID)
-    modchart = normalizeModName(modchart)
-    local t = mods[modchart]
-    if not t then return defaultVal end
-
-    if strumID ~= nil and t[strumID] ~= nil then
-        return t[strumID]
-    end
-
-    local side = isPlayer and BF_Strum or DAD_Strum
-    if t[side] ~= nil then return t[side] end
-    if t[Strum_Gen] ~= nil then return t[Strum_Gen] end
-    return defaultVal
+function removeMC(tag, target)
+    return removeTaggedAction(tag, target)
 end
 
--- Callback opcional de fim de tween
-function modChartTweenFinished(tag)
+function setQueueMC(step, name, value, target, tag)
+    tag = makeTag(name, tag)
+    return queueAction({operation = 'set', kind = 'mod', step = tonumber(step) or 0, name = name, value = value, target = target, tag = tag})
 end
 
+function easeQueueMC(stepRange, name, value, ease, target, tag)
+    local first, last = readStepRange(stepRange)
+    tag = makeTag(name, tag)
+    return queueAction({operation = 'ease', kind = 'mod', step = first, endStep = last, name = name, value = value, ease = ease, target = target, tag = tag})
+end
+
+function removeQueueMC(step, tag, target)
+    return queueAction({operation = 'remove', step = tonumber(step) or 0, tag = tostring(tag), target = target})
+end
+
+function kickMC(name, value, endValue, time, ease, target, tag)
+    tag = setAction('mod', name, value, target, tag)
+    easeAction('mod', name, endValue, time, ease, target, tag)
+    return tag
+end
+
+function setStrum(option, value, target, tag)
+    return setAction('strum', option, value, target, tag)
+end
+
+function easeStrum(option, value, time, ease, target, tag)
+    return easeAction('strum', option, value, time, ease, target, tag)
+end
+
+function setQueueStrum(step, option, value, target, tag)
+    tag = makeTag(option, tag)
+    return queueAction({operation = 'set', kind = 'strum', step = tonumber(step) or 0, name = option, value = value, target = target, tag = tag})
+end
+
+function easeQueueStrum(stepRange, option, value, ease, target, tag)
+    local first, last = readStepRange(stepRange)
+    tag = makeTag(option, tag)
+    return queueAction({operation = 'ease', kind = 'strum', step = first, endStep = last, name = option, value = value, ease = ease, target = target, tag = tag})
+end

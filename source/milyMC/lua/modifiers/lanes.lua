@@ -55,7 +55,7 @@ local function getSwappedColumnX(strumID, isPlayer, col)
 end
 
 local function isOppSwapOn()
-    return getMod('opponentSwap', false, 0) ~= 0 or getMod('oppSwap', false, 0) ~= 0
+    return getMod('oppSwap', false, 0) ~= 0
 end
 
 local function getVisualStrumID(strumID)
@@ -66,14 +66,7 @@ local function getVisualStrumID(strumID)
 end
 
 local function getOppSwapBlend(isPlayer, strumID)
-    local swapVal = getMod('oppSwap', isPlayer, strumID)
-    local altSwapVal = getMod('opponentSwap', isPlayer, strumID)
-
-    if math.abs(altSwapVal) > math.abs(swapVal) then
-        swapVal = altSwapVal
-    end
-
-    return clamp(swapVal, 0, 1)
+    return clamp(getMod('oppSwap', isPlayer, strumID), 0, 1)
 end
 
 local function getEffectiveScrollBlend(isPlayer, strumID)
@@ -119,13 +112,13 @@ local function createLaneState(strumID)
         strumID = strumID,
         isPlayer = isPlayer,
         col = col,
-        x = baseX + getMod('transformX', isPlayer, strumID) + getModDef('strumX' .. strumID, isPlayer, 0, strumID) + getMod('bumpX', isPlayer, strumID),
-        y = getStrumYFromBlend(scrollBlend) + getMod('transformY', isPlayer, strumID) + getModDef('strumY' .. strumID, isPlayer, 0, strumID),
-        z = getMod('transformZ', isPlayer, strumID) + getModDef('strumZ' .. strumID, isPlayer, 0, strumID),
-        angle = def.angle + getModDef('strumAngle' .. strumID, isPlayer, 0, strumID),
-        scaleX = def.scaleX * getModDef('strumScale' .. strumID, isPlayer, 1, strumID),
-        scaleY = def.scaleY * getModDef('strumScale' .. strumID, isPlayer, 1, strumID),
-        alpha = getModDef('strumAlpha' .. strumID, isPlayer, 1, strumID),
+        x = baseX + getStrumValue(strumID, 'x'),
+        y = getStrumYFromBlend(scrollBlend) + getStrumValue(strumID, 'y'),
+        z = getStrumValue(strumID, 'z'),
+        angle = def.angle + getStrumValue(strumID, 'angle'),
+        scaleX = def.scaleX * getStrumValue(strumID, 'scale'),
+        scaleY = def.scaleY * getStrumValue(strumID, 'scale'),
+        alpha = getStrumValue(strumID, 'alpha'),
         scrollBlend = scrollBlend
     }
 

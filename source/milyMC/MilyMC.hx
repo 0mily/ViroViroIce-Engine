@@ -15,6 +15,7 @@ import backend.ClientPrefs;
 class MilyMC
 {
 	public static inline var CORE_SCRIPT_NAME:String = 'source:milyMC/runtime';
+	static var pendingCalls:Array<{name:String, args:Array<Dynamic>}> = [];
 
 	public static function shouldSkipRegularLua(path:String, ?songName:String = ''):Bool
 	{
@@ -38,7 +39,10 @@ class MilyMC
 	public static function load(state:PlayState):Void
 	{
 		if (!ClientPrefs.data.modchart) // po esqueci legal da opçãoooo
-		return;
+		{
+			pendingCalls = [];
+			return;
+		}
 
 		if (state == null || state.luaArray == null || hasScript(state, CORE_SCRIPT_NAME))
 			return;
@@ -54,6 +58,7 @@ class MilyMC
 			lua.scriptName = CORE_SCRIPT_NAME;
 			lua.modFolder = Mods.currentModDirectory;
 			state.luaArray.push(lua);
+			flushPendingCalls(lua);
 			lua.call('onCreate');
 		}
 		catch(e:Dynamic)
@@ -68,13 +73,12 @@ class MilyMC
 		addCoreModule(modules, 'core/state', MilyMCMacros.luaFile('core/state'));
 		addCoreModule(modules, 'math/easing', MilyMCMacros.luaFile('math/easing'));
 		addCoreModule(modules, 'logic/helpers', MilyMCMacros.luaFile('logic/helpers'));
-		addCoreModule(modules, 'logic/tweens', MilyMCMacros.luaFile('logic/tweens'));
 		addCoreModule(modules, 'logic/strums', MilyMCMacros.luaFile('logic/strums'));
+		addCoreModule(modules, 'logic/tweens', MilyMCMacros.luaFile('logic/tweens'));
 		addCoreModule(modules, 'core/callbacks', MilyMCMacros.luaFile('core/callbacks'));
 		addCoreModule(modules, 'modifiers/lanes', MilyMCMacros.luaFile('modifiers/lanes'));
 		addCoreModule(modules, 'modifiers/custom', MilyMCMacros.luaFile('modifiers/custom'));
 		addCoreModule(modules, 'modifiers/defaults', MilyMCMacros.luaFile('modifiers/defaults'));
-		addCoreModule(modules, 'core/default_callbacks', MilyMCMacros.luaFile('core/default_callbacks'));
 
 		var source:String = modules.join('\n\n');
 		source += '\n\n_milyMCSourceMode = true\n';
@@ -96,7 +100,8 @@ class MilyMC
 			try
 			{
 				source += '\n\n-- MilyMC song modchart: $file\n';
-				source += '_milyMCLoadSongModchart(' + luaStringLiteral(file) + ', ' + luaStringLiteral(File.getContent(file)) + ')\n';
+				var modchartSource:String = MilyMCSyntax.process(File.getContent(file));
+				source += '_milyMCLoadSongModchart(' + luaStringLiteral(file) + ', ' + luaStringLiteral(modchartSource) + ')\n';
 			}
 			catch(e:Dynamic)
 			{
@@ -160,7 +165,88 @@ class MilyMC
 	{
 		return path == null ? '' : path.replace('\\', '/');
 	}
+
+	static function getRuntime():FunkinLua
+	{
+		var state:PlayState = PlayState.instance;
+		if (state == null || state.luaArray == null)
+			return null;
+
+		for (script in state.luaArray)
+			if (script != null && script.scriptName == CORE_SCRIPT_NAME)
+				return script;
+		return null;
+	}
+
+	static function callRuntime(name:String, args:Array<Dynamic>):Dynamic
+	{
+		if (!ClientPrefs.data.modchart)
+			return null;
+
+		var runtime:FunkinLua = getRuntime();
+		if (runtime == null)
+		{
+			pendingCalls.push({name: name, args: args});
+			return null;
+		}
+		return runtime.call(name, args);
+	}
+
+	static function flushPendingCalls(runtime:FunkinLua):Void
+	{
+		if (runtime == null || pendingCalls.length < 1)
+			return;
+
+		var calls = pendingCalls;
+		pendingCalls = [];
+		for (call in calls)
+			runtime.call(call.name, call.args);
+	}
+
+	public static function setMC(name:String, value:Dynamic, ?target:Dynamic, ?tag:String):Dynamic
+		return callRuntime('setMC', [name, value, target, tag]);
+
+	public static function easeMC(name:String, value:Dynamic, time:Float, ease:String, ?target:Dynamic, ?tag:String):Dynamic
+		return callRuntime('easeMC', [name, value, time, ease, target, tag]);
+
+	public static function removeMC(tag:String, ?target:Dynamic):Dynamic
+		return callRuntime('removeMC', [tag, target]);
+
+	public static function setQueueMC(step:Float, name:String, value:Dynamic, ?target:Dynamic, ?tag:String):Dynamic
+		return callRuntime('setQueueMC', [step, name, value, target, tag]);
+
+	public static function easeQueueMC(stepRange:Dynamic, name:String, value:Dynamic, ease:String, ?target:Dynamic, ?tag:String):Dynamic
+		return callRuntime('easeQueueMC', [stepRange, name, value, ease, target, tag]);
+
+	public static function removeQueueMC(step:Float, tag:String, ?target:Dynamic):Dynamic
+		return callRuntime('removeQueueMC', [step, tag, target]);
+
+	public static function kickMC(name:String, value:Dynamic, endValue:Dynamic, time:Float, ease:String, ?target:Dynamic, ?tag:String):Dynamic
+		return callRuntime('kickMC', [name, value, endValue, time, ease, target, tag]);
+
+	public static function setStrum(option:String, value:Dynamic, ?target:Dynamic, ?tag:String):Dynamic
+		return callRuntime('setStrum', [option, value, target, tag]);
+
+	public static function easeStrum(option:String, value:Dynamic, time:Float, ease:String, ?target:Dynamic, ?tag:String):Dynamic
+		return callRuntime('easeStrum', [option, value, time, ease, target, tag]);
+
+	public static function setQueueStrum(step:Float, option:String, value:Dynamic, ?target:Dynamic, ?tag:String):Dynamic
+		return callRuntime('setQueueStrum', [step, option, value, target, tag]);
+
+	public static function easeQueueStrum(stepRange:Dynamic, option:String, value:Dynamic, ease:String, ?target:Dynamic, ?tag:String):Dynamic
+		return callRuntime('easeQueueStrum', [stepRange, option, value, ease, target, tag]);
 	#else
 	public static function load(state:Dynamic):Void {}
+	public static function setMC(name:String, value:Dynamic, ?target:Dynamic, ?tag:String):Dynamic return null;
+	public static function easeMC(name:String, value:Dynamic, time:Float, ease:String, ?target:Dynamic, ?tag:String):Dynamic return null;
+	public static function removeMC(tag:String, ?target:Dynamic):Dynamic return null;
+	public static function setQueueMC(step:Float, name:String, value:Dynamic, ?target:Dynamic, ?tag:String):Dynamic return null;
+	public static function easeQueueMC(stepRange:Dynamic, name:String, value:Dynamic, ease:String, ?target:Dynamic, ?tag:String):Dynamic return null;
+	public static function removeQueueMC(step:Float, tag:String, ?target:Dynamic):Dynamic return null;
+	public static function kickMC(name:String, value:Dynamic, endValue:Dynamic, time:Float, ease:String, ?target:Dynamic, ?tag:String):Dynamic return null;
+	public static function setStrum(option:String, value:Dynamic, ?target:Dynamic, ?tag:String):Dynamic return null;
+	public static function easeStrum(option:String, value:Dynamic, time:Float, ease:String, ?target:Dynamic, ?tag:String):Dynamic return null;
+	public static function setQueueStrum(step:Float, option:String, value:Dynamic, ?target:Dynamic, ?tag:String):Dynamic return null;
+	public static function easeQueueStrum(stepRange:Dynamic, option:String, value:Dynamic, ease:String, ?target:Dynamic, ?tag:String):Dynamic return null;
 	#end
 }

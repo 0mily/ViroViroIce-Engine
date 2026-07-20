@@ -80,6 +80,10 @@ class Note extends FlxSprite
 	public var sustainLength:Float = 0;
 	public var isSustainEnd:Bool = false;
 	public var isSustainNote:Bool = false;
+
+	// optimization + no more bugs on scrollspeed ig?
+	public var milyMCSustainDrawLength:Float = 0;
+	public var milyMCSustainTileLength:Float = 0;
 	public var noteType(default, set):String = null;
 
 	public var eventName:String = '';
@@ -671,6 +675,9 @@ class Note extends FlxSprite
 
 	public function followStrumNote(myStrum:StrumNote, songSpeed:Float = 1)
 	{
+		milyMCSustainDrawLength = 0;
+		milyMCSustainTileLength = 0;
+
 		var noteSpeed:Float = songSpeed * multSpeed;
 		var strumDir:Float = myStrum.direction;
 		
@@ -726,6 +733,82 @@ class Note extends FlxSprite
 			
 			clipRect = clipRect;
 		}
+	}
+
+	inline function shouldTileMilyMCSustain():Bool
+	{
+		return isSustainNote && !isSustainEnd && frameHeight > 0
+			&& milyMCSustainDrawLength > milyMCSustainTileLength * 3;
+	}
+
+	function drawMilyMCSustainTiles(camera:FlxCamera):Void
+	{
+		final savedX:Float = x;
+		final savedY:Float = y;
+		final savedScaleY:Float = scale.y;
+		final savedClip:FlxRect = clipRect;
+		final fullLength:Float = milyMCSustainDrawLength;
+		var clippedRatio:Float = 0;
+
+		if (savedClip != null && frameHeight > 0)
+			clippedRatio = FlxMath.bound(savedClip.y / frameHeight, 0, 1);
+
+		final clippedLength:Float = fullLength * clippedRatio;
+		final visibleLength:Float = Math.max(0, fullLength - clippedLength);
+		if (visibleLength <= 0.001)
+			return;
+
+		final maxTiles:Int = 4;
+		var tileLength:Float = Math.max(1, milyMCSustainTileLength * 2);
+		if (visibleLength / tileLength > maxTiles)
+			tileLength = visibleLength / maxTiles;
+
+		final radians:Float = angle * Math.PI / 180;
+		final directionX:Float = -Math.sin(radians);
+		final directionY:Float = Math.cos(radians);
+		var offset:Float = clippedLength;
+		var remaining:Float = visibleLength;
+
+		if (savedClip != null)
+			clipRect = null;
+
+		while (remaining > 0.001)
+		{
+			final pieceHeck:Float = Math.min(tileLength, remaining);
+			final seamOverlap:Float = remaining > pieceHeck ? Math.min(0.75, pieceHeck * 0.1) : 0;
+
+			x = savedX + directionX * offset;
+			y = savedY + directionY * offset;
+			scale.y = Math.max(0.001, (pieceHeck + seamOverlap) / frameHeight);
+			super.drawComplex(camera);
+
+			offset += pieceHeck;
+			remaining -= pieceHeck;
+		}
+
+		x = savedX;
+		y = savedY;
+		scale.y = savedScaleY;
+		if (savedClip != null)
+			clipRect = savedClip;
+	}
+
+	@:noCompletion
+	override function drawSimple(camera:FlxCamera):Void
+	{
+		if (shouldTileMilyMCSustain())
+			drawMilyMCSustainTiles(camera);
+		else
+			super.drawSimple(camera);
+	}
+
+	@:noCompletion
+	override function drawComplex(camera:FlxCamera):Void
+	{
+		if (shouldTileMilyMCSustain())
+			drawMilyMCSustainTiles(camera);
+		else
+			super.drawComplex(camera);
 	}
 
 	override public function isOnScreen(?camera:FlxCamera):Bool

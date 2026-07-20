@@ -1,44 +1,29 @@
-function modChartCreate()
+function milyMC.loadPre()
 end
 
-function modChartCreatePost()
+function milyMC.load()
 end
 
-function modChartUpdate(elapsed)
+function milyMC.loadPost()
 end
 
-function modChartUpdatePost(elapsed)
+function milyMC.updatePre(elapsed)
 end
 
-function modChartStepHit()
+function milyMC.update(elapsed)
 end
 
-function modChartBeatHit()
+function milyMC.updatePost(elapsed)
 end
 
-function modChartSectionHit()
+function milyMC.step(step)
 end
 
-function modChartFocus(focus)
+function milyMC.beat(beat)
 end
 
-function modChartBFNote(id, nd, nt, sus)
+function milyMC.section(section)
 end
 
-function modChartDADNote(id, nd, nt, sus)
-end
-
-function modChartBFNotePre(id, nd, nt, sus)
-end
-
-function modChartDADNotePre(id, nd, nt, sus)
-end
-
-function modChartMiss(id, nd, nt, sus)
-end
-
-function modChartMissPress(id, nd, nt, sus)
-end
-
-function modChartSongStart()
+function milyMC.finished(tag)
 end

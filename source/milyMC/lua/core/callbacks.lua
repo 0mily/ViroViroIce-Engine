@@ -1,255 +1,132 @@
--- =========================================================================
--- Callbacks extras
--- =========================================================================
-
-local externalModchartCallbacks = {
-    modChartCreate = 'milymc.create',
-    modChartStepHit = 'milymc.step',
-    modChartUpdate = 'milymc.update',
-    modChartBeatHit = 'milymc.beat',
-    modChartCreatePost = 'milymc.createPost',
-    modChartUpdatePost = 'milymc.updatePost',
-    modChartSongStart = 'milymc.songStart',
-    modChartDADNote = 'milymc.oppHit',
-    modChartBFNote = 'milymc.playerHit'
-}
-
-callLocalMilyMC = function(funcName, ...)
-    if milymc and type(milymc[funcName]) == 'function' then
-        milymc[funcName](...)
-    end
-end
-
-function callExternalModchart(funcName, args)
-    if callOnScripts then
-        callOnScripts(funcName, args or {}, true, true)
-
-        local namespacedFunc = externalModchartCallbacks[funcName]
-        if namespacedFunc then
-            callOnScripts(namespacedFunc, args or {}, true, true)
-        end
-    end
-end
-
-function onUpdate(elapsed)
-    local toRemove = {}
-
-    for key, data in pairs(modTweens) do
-        data.time = data.time + elapsed
-        local ratio = math.min(data.time / data.duration, 1)
-        local easedRatio = getEaseValue(ratio, data.easeName)
-        local val = lerp(data.startVal, data.targetVal, easedRatio)
-
-        if mods[data.modName] then
-            applyModValue(data.modName, val, data.target)
-        end
-
-        if ratio >= 1 then
-            table.insert(toRemove, key)
-            if modChartTweenFinished then
-                modChartTweenFinished(data.tag)
-            end
-        end
-    end
-
-    for _, key in ipairs(toRemove) do
-        modTweens[key] = nil
-    end
-
-    if modChartUpdate then modChartUpdate(elapsed) end
-    callLocalMilyMC('update', elapsed)
-    callExternalModchart('modChartUpdate', {elapsed})
-end
-
 local noteMathErrorShown = false
 local noteMathWasActive = false
 local laneMathWasActive = {}
-local laneBitValues = {
-    [0] = 1,
-    [1] = 2,
-    [2] = 4,
-    [3] = 8,
-    [4] = 16,
-    [5] = 32,
-    [6] = 64,
-    [7] = 128
-}
+local noteStateBatch = {}
+local laneBitValues = {[0] = 1, [1] = 2, [2] = 4, [3] = 8, [4] = 16, [5] = 32, [6] = 64, [7] = 128}
+
+local function queueNoteState(objID, strumID, x, y, angle, scaleX, scaleY, alpha, brightness, isSustain, flipX, segmentAngle, drawLength)
+    local index = #noteStateBatch
+    noteStateBatch[index + 1] = objID
+    noteStateBatch[index + 2] = strumID
+    noteStateBatch[index + 3] = x
+    noteStateBatch[index + 4] = y
+    noteStateBatch[index + 5] = angle
+    noteStateBatch[index + 6] = scaleX
+    noteStateBatch[index + 7] = scaleY
+    noteStateBatch[index + 8] = alpha
+    noteStateBatch[index + 9] = brightness
+    noteStateBatch[index + 10] = isSustain
+    noteStateBatch[index + 11] = flipX
+    noteStateBatch[index + 12] = segmentAngle
+    noteStateBatch[index + 13] = drawLength
+end
 
 local function anyLaneWasActive()
-    for i = 0, 7 do
-        if laneMathWasActive[i] then
-            return true
-        end
+    for lane = 0, 7 do
+        if laneMathWasActive[lane] then return true end
     end
     return false
 end
 
-local function laneNeedsNoteMath(activeLaneMask, strumID)
-    if activeLaneMask == nil then
-        return true
-    end
-    return activeLaneMask[strumID] or laneMathWasActive[strumID]
+local function laneNeedsNoteMath(mask, lane)
+    return mask == nil or mask[lane] or laneMathWasActive[lane]
 end
 
-local function getLaneMaskBits(activeLaneMask)
-    if activeLaneMask == nil then
-        return 255
-    end
-
+local function getLaneMaskBits(mask)
+    if mask == nil then return 255 end
     local bits = 0
-    for i = 0, 7 do
-        if laneNeedsNoteMath(activeLaneMask, i) then
-            bits = bits + laneBitValues[i]
-        end
+    for lane = 0, 7 do
+        if laneNeedsNoteMath(mask, lane) then bits = bits + laneBitValues[lane] end
     end
     return bits
 end
 
-local function safeUpdateNoteMath(objID, strumE, strumID, songPos, beat, noteInfo)
+local function safeUpdateNoteMath(objID, isStrum, strumID, songPosition, beat, noteInfo)
     if not _milyMCProtectedNoteMath then
-        updateNoteMath(objID, strumE, strumID, songPos, beat, noteInfo)
+        updateNoteMath(objID, isStrum, strumID, songPosition, beat, noteInfo)
         return
     end
 
-    local ok, err = pcall(updateNoteMath, objID, strumE, strumID, songPos, beat, noteInfo)
+    local ok, err = pcall(updateNoteMath, objID, isStrum, strumID, songPosition, beat, noteInfo)
     if not ok and not noteMathErrorShown then
         noteMathErrorShown = true
-        if debugPrint then
-            debugPrint('[MilyMC] updateNoteMath error: ' .. tostring(err))
-        end
+        if debugPrint then debugPrint('[MilyMC] note math error: ' .. tostring(err)) end
     end
+end
+
+function _milyMCTweenFinished(tag)
+    callLocalMilyMC('finished', tag)
+    callExternalMilyMC('finished', 'onMCfinished', {tag})
+end
+
+function onUpdate(elapsed)
+    callLocalMilyMC('updatePre', elapsed)
+    callExternalMilyMC('updatePre', 'onMCupdatePre', {elapsed})
+    updateTweens(elapsed)
+    if updateCustomModifiers then updateCustomModifiers(elapsed) end
+    callLocalMilyMC('update', elapsed)
+    callExternalMilyMC('update', 'onMCupdate', {elapsed})
 end
 
 function onUpdatePost(elapsed)
-    local currentSongPos = getSongPosition()
-    local currentBeat = (currentSongPos / 1000) * (curBpm / 60)
-    depthSortDirty = false
-    local activeLaneMask = _milyMCGetActiveLaneMask and _milyMCGetActiveLaneMask() or nil
-    local hasActiveNoteMath = false
-    if activeLaneMask ~= nil then
-        hasActiveNoteMath = activeLaneMask.any
-    else
-        hasActiveNoteMath = (_milyMCHasActiveNoteMath == nil) or _milyMCHasActiveNoteMath()
-    end
-    local shouldUpdateNoteMath = hasActiveNoteMath or anyLaneWasActive() or noteMathWasActive
+    local songPosition = getSongPosition()
+    local beat = (songPosition / 1000) * (curBpm / 60)
+    local activeMask = _milyMCGetActiveLaneMask()
+    local hasActiveMath = activeMask.any
+    local shouldUpdate = hasActiveMath or anyLaneWasActive() or noteMathWasActive
 
-    if shouldUpdateNoteMath then
-        if _milyMCClearMathCache then
-            _milyMCClearMathCache()
-        end
+    if shouldUpdate then
+        depthSortDirty = false
+        if _milyMCClearMathCache then _milyMCClearMathCache() end
 
-        for i = 0, 7 do
-            if laneNeedsNoteMath(activeLaneMask, i) then
-                safeUpdateNoteMath(i, true, i, currentSongPos, currentBeat)
+        for lane = 0, 7 do
+            if laneNeedsNoteMath(activeMask, lane) then
+                safeUpdateNoteMath(lane, true, lane, songPosition, beat)
             end
         end
 
-        local noteCount = _milyMCGetNoteCount and _milyMCGetNoteCount() or getProperty('notes.length')
-        local laneMaskBits = getLaneMaskBits(activeLaneMask)
-        for i = 0, noteCount - 1 do
-            if _milyMCGetNoteInfo then
-                local noteInfo = _milyMCGetNoteInfo(i, laneMaskBits)
-                if noteInfo ~= nil then
-                    local noteData = tonumber(noteInfo[MILYMC_NOTE_DATA])
-                    if noteData ~= nil then
-                        local isDad = not noteInfo[MILYMC_NOTE_MUST_PRESS]
-                        local strumID = noteData + (isDad and 0 or 4)
-                        if strumID >= 0 and strumID <= 7 then
-                            safeUpdateNoteMath(i, false, strumID, currentSongPos, currentBeat, noteInfo)
-                        end
-                    end
-                end
-            else
-                local noteData = tonumber(getPropertyFromGroup('notes', i, 'noteData'))
-                if noteData ~= nil then
-                    local mustPress = getPropertyFromGroup('notes', i, 'mustPress')
-                    local isDad = not mustPress
-                    local strumID = noteData + (isDad and 0 or 4)
-
-                    if strumID >= 0 and strumID <= 7 and laneNeedsNoteMath(activeLaneMask, strumID) then
-                        safeUpdateNoteMath(i, false, strumID, currentSongPos, currentBeat)
-                    end
+        for index = #noteStateBatch, 1, -1 do noteStateBatch[index] = nil end
+        local notes = _milyMCGetNoteBatch and _milyMCGetNoteBatch(getLaneMaskBits(activeMask)) or {}
+        for _, noteInfo in ipairs(notes) do
+            local objID = tonumber(noteInfo[MILYMC_NOTE_INDEX])
+            local noteData = tonumber(noteInfo[MILYMC_NOTE_DATA])
+            if objID ~= nil and noteData ~= nil then
+                local strumID = noteData + (noteInfo[MILYMC_NOTE_MUST_PRESS] and 4 or 0)
+                if strumID >= 0 and strumID <= 7 then
+                    safeUpdateNoteMath(objID, false, strumID, songPosition, beat, noteInfo)
                 end
             end
         end
-
-        if depthSortDirty then
-            sortPseudo3DLayers()
+        if #noteStateBatch >= 13 and _milyMCApplyNoteBatch then
+            _milyMCApplyNoteBatch(noteStateBatch)
         end
+
+        if depthSortDirty then sortPseudo3DLayers() end
     end
 
-    for i = 0, 7 do
-        if activeLaneMask ~= nil then
-            laneMathWasActive[i] = activeLaneMask[i]
-        else
-            laneMathWasActive[i] = hasActiveNoteMath
-        end
-    end
-    noteMathWasActive = hasActiveNoteMath
+    for lane = 0, 7 do laneMathWasActive[lane] = activeMask[lane] end
+    noteMathWasActive = hasActiveMath
 
-    if modChartUpdatePost then modChartUpdatePost(elapsed) end
     callLocalMilyMC('updatePost', elapsed)
-    callExternalModchart('modChartUpdatePost', {elapsed})
-end
-
-function onBeatHit()
-    if modChartBeatHit then modChartBeatHit() end
-    callLocalMilyMC('beat')
-    callExternalModchart('modChartBeatHit')
+    callExternalMilyMC('updatePost', 'onMCupdatePost', {elapsed})
 end
 
 function onStepHit()
     runScheduledEvents()
-    if modChartStepHit then modChartStepHit() end
-    callLocalMilyMC('step')
-    callExternalModchart('modChartStepHit')
+    callLocalMilyMC('step', curStep)
+    callExternalMilyMC('step', 'onMCstep', {curStep})
+end
+
+function onBeatHit()
+    callLocalMilyMC('beat', curBeat)
+    callExternalMilyMC('beat', 'onMCbeat', {curBeat})
 end
 
 function onSectionHit()
-    if modChartSectionHit then modChartSectionHit() end
-    callExternalModchart('modChartSectionHit')
+    callLocalMilyMC('section', curSection)
+    callExternalMilyMC('section', 'onMCsection', {curSection})
 end
 
-function onMoveCamera(focus)
-    if modChartFocus then modChartFocus(focus) end
-    callExternalModchart('modChartFocus', {focus})
+function onDestroy()
+    if destroyCustomModifiers then destroyCustomModifiers() end
 end
-
-function goodNoteHit(id, nd, nt, sus)
-    if modChartBFNote then modChartBFNote(id, nd, nt, sus) end
-    callLocalMilyMC('playerHit', id, nd, nt, sus)
-    callExternalModchart('modChartBFNote', {id, nd, nt, sus})
-end
-
-function opponentNoteHit(id, nd, nt, sus)
-    if modChartDADNote then modChartDADNote(id, nd, nt, sus) end
-    callLocalMilyMC('oppHit', id, nd, nt, sus)
-    callExternalModchart('modChartDADNote', {id, nd, nt, sus})
-end
-
-function goodNoteHitPre(id, nd, nt, sus)
-    if modChartBFNotePre then modChartBFNotePre(id, nd, nt, sus) end
-    callExternalModchart('modChartBFNotePre', {id, nd, nt, sus})
-end
-
-function opponentNoteHitPre(id, nd, nt, sus)
-    if modChartDADNotePre then modChartDADNotePre(id, nd, nt, sus) end
-    callExternalModchart('modChartDADNotePre', {id, nd, nt, sus})
-end
-
-function noteMiss(id, nd, nt, sus)
-    if modChartMiss then modChartMiss(id, nd, nt, sus) end
-    callExternalModchart('modChartMiss', {id, nd, nt, sus})
-end
-
-function noteMissPress(id, nd, nt, sus)
-    if modChartMissPress then modChartMissPress(id, nd, nt, sus) end
-    callExternalModchart('modChartMissPress', {id, nd, nt, sus})
-end
-
-function onSongStart()
-    if modChartSongStart then modChartSongStart() end
-    callLocalMilyMC('songStart')
-    callExternalModchart('modChartSongStart')
-end
-

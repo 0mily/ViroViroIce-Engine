@@ -196,9 +196,11 @@ class FunkinLua {
 			var isString:Bool = !FileSystem.exists(scriptName);
 			var result:Dynamic = null;
 			if(!isString) {
-				result = LuaL.dofile(lua, scriptName);
+				var originalSource:String = File.getContent(scriptName);
+				var processedSource:String = milyMC.MilyMCSyntax.process(originalSource);
+				result = processedSource == originalSource ? LuaL.dofile(lua, scriptName) : LuaL.dostring(lua, processedSource);
 			} else {
-				result = LuaL.dostring(lua, scriptName);
+				result = LuaL.dostring(lua, milyMC.MilyMCSyntax.process(scriptName));
 			}
 
 			var resultStr:String = Lua.tostring(lua, result);
@@ -220,7 +222,7 @@ class FunkinLua {
 	function prepareNamespacedCallbacks():Void
 	{
 		if(lua != null)
-			LuaL.dostring(lua, 'milymc = milymc or {}');
+			LuaL.dostring(lua, milyMC.MilyMCMacros.luaFile('api/flow'));
 	}
 
 	public function refreshScreenVariables(?camera:String = 'other'):Void
@@ -663,6 +665,18 @@ class FunkinLua {
 	}
 	
 	public function implementLocal():Void {
+		addLocalCallback('setMC', milyMC.MilyMC.setMC);
+		addLocalCallback('easeMC', milyMC.MilyMC.easeMC);
+		addLocalCallback('removeMC', milyMC.MilyMC.removeMC);
+		addLocalCallback('setQueueMC', milyMC.MilyMC.setQueueMC);
+		addLocalCallback('easeQueueMC', milyMC.MilyMC.easeQueueMC);
+		addLocalCallback('removeQueueMC', milyMC.MilyMC.removeQueueMC);
+		addLocalCallback('kickMC', milyMC.MilyMC.kickMC);
+		addLocalCallback('setStrum', milyMC.MilyMC.setStrum);
+		addLocalCallback('easeStrum', milyMC.MilyMC.easeStrum);
+		addLocalCallback('setQueueStrum', milyMC.MilyMC.setQueueStrum);
+		addLocalCallback('easeQueueStrum', milyMC.MilyMC.easeQueueStrum);
+
 		addLocalCallback('registerLuaFunction', function(name:String, ?funcName:String = null) {
 			if (name == null || name.trim().length < 1)
 				return false;
