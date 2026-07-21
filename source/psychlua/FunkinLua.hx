@@ -374,9 +374,17 @@ class FunkinLua {
 	public function get(variable:String):Dynamic {
 		if (lua == null)
 			return null;
-		
-		Lua.getglobal(lua, variable);
-		return Convert.fromLua(lua, -1);
+
+		var previousTop:Int = Lua.gettop(lua);
+		try {
+			Lua.getglobal(lua, variable);
+			var result:Dynamic = Convert.fromLua(lua, -1);
+			Lua.settop(lua, previousTop);
+			return result;
+		} catch (e:Dynamic) {
+			Lua.settop(lua, previousTop);
+			throw e;
+		}
 	}
 
 	public function stop() {
