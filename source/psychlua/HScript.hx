@@ -65,6 +65,7 @@ class HScript extends Iris {
 	
 	public static var globalStatic(default, never):Map<String, Dynamic> = [];
 	public static final SCRIPT_EXTENSIONS:Array<String> = ['.hx', '.hxc', '.hscript'];
+	static var inlineScriptID:Int = 0;
 
 	public static function hasScriptExtension(file:String):Bool
 	{
@@ -159,6 +160,10 @@ class HScript extends Iris {
 		Iris.proxyImports.set('funkin.utils.CameraUtil', funkin.utils.CameraUtil);
 		Iris.proxyImports.set('funkin.utils.CoolUtil', funkin.utils.CoolUtil);
 		Iris.proxyImports.set('funkin.states.PlayState', states.PlayState);
+		Iris.proxyImports.set('backend.lists.Character', backend.lists.Character);
+		Iris.proxyImports.set('backend.lists.Event', backend.lists.Event);
+		Iris.proxyImports.set('backend.lists.Stage', backend.lists.Stage);
+		Iris.proxyImports.set('backend.lists.Level', backend.lists.Level);
 		Iris.logLevel = (level:ErrorSeverity, x:Dynamic, ?pos:haxe.PosInfos) -> {
 			var newPos:HScriptInfos = cast pos;
 			if (newPos.showLine == null) newPos.showLine = true;
@@ -217,6 +222,9 @@ class HScript extends Iris {
 		if (scriptName == null && parent != null)
 			scriptName = parent.scriptName;
 		#end
+		// Iris cannot register an instance with a null name. Parentless inlinerr :ppp
+		if(scriptName == null)
+			scriptName = 'inline_hscript_${inlineScriptID++}';
 		
 		super(scriptThing, new IrisConfig(scriptName, false, false));
 		if(scriptName != null && scriptName.length > 0)

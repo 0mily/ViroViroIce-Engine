@@ -3,6 +3,8 @@ package backend;
 import lime.utils.Assets;
 import openfl.utils.Assets as OpenFlAssets;
 import haxe.Json;
+import backend.lists.ListLoader;
+import backend.lists.ListLoader.ListKind;
 
 typedef WeekFile =
 {
@@ -96,7 +98,12 @@ class WeekData {
 		var originalLength:Int = directories.length;
 		#end
 
-		var levelList:Array<String> = CoolUtil.coolTextFile(Paths.getSharedPath(LEVEL_LIST)); // pior mudança do mundo foi ter colocado levelList ao invés de sexList, mas era isso, ou quem ler fica confuso. Vai ficar que nem a Shiho no charting editor
+		var legacyLevelList:Array<String> = CoolUtil.coolTextFile(Paths.getSharedPath(LEVEL_LIST)); // pior mudança do mundo foi ter colocado levelList ao invés de sexList, mas era isso, ou quem ler fica confuso. Vai ficar que nem a Shiho no charting editor
+		var scriptedLevelList:Array<String> = ListLoader.names(ListLoader.load(LEVEL, FlxG.state));
+		var levelList:Array<String> = scriptedLevelList.length > 0 ? scriptedLevelList.copy() : legacyLevelList.copy();
+		for(level in legacyLevelList)
+			if(!levelList.contains(level))
+				levelList.push(level);
 		for (i in 0...levelList.length) {
 			for (j in 0...directories.length) {
 				var fileToCheck:String = directories[j] + LEVELS_PATH + levelList[i] + '.xml';

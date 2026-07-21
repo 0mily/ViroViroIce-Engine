@@ -10,6 +10,7 @@ class PsychUIDropDownMenu extends PsychUIInputText
 	public var list(default, set):Array<String> = [];
 	public var button:FlxSprite;
 	public var onSelect:Int->String->Void;
+	public var onVisualOpen:Void->Bool;
 
 	public var selectedIndex(default, set):Int = -1;
 	public var selectedLabel(default, set):String = null;
@@ -104,13 +105,26 @@ class PsychUIDropDownMenu extends PsychUIInputText
 
 		if(FlxG.mouse.justPressed)
 		{
-			if(FlxG.mouse.overlaps(button, inputCamera))
+			var overButton:Bool = FlxG.mouse.overlaps(button, inputCamera);
+			var overInput:Bool = FlxG.mouse.overlaps(behindText, inputCamera);
+			if(overButton || (onVisualOpen != null && overInput))
 			{
-				button.animation.play('pressed', true);
-				if(lastFocus != this)
-					PsychUIInputText.focusOn = this;
-				else if(PsychUIInputText.focusOn == this)
-					PsychUIInputText.focusOn = null;
+				if(overButton)
+					button.animation.play('pressed', true);
+				var openedVisual:Bool = onVisualOpen != null && onVisualOpen();
+				if(openedVisual)
+				{
+					showDropDown(false);
+					if(PsychUIInputText.focusOn == this)
+						PsychUIInputText.focusOn = null;
+				}
+				else if(overButton)
+				{
+					if(lastFocus != this)
+						PsychUIInputText.focusOn = this;
+					else if(PsychUIInputText.focusOn == this)
+						PsychUIInputText.focusOn = null;
+				}
 			}
 		}
 		else if(FlxG.mouse.released && button.animation.curAnim != null && button.animation.curAnim.name != 'normal') button.animation.play('normal', true);
@@ -211,6 +225,13 @@ class PsychUIDropDownMenu extends PsychUIInputText
 	}
 
 	public var broadcastDropDownEvent:Bool = true;
+	public function selectOption(index:Int):Void
+	{
+		if(index < 0 || index >= list.length)
+			return;
+		clickedOn(index, list[index]);
+	}
+
 	function clickedOn(num:Int, label:String)
 	{
 		selectedIndex = num;
@@ -262,6 +283,7 @@ class PsychUIDropDownMenu extends PsychUIInputText
 		if(PsychUIInputText.focusOn == this)
 			PsychUIInputText.focusOn = null;
 		onSelect = null;
+		onVisualOpen = null;
 		if(_items != null)
 			for(item in _items)
 				if(item != null)

@@ -1,0 +1,46 @@
+import backend.lists.Event;
+
+class DefaultEvents extends Event
+{
+	public function new()
+	{
+		super();
+	}
+
+	public function getCategories():Array<Dynamic>
+	{
+		return [camera(), characters(), gameplay(), misc()]; // order / all categories too
+	}
+
+	public function camera():Dynamic
+	{
+		return {
+			category: 'Camera',
+			names: ['Focus Camera', 'Camera Zoom', 'Camera Angle', 'Camera Module Bop', 'Add Camera Zoom', 'Screen Shake', 'Camera Flash', 'Modify Camera Move'] // Cameras
+		};
+	}
+
+	public function characters():Dynamic
+	{
+		return {
+			category: 'Characters',
+			names: ['Hey!', 'Set GF Speed', 'Play Animation', 'Change Character'] // Chrs utilities
+		};
+	}
+
+	public function gameplay():Dynamic
+	{
+		return {
+			category: 'Gameplay',
+			names: ['Change Scroll Speed', 'Change Scroll Speed GOOD', 'BPM Change'] // Play
+		};
+	}
+
+	public function misc():Dynamic
+	{
+		return {
+			category: 'Misc.',
+			names: ['Set Property', 'Play Sound', 'LuaScript Call', 'Lyrics Event'] // Other
+		};
+	}
+}

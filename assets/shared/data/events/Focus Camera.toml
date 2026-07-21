@@ -1,4 +1,4 @@
-name = 'Focus Camera'
+name = 'Camera Focus'
 description = 'Moves camera focus to a character with optional X/Y offsets and tween easing.'
 
 [Target]

@@ -37,6 +37,9 @@ import backend.StageData;
 import backend.Highscore;
 import backend.Difficulty;
 import backend.Toml;
+import backend.lists.ListLoader;
+import backend.lists.ListLoader.ListCategoryData;
+import backend.lists.ListLoader.ListKind;
 
 import objects.Character;
 import objects.HealthIcon;
@@ -56,7 +59,8 @@ typedef SelectedEventData = {
 }
 
 typedef EventLayoutData = {
-	var name:String;
+	var eventName:String;
+	var displayName:String;
 	var description:String;
 	var fields:Array<Dynamic>;
 	@:optional var layoutType:String;
@@ -413,7 +417,7 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 		var iconY:Float = 50;
 		if(SHOW_EVENT_COLUMN)
 		{
-			eventIcon = new FlxSprite(0, iconY).loadGraphic(Paths.image('events/default'));
+			eventIcon = new FlxSprite(0, iconY).loadGraphic(Paths.image('editors/lists/default-events'));
 			eventIcon.antialiasing = ClientPrefs.data.antialiasing;
 			eventIcon.alpha = 0.6;
 			eventIcon.setGraphicSize(30, 30);
@@ -536,6 +540,8 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 
 		// CHARACTERS FOR THE DROP DOWNS
 		var gameOverCharacters:Array<String> = Character.appendCharacterFileList(Mods.mergeAllTextsNamed('data/characterList.txt'));
+		characterVisualCategories = ListLoader.load(CHARACTER, this);
+		ListLoader.appendNames(gameOverCharacters, characterVisualCategories);
 		var characterList:Array<String> = gameOverCharacters.filter((name:String) -> (!name.endsWith('-dead') && !name.endsWith('-death')));
 		playerDropDown.list = characterList;
 		opponentDropDown.list = characterList;
@@ -550,7 +556,10 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 		});
 		gameOverCharDropDown.list = gameOverCharacters;
 		
-		stageDropDown.list = loadFileList('data/stages/', 'data/stages/stageList.txt');
+		stageVisualCategories = ListLoader.load(STAGE, this);
+		var stageList:Array<String> = loadFileList('data/stages/', 'data/stages/stageList.txt');
+		ListLoader.appendNames(stageList, stageVisualCategories);
+		stageDropDown.list = stageList;
 		onChartLoaded();
 
 		var tipText:FlxText = new FlxText(FlxG.width - 210, FlxG.height - 30, 200, 'Press F1 for Help', 20);
@@ -3330,6 +3339,8 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 			if(character.length < 1) Reflect.deleteField(PlayState.SONG, 'gameOverChar');
 			trace('selected $character');
 		});
+		gameOverCharDropDown.onVisualOpen = function():Bool
+			return openVisualListPicker(CHARACTER, gameOverCharDropDown, gameOverCharDropDown.list.copy(), characterVisualCategories);
 
 		objY += 40;
 		gameOverSndInputText = new PsychUIInputText(objX, objY, 120, '', 8);
@@ -3506,6 +3517,40 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 			list.push(value);
 	}
 
+	function openVisualListPicker(kind:ListKind, dropdown:PsychUIDropDownMenu, values:Array<String>, rawCategories:Array<ListCategoryData>,
+		?displayNames:Map<String, String>):Bool
+	{
+		if(dropdown == null || values == null || values.length < 1 || !fileDialog.completed)
+			return false;
+
+		var nonEmptyValues:Array<String> = [];
+		var hasEmpty:Bool = false;
+		for(value in values)
+		{
+			var normalized:String = value == null ? '' : value.trim();
+			if(normalized.length < 1)
+				hasEmpty = true;
+			else if(!nonEmptyValues.contains(normalized))
+				nonEmptyValues.push(normalized);
+		}
+
+		var visualCategories:Array<ListCategoryData> = ListLoader.categorize(rawCategories, nonEmptyValues);
+		if(hasEmpty)
+			visualCategories.insert(0, {category: 'None', names: [''], source: '', modded: false});
+
+		var selectedIndex:Int = dropdown.selectedIndex;
+		var selected:String = selectedIndex >= 0 && selectedIndex < values.length ? values[selectedIndex] : '';
+		upperBox.isMinimized = true;
+		upperBox.bg.visible = false;
+		openSubState(new VisualListSubState(kind, visualCategories, selected, function(value:String)
+		{
+			var index:Int = values.indexOf(value);
+			if(index >= 0)
+				dropdown.selectOption(index);
+		}, chartEditorSave.data.visualListBlur ?? true, displayNames));
+		return true;
+	}
+
 	function setGameOverCharDropDownValue(character:String):Void
 	{
 		if(gameOverCharDropDown == null)
@@ -3550,6 +3595,9 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 	var eventLayoutEventName:String = '';
 	var scriptCharacterScanTimer:Float = 0;
 	var scriptCharacterSignature:String = null;
+	var eventVisualCategories:Array<ListCategoryData> = [];
+	var characterVisualCategories:Array<ListCategoryData> = [];
+	var stageVisualCategories:Array<ListCategoryData> = [];
 
 	var eventsList:Array<Array<String>>;
 	var curEventSelected:Int = 0;
@@ -3573,6 +3621,19 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 			}
 			refreshEventLayout();
 		}, eventDropDownWidth);
+		eventDropDown.onVisualOpen = function():Bool
+		{
+			var values:Array<String> = [];
+			var displayNames:Map<String, String> = new Map();
+			if(eventsList != null)
+				for(data in eventsList)
+				{
+					var eventName:String = data != null && data.length > 0 ? data[0] : '';
+					values.push(eventName);
+					displayNames.set(eventName, getEventDisplayName(data));
+				}
+			return openVisualListPicker(EVENT, eventDropDown, values, eventVisualCategories, displayNames);
+		};
 
 		function genericEventButton(func:SelectedEventData->Void, multi:Bool = false)
 		{
@@ -5354,6 +5415,16 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 		return '';
 	}
 
+	function getEventDisplayName(data:Array<String>):String
+	{
+		if(data == null || data.length < 1)
+			return '';
+
+		if(data.length > 2 && data[2] != null && data[2].trim().length > 0)
+			return data[2].trim();
+		return data[0] ?? '';
+	}
+
 	function getSelectedEventValue(index:Int, fallback:String):String
 	{
 		var value:Null<String> = null;
@@ -5754,7 +5825,10 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 		{
 			var document = Toml.parse(raw, 'data/events/$file.toml');
 			var data:Dynamic = document.root;
-			var eventName:String = eventFieldString(data, ['name', 'event', 'eventName'], file);
+			// changed to "displayName" now!!!
+			// now the name will be the same as the toml filename, BUT, the "name" thing on the toml's file will be the displayname for now
+			var eventName:String = file;
+			var displayName:String = eventFieldString(data, ['name', 'displayName', 'display_name', 'label'], eventName);
 			var description:String = eventFieldString(data, ['description', 'desc'], txtDescription ?? '');
 			var layoutType:String = eventFieldString(data, ['layoutType', 'customLayout', 'editorLayout'], '');
 			var tabs:Array<String> = [];
@@ -5803,7 +5877,8 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 				fields.push(item.field);
 
 			return {
-				name: eventName,
+				eventName: eventName,
+				displayName: displayName,
 				description: description,
 				fields: fields,
 				layoutType: layoutType,
@@ -5822,17 +5897,22 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 		return findEventIndex(eventName) > 0 || (eventsList != null && eventsList.length > 0 && eventsList[0][0] == eventName);
 	}
 
-	function upsertEventList(eventName:String, description:String):Void
+	function upsertEventList(eventName:String, description:String, ?displayName:String):Void
 	{
+		displayName = displayName != null && displayName.trim().length > 0 ? displayName.trim() : eventName;
 		for(event in eventsList)
 		{
 			if(event[0] == eventName)
 			{
 				event[1] = description;
+				if(event.length > 2)
+					event[2] = displayName;
+				else
+					event.push(displayName);
 				return;
 			}
 		}
-		eventsList.push([eventName, description]);
+		eventsList.push([eventName, description, displayName]);
 	}
 
 	var susLengthLastVal:Float = 0; //used for multiple notes selected
@@ -6226,8 +6306,8 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 				var layout:EventLayoutData = loadEventLayout(file, txtDescriptions.get(file));
 				if(layout != null)
 				{
-					eventLayouts.set(layout.name, layout);
-					upsertEventList(layout.name, layout.description);
+					eventLayouts.set(layout.eventName, layout);
+					upsertEventList(layout.eventName, layout.description, layout.displayName);
 				}
 			}
 
@@ -6247,12 +6327,17 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 			for (id => event in defaultEvents)
 				if(!eventListContainsName(event[0]))
 					eventsList.insert(id, event);
+
+			eventVisualCategories = ListLoader.load(EVENT, this);
+			for(eventName in ListLoader.names(eventVisualCategories))
+				if(!eventListContainsName(eventName))
+					eventsList.push([eventName, 'Softcoded event list entry.']);
 			
 			var displayEventsList:Array<String> = [];
 			for (id => data in eventsList)
 			{
 				if(id > 0)
-					displayEventsList.push('$id. ${data[0]}');
+					displayEventsList.push('$id. ${getEventDisplayName(data)}');
 				else
 					displayEventsList.push('');
 			}
@@ -6529,6 +6614,15 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 			PlayState.SONG.gfVersion = character;
 			trace('selected $character');
 		});
+
+		playerDropDown.onVisualOpen = function():Bool
+			return openVisualListPicker(CHARACTER, playerDropDown, playerDropDown.list.copy(), characterVisualCategories);
+		opponentDropDown.onVisualOpen = function():Bool
+			return openVisualListPicker(CHARACTER, opponentDropDown, opponentDropDown.list.copy(), characterVisualCategories);
+		girlfriendDropDown.onVisualOpen = function():Bool
+			return openVisualListPicker(CHARACTER, girlfriendDropDown, girlfriendDropDown.list.copy(), characterVisualCategories);
+		stageDropDown.onVisualOpen = function():Bool
+			return openVisualListPicker(STAGE, stageDropDown, stageDropDown.list.copy(), stageVisualCategories);
 		
 		tab_group.add(new FlxText(bpmStepper.x, bpmStepper.y - 15, 50, 'BPM:'));
 		tab_group.add(new FlxText(scrollSpeedStepper.x, scrollSpeedStepper.y - 15, 80, 'Scroll Speed:'));
@@ -7934,6 +8028,25 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 					}, 120));
 				}
 
+				function buildEditorDetails():Void
+				{
+					var y:Float = contentY + 44;
+					addLabel(contentX, contentY, 420, 'Editor Details', 18);
+					addLabel(contentX, y, 360, 'Visual List Picker', 14);
+
+					var blurCheck:PsychUICheckBox = cast addSetting(new PsychUICheckBox(contentX, y + 27, 'Gaussian Blur', 220));
+					blurCheck.checked = chartEditorSave.data.visualListBlur ?? true;
+					blurCheck.onClick = function()
+					{
+						chartEditorSave.data.visualListBlur = blurCheck.checked;
+						chartEditorSave.flush();
+					}
+
+					var detail:FlxText = addLabel(contentX, y + 66, 430,
+						'Blurs the editor behind categorized icon selectors.\nThe dark background remains enabled when blur is off.', 11);
+					detail.alpha = 0.72;
+				}
+
 				function buildAutosave():Void
 				{
 					addLabel(contentX, contentY, 420, 'AutoSave settings', 18);
@@ -8065,6 +8178,8 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 							buildTheme();
 						case 'Editor':
 							buildEditor();
+						case 'Editor Details':
+							buildEditorDetails();
 						case 'AutoSave settings':
 							buildAutosave();
 						case 'SFX':
@@ -8074,7 +8189,7 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 					}
 				}
 
-				var tabNames:Array<String> = ['Editor Theme', 'Editor', 'AutoSave settings', 'SFX', 'Misc.'];
+				var tabNames:Array<String> = ['Editor Theme', 'Editor', 'Editor Details', 'AutoSave settings', 'SFX', 'Misc.'];
 				for(i in 0...tabNames.length)
 				{
 					var tabName:String = tabNames[i];
@@ -8121,6 +8236,7 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 		chartEditorSave.data.coresLegaisManeiras = coresLegaisManeiras.copy();
 		chartEditorSave.data.customGridColors = gridNadaLegalENadaManeira.copy();
 		chartEditorSave.data.texturedSustains = true;
+		chartEditorSave.data.visualListBlur = true;
 		chartEditorSave.flush();
 
 		ClientPrefs.data.editorSFX = true;

@@ -335,7 +335,7 @@ class EventMetaNote extends MetaNote
 		this.isEvent = true;
 		events = eventData[1];
 		
-		loadGraphic(Paths.image('events/default'));
+		loadGraphic(Paths.image('editors/lists/default-events'));
 		setGraphicSize(ChartingState.GRID_SIZE);
 		updateHitbox();
 		
@@ -443,7 +443,8 @@ class EventNoteGui extends FlxSpriteGroup {
 			eventContainer.remove(sprite, true);
 			
 			sprite.ID = i;
-			sprite.loadGraphic(Paths.image('events/${event[0].length == 0 ? 'default' : event[0]}') ?? Paths.image('events/default'));
+			var eventIconPath:String = event[0].length > 0 ? 'editors/lists/events/${event[0]}' : 'editors/lists/default-events';
+			sprite.loadGraphic(Paths.image(eventIconPath) ?? Paths.image('editors/lists/default-events'));
 			sprite.setGraphicSize(size);
 			sprite.updateHitbox();
 			sprite.revive();
