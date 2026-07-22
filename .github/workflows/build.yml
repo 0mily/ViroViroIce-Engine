@@ -114,7 +114,7 @@ jobs:
           
   buildMac:
     name: Build MacOS
-    runs-on: macos-15
+    runs-on: macos-14
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v6.0.2
