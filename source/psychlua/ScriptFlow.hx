@@ -1,9 +1,9 @@
-package milyMC;
+package psychlua;
 
 import states.PlayState;
 
-// shit to help Hscriptersss
-class MilyMCFlow
+// timing helpezzssr
+class ScriptFlow
 {
 	static inline function currentStep():Int
 		return PlayState.instance?.curStep ?? 0;
@@ -37,6 +37,7 @@ class MilyMCFlow
 			return false;
 
 		var value:Int = position ?? (mode == 'beats' ? currentBeat() : currentStep());
+		
 		if (value % amount != 0)
 			return false;
 		return run(callback);

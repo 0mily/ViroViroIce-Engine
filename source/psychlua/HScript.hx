@@ -414,9 +414,10 @@ class HScript extends Iris {
 		set('easeStrum', milyMC.MilyMC.easeStrum);
 		set('setQueueStrum', milyMC.MilyMC.setQueueStrum);
 		set('easeQueueStrum', milyMC.MilyMC.easeQueueStrum);
-		set('onSection', milyMC.MilyMCFlow.onSection);
-		set('from', milyMC.MilyMCFlow.range);
-		set('every', milyMC.MilyMCFlow.every);
+		milyMC.MilyMCCustom.installHScript(this);
+		set('onSection', ScriptFlow.onSection);
+		set('from', ScriptFlow.range);
+		set('every', ScriptFlow.every);
 		set('Conductor', Conductor);
 		set('ClientPrefs', funkin.data.ClientPrefs);
 		set('CustomCursor', backend.CustomCursor);
@@ -2036,6 +2037,7 @@ class HScript extends Iris {
 	}
 
 	override public function destroy() {
+		milyMC.MilyMCCustom.releaseHScript(this);
 		#if HSCRIPT_ALLOWED
 		if(LuaUtils.lastCalledHScript == this)
 			LuaUtils.lastCalledHScript = null;

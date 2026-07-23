@@ -2,11 +2,8 @@ package milyMC;
 
 #if LUA_ALLOWED
 import backend.Mods;
-import backend.Paths;
 import psychlua.FunkinLua;
 import states.PlayState;
-import sys.FileSystem;
-import sys.io.File;
 import backend.ClientPrefs;
 #end
 
@@ -16,24 +13,6 @@ class MilyMC
 {
 	public static inline var CORE_SCRIPT_NAME:String = 'source:milyMC/runtime';
 	static var pendingCalls:Array<{name:String, args:Array<Dynamic>}> = [];
-
-	public static function shouldSkipRegularLua(path:String, ?songName:String = ''):Bool
-	{
-		#if LUA_ALLOWED
-		var normalized:String = normalizePath(path);
-		var slash:Int = normalized.lastIndexOf('/');
-		var fileName:String = (slash >= 0 ? normalized.substr(slash + 1) : normalized).toLowerCase();
-
-		if (fileName == 'backendmily.lua')
-			return true;
-		if (fileName == 'modchart.lua' && normalized.indexOf('/songs/') >= 0)
-			return true;
-		if (fileName == 'modchart.lua' && normalized.indexOf('/data/scripts/') >= 0) // i forgor
-			return true;
-		#end
-
-		return false;
-	}
 
 	#if LUA_ALLOWED
 	public static function load(state:PlayState):Void
@@ -47,10 +26,9 @@ class MilyMC
 		if (state == null || state.luaArray == null || hasScript(state, CORE_SCRIPT_NAME))
 			return;
 
+		MilyMCCustom.pruneForState(state);
 		MilyMCOptimizations.registerLuaCallbacks();
-
-		var modchartFiles:Array<String> = findSongModcharts(state.songName);
-		var source:String = buildSource(modchartFiles);
+		var source:String = buildSource();
 
 		try
 		{
@@ -58,6 +36,7 @@ class MilyMC
 			lua.scriptName = CORE_SCRIPT_NAME;
 			lua.modFolder = Mods.currentModDirectory;
 			state.luaArray.push(lua);
+			MilyMCCustom.attachRuntime();
 			flushPendingCalls(lua);
 			lua.call('onCreate');
 		}
@@ -67,7 +46,7 @@ class MilyMC
 		}
 	}
 
-	static function buildSource(modchartFiles:Array<String>):String
+	static function buildSource():String
 	{
 		var modules:Array<String> = [];
 		addCoreModule(modules, 'core/state', MilyMCMacros.luaFile('core/state'));
@@ -80,78 +59,11 @@ class MilyMC
 		addCoreModule(modules, 'modifiers/custom', MilyMCMacros.luaFile('modifiers/custom'));
 		addCoreModule(modules, 'modifiers/defaults', MilyMCMacros.luaFile('modifiers/defaults'));
 
-		var source:String = modules.join('\n\n');
-		source += '\n\n_milyMCSourceMode = true\n';
-		source += '\n\nlocal function _milyMCLoadSongModchart(path, code)\n';
-		source += '\tlocal loader = loadstring or load\n';
-		source += '\tlocal chunk, err = loader(code, path)\n';
-		source += '\tif not chunk then\n';
-		source += "\t\tif debugPrint then debugPrint('[MilyMC] Modchart syntax error in ' .. tostring(path) .. ': ' .. tostring(err)) end\n";
-		source += '\t\treturn\n';
-		source += '\tend\n';
-		source += '\tlocal ok, runErr = pcall(chunk)\n';
-		source += '\tif not ok and debugPrint then\n';
-		source += "\t\tdebugPrint('[MilyMC] Modchart load error in ' .. tostring(path) .. ': ' .. tostring(runErr))\n";
-		source += '\tend\n';
-		source += 'end\n';
-
-		for (file in modchartFiles)
-		{
-			try
-			{
-				source += '\n\n-- MilyMC song modchart: $file\n';
-				var modchartSource:String = MilyMCSyntax.process(File.getContent(file));
-				source += '_milyMCLoadSongModchart(' + luaStringLiteral(file) + ', ' + luaStringLiteral(modchartSource) + ')\n';
-			}
-			catch(e:Dynamic)
-			{
-				trace('[MilyMC] Could not read modchart file "$file": $e');
-			}
-		}
-
-		return source;
+		return modules.join('\n\n');
 	}
 
 	static function addCoreModule(modules:Array<String>, name:String, source:String):Void
 		modules.push('-- MilyMC module: ' + name + '\n' + source);
-
-	static function luaStringLiteral(value:String):String
-	{
-		if (value == null)
-			value = '';
-
-		var delimiter:String = '';
-		while (value.indexOf(']' + delimiter + ']') >= 0)
-			delimiter += '=';
-
-		return '[' + delimiter + '[' + value + ']' + delimiter + ']';
-	}
-
-	static function findSongModcharts(songName:String):Array<String>
-	{
-		var files:Array<String> = [];
-		addModchartFilesFromFolders(files, Mods.directoriesWithFile(Paths.getSharedPath(), 'data/scripts/'));
-
-		if (songName == null || songName.trim().length < 1)
-			return files;
-
-		addModchartFilesFromFolders(files, Mods.directoriesWithFile(Paths.getSharedPath(), 'songs/$songName/'));
-		return files;
-	}
-
-	static function addModchartFilesFromFolders(files:Array<String>, folders:Array<String>):Void
-	{
-		for (folder in folders)
-		{
-			var path:String = normalizePath(folder);
-			if (!path.endsWith('/'))
-				path += '/';
-
-			var file:String = path + 'modchart.lua';
-			if (FileSystem.exists(file) && !files.contains(file))
-				files.push(file);
-		}
-	}
 
 	static function hasScript(state:PlayState, scriptName:String):Bool
 	{
@@ -159,11 +71,6 @@ class MilyMC
 			if (script != null && script.scriptName == scriptName)
 				return true;
 		return false;
-	}
-
-	static function normalizePath(path:String):String
-	{
-		return path == null ? '' : path.replace('\\', '/');
 	}
 
 	static function getRuntime():FunkinLua
@@ -178,7 +85,10 @@ class MilyMC
 		return null;
 	}
 
-	static function callRuntime(name:String, args:Array<Dynamic>):Dynamic
+	public static function runtimeReady():Bool
+		return getRuntime() != null;
+
+	public static function callRuntime(name:String, args:Array<Dynamic>):Dynamic
 	{
 		if (!ClientPrefs.data.modchart)
 			return null;

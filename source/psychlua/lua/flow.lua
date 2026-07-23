@@ -1,28 +1,26 @@
-milyMC = milyMC or {}
-
-local function _milyMCFlowRun(callback)
+local function scriptFlowRun(callback)
     if type(callback) ~= 'function' then return false end
     callback()
     return true
 end
 
-local _milyMCSectionSpans = {}
+local sectionSpans = {}
 
-function _milyMCForSteps(steps, callback, position)
+function _scriptForSteps(steps, callback, position)
     local value = tonumber(position)
     if value == nil then value = tonumber(curStep) or 0 end
-    local span = _milyMCSectionSpans[#_milyMCSectionSpans] or 16
+    local span = sectionSpans[#sectionSpans] or 16
     local localStep = value % span
 
     for _, step in ipairs(steps or {}) do
         if math.floor(tonumber(step) or -1) == localStep then
-            return _milyMCFlowRun(callback)
+            return scriptFlowRun(callback)
         end
     end
     return false
 end
 
-function from(first, last, callback, position)
+function from(first, last, callback, position) -- from(0, 64, () -> {}, step);
     local value = tonumber(position)
     if value == nil then value = tonumber(curStep) or 0 end
 
@@ -31,10 +29,10 @@ function from(first, last, callback, position)
     if value < math.min(first, last) or value > math.max(first, last) then
         return false
     end
-    return _milyMCFlowRun(callback)
+    return scriptFlowRun(callback)
 end
 
-function every(amount, timing, callback, position)
+function every(amount, timing, callback, position) -- every(4, 'steps', () -> , step);
     amount = math.floor(tonumber(amount) or 0)
     if amount <= 0 then return false end
 
@@ -46,10 +44,10 @@ function every(amount, timing, callback, position)
         value = timing == 'beats' and (tonumber(curBeat) or 0) or (tonumber(curStep) or 0)
     end
     if value % amount ~= 0 then return false end
-    return _milyMCFlowRun(callback)
+    return scriptFlowRun(callback)
 end
 
-function onSection(many, steps, callback, position)
+function onSection(many, steps, callback, position) -- onSection(2, [0, 8, 12], () -> {}, step);
     if type(steps) == 'function' and callback == nil then
         callback = steps
         steps = 0
@@ -73,9 +71,9 @@ function onSection(many, steps, callback, position)
     end
 
     if not matches or type(callback) ~= 'function' then return false end
-    _milyMCSectionSpans[#_milyMCSectionSpans + 1] = many * 16
+    sectionSpans[#sectionSpans + 1] = many * 16
     local ok, result = pcall(callback)
-    _milyMCSectionSpans[#_milyMCSectionSpans] = nil
+    sectionSpans[#sectionSpans] = nil
     if not ok then error(result, 0) end
     return true
 end

@@ -49,12 +49,7 @@ local function refreshScrollAnchors()
     end
 end
 
-local function callLocalMilyMC(name, ...)
-    local callback = milyMC and milyMC[name]
-    if type(callback) == 'function' then callback(...) end
-end
-
-local function callExternalMilyMC(luaName, hscriptName, args)
+local function callMilyMCScripts(luaName, hscriptName, args)
     args = args or {}
     if callOnLuas then callOnLuas('milyMC.' .. luaName, args, true, true) end
     if callOnHScript then callOnHScript(hscriptName, args, true, true) end
@@ -62,10 +57,8 @@ end
 
 function onCreate()
     luaDebugMode = false
-    callLocalMilyMC('loadPre')
-    callExternalMilyMC('loadPre', 'onMCloadPre')
-    callLocalMilyMC('load')
-    callExternalMilyMC('load', 'onMCload')
+    callMilyMCScripts('loadPre', 'onMCloadPre')
+    callMilyMCScripts('load', 'onMCload')
 end
 
 function onCreatePost()
@@ -83,6 +76,5 @@ function onCreatePost()
         }
     end
     refreshScrollAnchors()
-    callLocalMilyMC('loadPost')
-    callExternalMilyMC('loadPost', 'onMCloadPost')
+    callMilyMCScripts('loadPost', 'onMCloadPost')
 end

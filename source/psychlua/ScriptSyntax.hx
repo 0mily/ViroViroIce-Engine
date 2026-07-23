@@ -1,15 +1,15 @@
-package milyMC;
+package psychlua;
 
 using StringTools;
 
-private typedef MilyMCBlock =
+private typedef ScriptBlock =
 {
 	var indent:String;
 	var close:String;
 }
 
-// Good Lord converters
-class MilyMCSyntax
+// (another?) conversor holy shit i'm done
+class ScriptSyntax
 {
 	static final FLOW_BLOCK:EReg = ~/^(\s*)(from|every)\s*\((.*)\)\s*do\s*(--.*)?$/;
 	static final SECTION_BLOCK:EReg = ~/^(\s*)onSection\s*\((.*)\)\s*\{\s*(--.*)?$/;
@@ -24,7 +24,7 @@ class MilyMCSyntax
 
 		var newline:String = source.indexOf('\r\n') >= 0 ? '\r\n' : '\n';
 		var lines:Array<String> = source.split(newline);
-		var blocks:Array<MilyMCBlock> = [];
+		var blocks:Array<ScriptBlock> = [];
 		var changed:Bool = false;
 
 		for (index in 0...lines.length)
@@ -58,7 +58,7 @@ class MilyMCSyntax
 				var indent:String = STEP_BLOCK.matched(1);
 				var steps:String = STEP_BLOCK.matched(2);
 				var comment:String = STEP_BLOCK.matched(3);
-				lines[index] = indent + '_milyMCForSteps({' + steps + '}, function()' + suffixComment(comment);
+				lines[index] = indent + '_scriptForSteps({' + steps + '}, function()' + suffixComment(comment);
 				blocks.push({indent: indent, close: 'end'});
 				changed = true;
 				continue;
@@ -66,7 +66,7 @@ class MilyMCSyntax
 
 			if (blocks.length > 0)
 			{
-				var block:MilyMCBlock = blocks[blocks.length - 1];
+				var block:ScriptBlock = blocks[blocks.length - 1];
 				var matcher:EReg = block.close == '}' ? BRACE_BLOCK : END_BLOCK;
 				if (matcher.match(line) && matcher.matched(1) == block.indent)
 				{
@@ -77,7 +77,7 @@ class MilyMCSyntax
 			}
 		}
 
-		return changed ? lines.join(newline) : source;
+		return changed ? lines.join(newline) : source; // ive tested ts like, 2 times, the chance of this works is SO low
 	}
 
 	static function suffixComment(comment:String):String

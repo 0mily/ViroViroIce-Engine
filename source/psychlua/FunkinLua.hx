@@ -99,7 +99,7 @@ class FunkinLua {
 	public function new(scriptName:String, ?state:FlxState) { // TODO: allat
 		lua = LuaL.newstate();
 		LuaL.openlibs(lua);
-		prepareNamespacedCallbacks();
+		prepareScriptHelpers();
 
 		//trace('Lua version: ' + Lua.version());
 		//trace("LuaJIT version: " + Lua.versionJIT());
@@ -192,15 +192,17 @@ class FunkinLua {
 		for (name => value in globalValues)
 			set(name, value);
 
+		var previousScript:FunkinLua = lastCalledScript;
+		lastCalledScript = this;
 		try {
 			var isString:Bool = !FileSystem.exists(scriptName);
 			var result:Dynamic = null;
 			if(!isString) {
 				var originalSource:String = File.getContent(scriptName);
-				var processedSource:String = milyMC.MilyMCSyntax.process(originalSource);
+				var processedSource:String = ScriptSyntax.process(originalSource);
 				result = processedSource == originalSource ? LuaL.dofile(lua, scriptName) : LuaL.dostring(lua, processedSource);
 			} else {
-				result = LuaL.dostring(lua, milyMC.MilyMCSyntax.process(scriptName));
+				result = LuaL.dostring(lua, ScriptSyntax.process(scriptName));
 			}
 
 			var resultStr:String = Lua.tostring(lua, result);
@@ -208,7 +210,9 @@ class FunkinLua {
 				throw resultStr;
 			
 			if (isString) scriptName = 'unknown';
+			lastCalledScript = previousScript;
 		} catch(e:Dynamic) {
+			lastCalledScript = previousScript;
 			trace(e);
 			throw e;
 		}
@@ -219,10 +223,10 @@ class FunkinLua {
 	public var lastCalledArgs:Array<Dynamic> = [];
 	public static var lastCalledScript:FunkinLua = null;
 
-	function prepareNamespacedCallbacks():Void
+	function prepareScriptHelpers():Void
 	{
 		if(lua != null)
-			LuaL.dostring(lua, milyMC.MilyMCMacros.luaFile('api/flow'));
+			LuaL.dostring(lua, ScriptMacros.luaFile('flow'));
 	}
 
 	public function refreshScreenVariables(?camera:String = 'other'):Void
@@ -388,6 +392,7 @@ class FunkinLua {
 	}
 
 	public function stop() {
+		milyMC.MilyMCCustom.releaseLua(this);
 		closed = true;
 		unregisterGlobalDataFor(this);
 
@@ -684,6 +689,7 @@ class FunkinLua {
 		addLocalCallback('easeStrum', milyMC.MilyMC.easeStrum);
 		addLocalCallback('setQueueStrum', milyMC.MilyMC.setQueueStrum);
 		addLocalCallback('easeQueueStrum', milyMC.MilyMC.easeQueueStrum);
+		milyMC.MilyMCCustom.installLua(this);
 
 		addLocalCallback('registerLuaFunction', function(name:String, ?funcName:String = null) {
 			if (name == null || name.trim().length < 1)

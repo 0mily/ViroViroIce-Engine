@@ -39,6 +39,46 @@ function removeCustomMC(name)
     return true
 end
 
+local function externalCustomFlag(flags, bit)
+    flags = math.floor(tonumber(flags) or 0)
+    return flags % (bit * 2) >= bit
+end
+
+function _milyMCDefineExternalCustom(name, defaultValue, order, flags)
+    local callbacks = {
+        default = tonumber(defaultValue) or 0,
+        order = tonumber(order) or 0
+    }
+
+    if externalCustomFlag(flags, 16) then
+        callbacks.enabled = function(ctx, value)
+            return _milyMCCustomDispatch(name, 'enabled', ctx, value) ~= false
+        end
+    end
+    if externalCustomFlag(flags, 2) or externalCustomFlag(flags, 1) then
+        callbacks.note = function(ctx, value)
+            return _milyMCCustomDispatch(name, 'note', ctx, value)
+        end
+    end
+    if externalCustomFlag(flags, 4) or externalCustomFlag(flags, 2) or externalCustomFlag(flags, 1) then
+        callbacks.sustain = function(ctx, value)
+            return _milyMCCustomDispatch(name, 'sustain', ctx, value)
+        end
+    end
+    if externalCustomFlag(flags, 8) or externalCustomFlag(flags, 1) then
+        callbacks.strum = function(ctx, value)
+            return _milyMCCustomDispatch(name, 'strum', ctx, value)
+        end
+    end
+    if externalCustomFlag(flags, 32) then
+        callbacks.update = function(elapsed, values)
+            return _milyMCCustomDispatch(name, 'update', elapsed, values)
+        end
+    end
+
+    return defineMC(name, callbacks)
+end
+
 local function mergeCustomResult(ctx, result)
     if type(result) ~= 'table' then return end
     for key, value in pairs(result) do ctx[key] = value end

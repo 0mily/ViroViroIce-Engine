@@ -55,17 +55,20 @@ local function safeUpdateNoteMath(objID, isStrum, strumID, songPosition, beat, n
 end
 
 function _milyMCTweenFinished(tag)
-    callLocalMilyMC('finished', tag)
-    callExternalMilyMC('finished', 'onMCfinished', {tag})
+    --[[callLocalMilyMC('finished', tag)
+    callExternalMilyMC('finished', 'onMCfinished', {tag})]]
+    callMilyMCScripts('finished', 'onMCfinished', {tag})
 end
 
 function onUpdate(elapsed)
-    callLocalMilyMC('updatePre', elapsed)
-    callExternalMilyMC('updatePre', 'onMCupdatePre', {elapsed})
+    --[[callLocalMilyMC('updatePre', elapsed)
+    callExternalMilyMC('updatePre', 'onMCupdatePre', {elapsed})]]
+    callMilyMCScripts('updatePre', 'onMCupdatePre', {elapsed})
     updateTweens(elapsed)
     if updateCustomModifiers then updateCustomModifiers(elapsed) end
-    callLocalMilyMC('update', elapsed)
-    callExternalMilyMC('update', 'onMCupdate', {elapsed})
+    --[[callLocalMilyMC('update', elapsed)
+    callExternalMilyMC('update', 'onMCupdate', {elapsed})]]
+    callMilyMCScripts('update', 'onMCupdate', {elapsed})
 end
 
 function onUpdatePost(elapsed)
@@ -107,24 +110,20 @@ function onUpdatePost(elapsed)
     for lane = 0, 7 do laneMathWasActive[lane] = activeMask[lane] end
     noteMathWasActive = hasActiveMath
 
-    callLocalMilyMC('updatePost', elapsed)
-    callExternalMilyMC('updatePost', 'onMCupdatePost', {elapsed})
+    callMilyMCScripts('updatePost', 'onMCupdatePost', {elapsed})
 end
 
 function onStepHit()
     runScheduledEvents()
-    callLocalMilyMC('step', curStep)
-    callExternalMilyMC('step', 'onMCstep', {curStep})
+    callMilyMCScripts('step', 'onMCstep', {curStep})
 end
 
 function onBeatHit()
-    callLocalMilyMC('beat', curBeat)
-    callExternalMilyMC('beat', 'onMCbeat', {curBeat})
+    callMilyMCScripts('beat', 'onMCbeat', {curBeat})
 end
 
 function onSectionHit()
-    callLocalMilyMC('section', curSection)
-    callExternalMilyMC('section', 'onMCsection', {curSection})
+    callMilyMCScripts('section', 'onMCsection', {curSection})
 end
 
 function onDestroy()

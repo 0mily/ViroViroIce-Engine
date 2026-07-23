@@ -766,7 +766,7 @@ class PlayState extends ScriptedState
 			for (file in FileSystem.readDirectory(folder))
 			{
 				#if LUA_ALLOWED
-				if(file.toLowerCase().endsWith('.lua') && !milyMC.MilyMC.shouldSkipRegularLua('$folder$file', songName))
+				if(file.toLowerCase().endsWith('.lua'))
 					initLuaScript('$folder$file');
 				#end
 
@@ -962,7 +962,7 @@ class PlayState extends ScriptedState
 			for (file in FileSystem.readDirectory(folder))
 			{
 				#if LUA_ALLOWED
-				if(file.toLowerCase().endsWith('.lua') && !milyMC.MilyMC.shouldSkipRegularLua(folder + file, songName))
+				if(file.toLowerCase().endsWith('.lua'))
 					initLuaScript(folder + file);
 				#end
 
