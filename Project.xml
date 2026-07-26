@@ -125,7 +125,7 @@
 	<!-- _______________________________ Libraries ______________________________ -->
 
 	<haxelib name="flixel" />
-	<haxelib name="flixel-addons" />
+	<haxelib name="flixel-addons" version="3.3.0" />
 	<haxelib name="nape-haxe4" /> <!-- bf doin -->
 	<haxelib name="android-manager" if="android" />
 	<haxelib name="tjson" />

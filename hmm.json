@@ -8,6 +8,7 @@
                          {
                              "name":  "flixel-addons",
                              "type":  "haxelib",
+                             "version": "3.3.0",
                              "dir":  null
                          },
                          {
