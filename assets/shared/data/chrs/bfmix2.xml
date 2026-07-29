@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character assetPath="characters/BFMix2" icon="bfmix2" scale="1" singDuration="4" x="20" y="220" cameraX="10" cameraY="90" flipX="true" noAntialiasing="false" healthColor="#2ABE30" vocalsFile="" vsliceHolds="false" isEditor_Icons="bfmix2" isEditor_Name="BF Mix 2">
+	<assets>
+		<asset path="characters/BFMix2"/>
+	</assets>
+	<animations>
+		<anim id="idle" symbol="idle" fps="24" loop="false" opponentSymbol="idle" x="-5" y="0" playerX="-5" playerY="0"/>
+		<anim id="singLEFT" symbol="left0" fps="24" loop="false" opponentSymbol="right0" x="30" y="-3" playerX="30" playerY="-16"/>
+		<anim id="singDOWN" symbol="down0" fps="24" loop="false" opponentSymbol="down0" x="-35" y="-47" playerX="13" playerY="-48"/>
+		<anim id="singUP" symbol="up0" fps="24" loop="false" opponentSymbol="up0" x="58" y="-18" playerX="-23" playerY="-18"/>
+		<anim id="singRIGHT" symbol="right0" fps="24" loop="false" opponentSymbol="left0" x="-27" y="-16" playerX="-19" playerY="-4"/>
+		<anim id="singLEFTmiss" symbol="leftMiss" fps="24" loop="false" opponentSymbol="rightMiss" x="24" y="-5" playerX="34" playerY="-17"/>
+		<anim id="singDOWNmiss" symbol="downMiss" fps="24" loop="false" opponentSymbol="downMiss" x="-43" y="-40" playerX="19" playerY="-40"/>
+		<anim id="singUPmiss" symbol="upMiss" fps="24" loop="false" opponentSymbol="upMiss" x="61" y="-12" playerX="-20" playerY="-13"/>
+		<anim id="singRIGHTmiss" symbol="rightMiss" fps="24" loop="false" opponentSymbol="leftMiss" x="-27" y="-19" playerX="-15" playerY="-6"/>
+		<anim id="singUP-alt" symbol="upVibrato" fps="24" loop="false" opponentSymbol="upVibrato" x="36" y="-4" playerX="-15" playerY="-4"/>
+		<anim id="singDOWN-alt" symbol="downVibrato" fps="24" loop="false" opponentSymbol="downVibrato" x="-36" y="-47" playerX="21" playerY="-47"/>
+	</animations>
+</character>

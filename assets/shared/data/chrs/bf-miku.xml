@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character assetPath="characters/BOYFRIENDMikuSkin" icon="miku" scale="1" singDuration="4" x="0" y="100" cameraX="250" cameraY="-100" flipX="true" noAntialiasing="false" healthColor="#9461CE" vocalsFile="" vsliceHolds="false" isEditor_Icons="miku" isEditor_Name="Miku D-Sides">
+	<assets>
+		<asset path="characters/BOYFRIENDMikuSkin"/>
+	</assets>
+	<animations>
+		<anim id="idle" symbol="BF idle dance" fps="24" loop="false" x="-5" y="0" playerX="-5" playerY="0"/>
+		<anim id="singLEFT" symbol="BF NOTE LEFT0" fps="24" loop="false" x="109" y="-51" playerX="109" playerY="-51"/>
+		<anim id="singDOWN" symbol="BF NOTE DOWN0" fps="24" loop="false" x="-40" y="-25" playerX="-40" playerY="-25"/>
+		<anim id="singUP" symbol="BF NOTE UP0" fps="24" loop="false" x="-10" y="-1" playerX="-10" playerY="-1"/>
+		<anim id="singRIGHT" symbol="BF NOTE RIGHT0" fps="24" loop="false" x="-155" y="0" playerX="-155" playerY="0"/>
+		<anim id="singLEFTmiss" symbol="BF NOTE LEFT MISS" fps="24" loop="false" x="123" y="-74" playerX="123" playerY="-74"/>
+		<anim id="singDOWNmiss" symbol="BF NOTE DOWN MISS" fps="24" loop="false" x="-25" y="-24" playerX="-25" playerY="-24"/>
+		<anim id="singUPmiss" symbol="BF NOTE UP MISS" fps="24" loop="false" x="-7" y="1" playerX="-7" playerY="1"/>
+		<anim id="singRIGHTmiss" symbol="BF NOTE RIGHT MISS" fps="24" loop="false" x="-163" y="5" playerX="-163" playerY="5"/>
+		<anim id="hey" symbol="BF HEY" fps="24" loop="false" x="-14" y="7" playerX="-14" playerY="7"/>
+		<anim id="scared" symbol="BF idle shaking" fps="24" loop="true" x="-7" y="-6" playerX="-7" playerY="-6"/>
+		<anim id="firstDeath" symbol="BF dies" fps="24" loop="false" x="156" y="250" playerX="156" playerY="250"/>
+		<anim id="deathLoop" symbol="BF Dead Loop" fps="24" loop="true" x="75" y="280" playerX="75" playerY="280"/>
+		<anim id="deathConfirm" symbol="BF Dead confirm" fps="24" loop="false" x="149" y="343" playerX="149" playerY="343"/>
+		<anim id="Dodge down" symbol="BF NOTE DOWN DODGE" fps="24" loop="false" x="-14" y="-70" playerX="-14" playerY="-70"/>
+		<anim id="Dodge left" symbol="BF NOTE LEFT DODGE" fps="24" loop="false" x="91" y="-12" playerX="91" playerY="-12"/>
+		<anim id="Dodge up" symbol="BF NOTE UP DODGE" fps="24" loop="false" x="3" y="23" playerX="3" playerY="23"/>
+		<anim id="Dodge right" symbol="BF NOTE RIGHT DODGE" fps="24" loop="false" x="53" y="-22" playerX="53" playerY="-22"/>
+	</animations>
+</character>

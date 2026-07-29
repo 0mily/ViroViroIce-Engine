@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character assetPath="characters/RedSurprised" icon="face" scale="1.5" singDuration="4" x="190" y="370" cameraX="0" cameraY="-200" flipX="false" noAntialiasing="false" healthColor="#A1A1A1" vocalsFile="" vsliceHolds="false" isEditor_Icons="" isEditor_Name="Red">
+	<assets>
+		<asset path="characters/RedSurprised"/>
+	</assets>
+	<animations>
+		<anim id="danceLeft" symbol="danceLeft" fps="12" loop="false" x="0" y="0" playerX="0" playerY="0"/>
+		<anim id="danceRight" symbol="danceRight" fps="12" loop="false" x="0" y="0" playerX="0" playerY="0"/>
+	</animations>
+</character>

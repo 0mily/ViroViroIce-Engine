@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<character assetPath="characters/BOYFRIEND_DEAD" icon="bf" scale="1" singDuration="4" x="0" y="350" cameraX="0" cameraY="0" flipX="true" noAntialiasing="false" healthColor="#31B0D1" vocalsFile="" vsliceHolds="false" isEditor_Icons="bfpixel" isEditor_Name="Boyfriend (Dead)">
+	<assets>
+		<asset path="characters/BOYFRIEND_DEAD"/>
+	</assets>
+	<animations>
+		<anim id="firstDeath" symbol="BF dies" fps="24" loop="false" x="37" y="11" playerX="37" playerY="11"/>
+		<anim id="deathLoop" symbol="BF Dead Loop" fps="24" loop="true" x="37" y="5" playerX="37" playerY="5"/>
+		<anim id="deathConfirm" symbol="BF Dead confirm" fps="24" loop="false" x="37" y="69" playerX="37" playerY="69"/>
+	</animations>
+</character>
