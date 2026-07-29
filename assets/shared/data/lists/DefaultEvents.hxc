@@ -40,7 +40,7 @@ class DefaultEvents extends Event
 	{
 		return {
 			category: 'Misc.',
-			names: ['Set Property', 'Play Sound', 'LuaScript Call', 'Lyrics Event'] // Other
+			names: ['Set Property', 'Play Sound', 'Call Script', 'LuaScript Call', 'Lyrics Event'] // Other
 		};
 	}
 }

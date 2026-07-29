@@ -1,0 +1,29 @@
+name = 'Call Script'
+description = 'Calls a LuaScript/HScript function.'
+
+[Function]
+type = 'text'
+label = 'Function To Call'
+group = 1
+part = 1
+width = 100
+
+[CallOn]
+type = 'dropdown'
+label = 'Call On'
+group = 2
+part = 1
+default = 'General'
+options = [ 'General', 'LuaScript', 'HScript' ]
+width = 69
+y = -45
+x = 110
+advance = false
+
+[Args]
+type = 'text'
+label = 'Arguments'
+group = 3
+part = 1
+width = 250
+x = -190
