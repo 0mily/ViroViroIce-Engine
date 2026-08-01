@@ -35,7 +35,6 @@ echo ""
 echo -e "${CYAN}[2/3] Installing specific version & mobile libraries...${NC}"
 echo "----------------------------------------------------------"
 haxelib install hxvlc --skip-dependencies
-haxelib install away3d 5.0.9
 haxelib install yagp 1.1.4
 haxelib install flxgif 1.0.3 --skip-dependencies
 haxelib install android-manager 1.0.1 --skip-dependencies
@@ -50,6 +49,7 @@ haxelib git hscript-iris https://github.com/pisayesiwsi/hscript-iris.git dev
 haxelib git linc_luajit https://github.com/xdshiho/linc_luajit-mobile
 haxelib git funkin.vis https://github.com/FunkinCrew/funkVis.git 1966f8fbbbc509ed90d4b520f3c49c084fc92fd6
 haxelib git grig.audio https://gitlab.com/haxe-grig/grig.audio.git
+haxelib git away3d-vvie https://github.com/0mily/away3d-vvie.git master
 
 echo ""
 echo -e "${GREEN}==========================================================${NC}"
