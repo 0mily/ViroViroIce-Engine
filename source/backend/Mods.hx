@@ -265,7 +265,6 @@ class Mods
 		activeModDirectoriesCacheKey = null;
 		activeModDirectoriesCache = null;
 		var contentMods:Array<String> = getContentModDirectories();
-		var primaryContentMod:String = contentMods.length > 0 ? contentMods[0] : '';
 		var selectedContent:String = getSelectedContentDirectory();
 
 		if (selectedContent.length > 0)
@@ -284,8 +283,7 @@ class Mods
 
 		for (mod in contentMods)
 		{
-			var pack:Dynamic = getPack(mod);
-			if ((mod != primaryContentMod || (pack != null && pack.runsGlobally == true)) && !globalMods.contains(mod))
+			if (modRunsGlobally(mod, true) && !globalMods.contains(mod))
 				globalMods.push(mod);
 
 			for(packageFolder in getPackageDirectories(mod))
@@ -329,14 +327,20 @@ class Mods
 		if (!FileSystem.exists(absolute) || !FileSystem.isDirectory(absolute))
 			return false;
 
-		var pack:Dynamic = getPack(contentGlobal);
-		if (pack != null && Reflect.hasField(pack, 'runsGlobally'))
-			return pack.runsGlobally == true;
-
-		return true;
+		return modRunsGlobally(contentGlobal, true);
 		#else
 		return false;
 		#end
+	}
+
+	static function modRunsGlobally(folder:String, fallback:Bool):Bool
+	{
+		var pack:Dynamic = getPack(folder);
+		if(pack == null)
+			return fallback;
+		if(!Reflect.hasField(pack, 'runsGlobally'))
+			return false;
+		return parseContentBool(Std.string(Reflect.field(pack, 'runsGlobally')), fallback);
 	}
 
 	inline public static function clearPackageDirectory():Void
@@ -512,19 +516,114 @@ class Mods
 				directories.push(directory);
 		}
 
-		addDirectory(currentModDirectory);
-
-		if (selectedContent.length > 0)
-		{
-			for (mod in getContentModDirectories(selectedContent))
+		if(selectedContent.length > 0)
+			for(mod in getContentOverrideDirectories(currentModDirectory, selectedContent))
 				addDirectory(mod);
-		}
+
+		addDirectory(currentModDirectory);
 
 		for (mod in getGlobalMods())
 			addDirectory(mod);
 		activeModDirectoriesCacheKey = cacheKey;
 		activeModDirectoriesCache = directories.copy();
 		return directories;
+	}
+
+	/**
+	 * prob made this shit right ig
+	 */
+	public static function getContentOverrideDirectories(?target:String, ?content:String):Array<String>
+	{
+		var result:Array<String> = [];
+		#if ADDONS_ALLOWED
+		content = normalizeFolderKey(content ?? getSelectedContentDirectory());
+		target = normalizeFolderKey(target ?? currentModDirectory);
+		if(content.length < 1 || target.length < 1)
+			return result;
+
+		var contentMods:Array<String> = getContentModDirectories(content);
+		var resolvedTarget:String = resolveContentModReference(content, target, contentMods);
+		if(resolvedTarget == null)
+			return result;
+
+		var activeTargets:Array<String> = [resolvedTarget];
+		var changed:Bool = true;
+		while(changed)
+		{
+			changed = false;
+			for(candidate in contentMods)
+			{
+				if(candidate == resolvedTarget || result.contains(candidate))
+					continue;
+
+				var pack:Dynamic = getPack(candidate);
+				if(pack == null || !Reflect.hasField(pack, 'override'))
+					continue;
+
+				for(reference in packOverrideTargets(Reflect.field(pack, 'override')))
+				{
+					var resolvedReference:String = resolveContentModReference(content, reference, contentMods);
+					if(resolvedReference != null && activeTargets.contains(resolvedReference))
+					{
+						result.push(candidate);
+						activeTargets.push(candidate);
+						changed = true;
+						break;
+					}
+				}
+			}
+		}
+
+		// C -> B -> A must search C first when C overrides B and B overrides A         maybe it should work?
+		result.reverse();
+		#end
+		return result;
+	}
+
+	static function packOverrideTargets(value:Dynamic):Array<String>
+	{
+		var targets:Array<String> = [];
+		if(value == null)
+			return targets;
+
+		if(Std.isOfType(value, Array))
+		{
+			for(item in (cast value:Array<Dynamic>))
+			{
+				var target:String = normalizeFolderKey(Std.string(item));
+				if(target.length > 0 && !targets.contains(target))
+					targets.push(target);
+			}
+		}
+		else
+		{
+			var target:String = normalizeFolderKey(Std.string(value));
+			if(target.length > 0)
+				targets.push(target);
+		}
+		return targets;
+	}
+
+	static function resolveContentModReference(content:String, reference:String, contentMods:Array<String>):String
+	{
+		reference = normalizeFolderKey(reference);
+		if(reference.length < 1)
+			return null;
+		if(contentMods.contains(reference))
+			return reference;
+
+		var nested:String = contentModDirectory(content, reference);
+		if(contentMods.contains(nested))
+			return nested;
+
+		for(mod in contentMods)
+		{
+			var slash:Int = mod.lastIndexOf('/');
+			var folderName:String = slash >= 0 ? mod.substr(slash + 1) : mod;
+			if(folderName == reference)
+				return mod;
+		}
+		return null;
 	}
 
 	public static function getModFolderFromPath(path:String):String
@@ -726,21 +825,78 @@ class Mods
 		if(folder == null || folder.trim().length < 1)
 			return null;
 
-		var path = Paths.mods(folder + '/pack.json');
-		if(FileSystem.exists(path)) {
+		var jsonPath:String = Paths.mods(folder + '/pack.json');
+		if(FileSystem.exists(jsonPath)) {
 			try {
 				#if sys
-				var rawJson:String = File.getContent(path);
+				var rawJson:String = File.getContent(jsonPath);
 				#else
-				var rawJson:String = Assets.getText(path);
+				var rawJson:String = Assets.getText(jsonPath);
 				#end
 				if(rawJson != null && rawJson.length > 0) return tjson.TJSON.parse(rawJson);
 			} catch(e:Dynamic) {
 				trace(e);
 			}
 		}
+
+		var xmlPath:String = Paths.mods(folder + '/pack.xml');
+		if(FileSystem.exists(xmlPath)) {
+			try {
+				#if sys
+				var rawXml:String = File.getContent(xmlPath);
+				#else
+				var rawXml:String = Assets.getText(xmlPath);
+				#end
+				if(rawXml != null && rawXml.trim().length > 0)
+					return parsePackXml(rawXml);
+			} catch(e:Dynamic) {
+				trace(e);
+			}
+		}
 		#end
 		return null;
+	}
+
+	static function parsePackXml(raw:String):Dynamic
+	{
+		var root:Xml = Xml.parse(raw).firstElement();
+		if(root == null)
+			return null;
+
+		var data:Dynamic = {};
+		for(attribute in root.attributes())
+			Reflect.setField(data, attribute, parsePackValue(attribute, root.get(attribute)));
+
+		for(node in root.elements())
+		{
+			var field:String = node.nodeName;
+			var value:String = node.get('value');
+			if(value == null && field == 'override')
+				value = node.get('mod') ?? node.get('name');
+			if(value == null)
+			{
+				var buffer:StringBuf = new StringBuf();
+				for(child in node)
+					if(child.nodeType == Xml.PCData || child.nodeType == Xml.CData)
+						buffer.add(child.nodeValue);
+				value = buffer.toString().trim();
+			}
+			Reflect.setField(data, field, parsePackValue(field, value));
+		}
+		return data;
+	}
+
+	static function parsePackValue(field:String, value:String):Dynamic
+	{
+		if(value == null)
+			return null;
+		switch(field)
+		{
+			case 'runsGlobally' | 'enableSticker' | 'restart':
+				return parseContentBool(value, false);
+			default:
+				return value;
+		}
 	}
 
 	static function normalizeStateName(name:String):String // eu acho que eu cansei
@@ -821,7 +977,7 @@ class Mods
 		key = key.replace('\\', '/').toLowerCase().trim();
 		if (key.length < 1)
 			return false;
-		if (key == 'pack.json' || key == 'package.json' || key == 'package.xml')
+		if (key == 'pack.json' || key == 'pack.xml' || key == 'package.json' || key == 'package.xml')
 			return false;
 		if (key.startsWith('states/') || key.startsWith('substates/') || key.startsWith('characters/'))
 			return false;
@@ -1083,7 +1239,7 @@ class Mods
 			if (FileSystem.exists('$dir/.notamod'))
 				return false;
 
-			if (FileSystem.exists('$dir/pack.json'))
+			if (FileSystem.exists('$dir/pack.json') || FileSystem.exists('$dir/pack.xml'))
 				return true;
 
 			for (sub in ignoreModFolders) {
@@ -1123,10 +1279,14 @@ class Mods
 		#end
 	}
 
-	inline public static function modUsesStickerTrans()
+	public static function modUsesStickerTrans()
 	{
-		var pack:Dynamic = getPack(Mods.currentModDirectory);
-		if (pack != null && pack.enableSticker != null) return pack.enableSticker;
+		for(mod in getActiveModDirectories())
+		{
+			var pack:Dynamic = getPack(mod);
+			if(pack != null && Reflect.hasField(pack, 'enableSticker'))
+				return parseContentBool(Std.string(Reflect.field(pack, 'enableSticker')), false);
+		}
 		return false;
 	}
 

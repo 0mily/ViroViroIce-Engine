@@ -539,22 +539,13 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 		updateGridVisibility();
 
 		// CHARACTERS FOR THE DROP DOWNS
-		var gameOverCharacters:Array<String> = Character.appendCharacterFileList(Mods.mergeAllTextsNamed('data/characterList.txt'));
+		var allCharacters:Array<String> = Character.appendCharacterFileList(Mods.mergeAllTextsNamed('data/characterList.txt'));
 		characterVisualCategories = ListLoader.load(CHARACTER, this);
-		ListLoader.appendNames(gameOverCharacters, characterVisualCategories);
-		var characterList:Array<String> = gameOverCharacters.filter((name:String) -> (!name.endsWith('-dead') && !name.endsWith('-death')));
+		ListLoader.appendNames(allCharacters, characterVisualCategories);
+		var characterList:Array<String> = allCharacters.filter((name:String) -> (!name.endsWith('-dead') && !name.endsWith('-death')));
 		playerDropDown.list = characterList;
 		opponentDropDown.list = characterList;
 		girlfriendDropDown.list = characterList;
-
-		addUniqueOption(gameOverCharacters, PlayState.SONG != null ? PlayState.SONG.gameOverChar : null);
-		gameOverCharacters.insert(0, '');
-		gameOverCharacters.sort(function(a:String, b:String)
-		{
-			if((a == '' || a.endsWith('-dead') || a.endsWith('-death')) && !(b == '' || b.endsWith('-dead') || b.endsWith('-death'))) return -1; //Prioritize "-dead" or "-death" characters
-			return 0;
-		});
-		gameOverCharDropDown.list = gameOverCharacters;
 		
 		stageVisualCategories = ListLoader.load(STAGE, this);
 		var stageList:Array<String> = loadFileList('data/stages/', 'data/stages/stageList.txt');
@@ -1208,11 +1199,6 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 		StageData.loadDirectory(PlayState.SONG);
 
 		// DATA TAB
-		setGameOverCharDropDownValue(PlayState.SONG.gameOverChar);
-		gameOverSndInputText.text = PlayState.SONG.gameOverSound;
-		gameOverLoopInputText.text = PlayState.SONG.gameOverLoop;
-		gameOverRetryInputText.text = PlayState.SONG.gameOverEnd;
-
 		noRGBCheckBox.checked = (PlayState.SONG.disableNoteRGB == true);
 
 		noteTextureInputText.text = PlayState.SONG.arrowSkin;
@@ -1450,6 +1436,10 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 					setSongPlaying(!FlxG.sound.music.playing);
 				}
 			}
+
+			if(!songFinished && songPlaying && FlxG.sound.music != null && !FlxG.sound.music.playing
+				&& FlxG.sound.music.length > 0 && FlxG.sound.music.time >= FlxG.sound.music.length - 2)
+				songFinished = true;
 
 			if (!songFinished && songPlaying) {
 				if (FlxG.sound.music.playing) {
@@ -3315,10 +3305,6 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 		chartEditorSave.data.autoLoadEvents = autoLoadEvents;
 	}
 
-	var gameOverCharDropDown:PsychUIDropDownMenu;
-	var gameOverSndInputText:PsychUIInputText;
-	var gameOverLoopInputText:PsychUIInputText;
-	var gameOverRetryInputText:PsychUIInputText;
 	var noRGBCheckBox:PsychUICheckBox;
 	var noteTextureInputText:PsychUIInputText;
 	var noteSplashesInputText:PsychUIInputText;
@@ -3333,38 +3319,6 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 		var tab_group = mainBox.getTab('Data').menu;
 		var objX = 10;
 		var objY = 25;
-		gameOverCharDropDown = new PsychUIDropDownMenu(objX, objY, [''], function(id:Int, character:String)
-		{
-			PlayState.SONG.gameOverChar = character;
-			if(character.length < 1) Reflect.deleteField(PlayState.SONG, 'gameOverChar');
-			trace('selected $character');
-		});
-		gameOverCharDropDown.onVisualOpen = function():Bool
-			return openVisualListPicker(CHARACTER, gameOverCharDropDown, gameOverCharDropDown.list.copy(), characterVisualCategories);
-
-		objY += 40;
-		gameOverSndInputText = new PsychUIInputText(objX, objY, 120, '', 8);
-		gameOverSndInputText.onChange = function(old:String, cur:String)
-		{
-			PlayState.SONG.gameOverSound = cur;
-			if(cur.trim().length < 1) Reflect.deleteField(PlayState.SONG, 'gameOverSound');
-		}
-		objY += 40;
-		gameOverLoopInputText = new PsychUIInputText(objX, objY, 120, '', 8);
-		gameOverLoopInputText.onChange = function(old:String, cur:String)
-		{
-			PlayState.SONG.gameOverLoop = cur;
-			if(cur.trim().length < 1) Reflect.deleteField(PlayState.SONG, 'gameOverLoop');
-		}
-		objY += 40;
-		gameOverRetryInputText = new PsychUIInputText(objX, objY, 120, '', 8);
-		gameOverRetryInputText.onChange = function(old:String, cur:String)
-		{
-			PlayState.SONG.gameOverEnd = cur;
-			if(cur.trim().length < 1) Reflect.deleteField(PlayState.SONG, 'gameOverEnd');
-		}
-
-		objY += 35;
 		noRGBCheckBox = new PsychUICheckBox(objX, objY, 'Disable Note RGB', 100, updateNotesRGB);
 		
 		objY += 40;
@@ -3458,18 +3412,16 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 			refreshCameraMoveControls();
 		});
 
-		camY += 40;
-		cameraMoveIntensityStepper = new PsychUINumericStepper(camX, camY, 0.1, 1, 0, 10, 2, 70);
+		camY = objY + 60;
+		cameraMoveIntensityStepper = new PsychUINumericStepper(objX, camY, 0.1, 1, 0, 10, 2, 70);
 		cameraMoveIntensityStepper.onValueChange = function()
 			Song.ensureCameraMoveData(PlayState.SONG).intensity = cameraMoveIntensityStepper.value;
 
-		camY += 40;
-		cameraMoveSpeedStepper = new PsychUINumericStepper(camX, camY, 0.1, 1, 0, 10, 2, 70);
+		cameraMoveSpeedStepper = new PsychUINumericStepper(objX + 140, camY, 0.1, 1, 0, 10, 2, 70);
 		cameraMoveSpeedStepper.onValueChange = function()
 			Song.ensureCameraMoveData(PlayState.SONG).speed = cameraMoveSpeedStepper.value;
 
-		camY += 40;
-		cameraMoveOffsetStepper = new PsychUINumericStepper(camX, camY, 1, 30, 0, 999, 0, 70);
+		cameraMoveOffsetStepper = new PsychUINumericStepper(objX + 280, camY, 1, 30, 0, 999, 0, 70);
 		cameraMoveOffsetStepper.onValueChange = function()
 			Song.ensureCameraMoveData(PlayState.SONG).offset = cameraMoveOffsetStepper.value;
 
@@ -3485,13 +3437,6 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 			cameraMoveOffsetStepper
 		];
 	
-		tab_group.add(new FlxText(gameOverCharDropDown.x, gameOverCharDropDown.y - 15, 120, 'Game Over Character:'));
-		tab_group.add(new FlxText(gameOverSndInputText.x, gameOverSndInputText.y - 15, 180, 'Game Over Death Sound (sounds/):'));
-		tab_group.add(new FlxText(gameOverLoopInputText.x, gameOverLoopInputText.y - 15, 180, 'Game Over Loop Music (music/):'));
-		tab_group.add(new FlxText(gameOverRetryInputText.x, gameOverRetryInputText.y - 15, 180, 'Game Over Retry Music (music/):'));
-		tab_group.add(gameOverSndInputText);
-		tab_group.add(gameOverLoopInputText);
-		tab_group.add(gameOverRetryInputText);
 		tab_group.add(noRGBCheckBox);
 
 		tab_group.add(new FlxText(noteTextureInputText.x, noteTextureInputText.y - 15, 100, 'Note Texture:'));
@@ -3504,17 +3449,6 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 		for(control in cameraMoveControls)
 			tab_group.add(control);
 
-		tab_group.add(gameOverCharDropDown); //lowest priority to display properly
-	}
-
-	function addUniqueOption(list:Array<String>, value:String):Void
-	{
-		if(list == null || value == null)
-			return;
-
-		value = value.trim();
-		if(value.length > 0 && !list.contains(value))
-			list.push(value);
 	}
 
 	function openVisualListPicker(kind:ListKind, dropdown:PsychUIDropDownMenu, values:Array<String>, rawCategories:Array<ListCategoryData>,
@@ -3549,21 +3483,6 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 				dropdown.selectOption(index);
 		}, chartEditorSave.data.visualListBlur ?? true, displayNames));
 		return true;
-	}
-
-	function setGameOverCharDropDownValue(character:String):Void
-	{
-		if(gameOverCharDropDown == null)
-			return;
-
-		var value:String = character == null ? '' : character.trim();
-		if(value.length > 0 && !gameOverCharDropDown.list.contains(value))
-		{
-			var list:Array<String> = gameOverCharDropDown.list.copy();
-			list.push(value);
-			gameOverCharDropDown.list = list;
-		}
-		gameOverCharDropDown.selectedLabel = value;
 	}
 
 	function refreshCameraMoveControls():Void

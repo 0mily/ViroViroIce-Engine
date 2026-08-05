@@ -142,6 +142,7 @@
 	<haxelib name="flxgif" />
 	<haxelib name="yagp" />
 	<haxelib name="flxsoundfilters" url="https://github.com/TheZoroForce240/FlxSoundFilters" ref="main" />
+	<haxelib name="away3d-vvie" /> <!-- ig i'm going crazy -->
 
 	<!-- Other -->
 	<haxelib name="grig.audio" />

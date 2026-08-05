@@ -122,9 +122,9 @@ class CustomSubstate extends ScriptedSubState {
 		super.update(elapsed);
 		postUpdate(elapsed);
 	}
-	public override function preUpdate(elapsed:Float) {
+	public override function preUpdate(elapsed:Float):Bool {
 		parentState?.callOnScripts('onCustomSubstateUpdate', [stateName, elapsed]);
-		super.preUpdate(elapsed);
+		return super.preUpdate(elapsed);
 	}
 	public override function postUpdate(elapsed:Float) {
 		parentState?.callOnScripts('onCustomSubstateUpdatePost', [stateName, elapsed]);

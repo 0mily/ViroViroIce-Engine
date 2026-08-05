@@ -70,30 +70,8 @@ function onEndSong()
 end
 
 
--- Substate interactions
-function onPause()
-	-- Called when you press Pause while not on a cutscene/etc
-	-- return Function_Stop if you want to stop the player from pausing the game
-	return Function_Continue;
-end
-
 function onResume()
 	-- Called after the game has been resumed from a pause (WARNING: Not necessarily from the pause screen, but most likely is!!!)
-end
-
-function onGameOver()
-	-- You died! Called every single frame your health is lower (or equal to) zero
-	-- return Function_Stop if you want to stop the player from going into the game over screen
-	return Function_Continue;
-end
-
-function onGameOverStart()
-	-- Called when you have entered the game over screen and "onGameOver" wasn't stopped
-end
-
-function onGameOverConfirm(retry)
-	-- Called when you Press Enter/Esc on Game Over
-	-- If you've pressed Esc, value "retry" will be false
 end
 
 

@@ -123,6 +123,7 @@ class DropShadowEditor extends ScriptedState implements PsychUIEventHandler.Psyc
 		addPreviewGroupIfMissing(gfGroup, !stageData.hide_girlfriend);
 		addPreviewGroupIfMissing(dadGroup);
 		addPreviewGroupIfMissing(boyfriendGroup);
+		applyPreviewCharacterObjects();
 
 		dropShadowData = new DropShadowData(curStage);
 		applyAllDropShadows();
@@ -602,9 +603,26 @@ class DropShadowEditor extends ScriptedState implements PsychUIEventHandler.Psyc
 			return;
 
 		resetPreviewGroupPosition(role, char);
-		char.setPosition(0, 0);
-		char.x += char.positionArray[0];
-		char.y += char.positionArray[1];
+		var group:FlxSpriteGroup = previewGroupForRole(role);
+		var baseX:Float = 0;
+		var baseY:Float = 0;
+		if(group != null && group.members.contains(char))
+		{
+			baseX = group.x;
+			baseY = group.y;
+		}
+		char.setPosition(baseX + char.positionArray[0], baseY + char.positionArray[1]); // stop fucking going to the wrong position when changing characters, please
+	}
+
+	function previewGroupForRole(role:String):FlxSpriteGroup
+	{
+		return switch(role)
+		{
+			case 'gf': gfGroup;
+			case 'dad': dadGroup;
+			case 'boyfriend': boyfriendGroup;
+			default: null;
+		}
 	}
 
 	function resetPreviewGroupPosition(role:String, char:Character):Void
@@ -650,12 +668,35 @@ class DropShadowEditor extends ScriptedState implements PsychUIEventHandler.Psyc
 
 		character.changeCharacter(next);
 		startCharacterPos(character, metaField);
+		applyPreviewCharacterObject(metaField, character);
 		character.dance();
 		if(stageData._editorMeta == null)
 			stageData._editorMeta = {dad: 'dad', gf: 'gf', boyfriend: 'bf'};
 		Reflect.setField(stageData._editorMeta, metaField, next);
 		refreshCharacterShadow(character, data);
 		focusCameraOnBoyfriend();
+	}
+
+	function applyPreviewCharacterObjects():Void
+	{
+		applyPreviewCharacterObject('gf', gfGroup);
+		applyPreviewCharacterObject('dad', dadGroup);
+		applyPreviewCharacterObject('boyfriend', boyfriendGroup);
+	}
+
+	function applyPreviewCharacterObject(role:String, target:FlxSprite):Void
+	{
+		if(stageData == null || stageData.objects == null || target == null)
+			return;
+
+		for(data in stageData.objects)
+		{
+			if(StageData.characterObjectRole(Std.string(Reflect.field(data, 'type'))) == role)
+			{
+				StageData.applyBasicObjectData(data, target);
+				return;
+			}
+		}
 	}
 
 	function applyAllDropShadows():Void

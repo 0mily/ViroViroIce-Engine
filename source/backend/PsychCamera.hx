@@ -21,13 +21,19 @@ using flixel.util.FlxColorTransformUtil;
 class PsychCamera extends FlxCamera
 {
 	public static inline final DEFAULT_ZOOM_CULL_PADDING:Float = 512;
+	public static inline final DEFAULT_VIEW_OFFSET_LERP:Float = 0.04;
 
 	public var logicalWidth:Float = 0;
 	public var logicalHeight:Float = 0;
+	public var followViewOffset(default, null):FlxPoint = FlxPoint.get();
+	public var followViewSpeed(default, null):Float = 1;
 	public var rotateSprite(default, set):Bool = false;
 
 	@:noCompletion var _sinAngle:Float = 0;
 	@:noCompletion var _cosAngle:Float = 1;
+	@:noCompletion var _smoothedFollowViewOffset:FlxPoint = FlxPoint.get();
+	@:noCompletion var _appliedFollowViewOffset:FlxPoint = FlxPoint.get();
+	@:noCompletion var _hasAppliedFollowViewOffset:Bool = false;
 
 	function set_rotateSprite(rotate:Bool):Bool
 	{
@@ -157,6 +163,8 @@ class PsychCamera extends FlxCamera
 
 	override public function update(elapsed:Float):Void
 	{
+		removeFollowViewOffset();
+
 		// follow the target, if there is one
 		if (target != null)
 		{
@@ -164,6 +172,8 @@ class PsychCamera extends FlxCamera
 		}
 
 		updateScroll();
+		updateFollowViewOffset(elapsed);
+		applyFollowViewOffset();
 		updateFlash(elapsed);
 		updateFade(elapsed);
 
@@ -259,8 +269,63 @@ class PsychCamera extends FlxCamera
 
 	override public function snapToTarget():Void
 	{
+		removeFollowViewOffset();
 		updateFollowDelta();
 		scroll.copyFrom(_scrollTarget);
+		applyFollowViewOffset();
+	}
+	
+	public function setFollowViewOffset(x:Float = 0, y:Float = 0, speed:Float = 1):Void
+	{
+		removeFollowViewOffset();
+		followViewOffset.set(x, y);
+		followViewSpeed = speed;
+		if(speed <= 0)
+			_smoothedFollowViewOffset.copyFrom(followViewOffset);
+		applyFollowViewOffset();
+	}
+
+	function updateFollowViewOffset(elapsed:Float):Void
+	{
+		if(followViewOffset == null || _smoothedFollowViewOffset == null)
+			return;
+
+		if(followViewSpeed <= 0 || elapsed <= 0)
+		{
+			if(followViewSpeed <= 0)
+				_smoothedFollowViewOffset.copyFrom(followViewOffset);
+			return;
+		}
+
+		// Same lerfp used by the classic thing
+		// well, basically the cameraMove will have their own shitty speed an d styf
+		var lerp:Float = DEFAULT_VIEW_OFFSET_LERP * followViewSpeed;
+		var mult:Float = 1 - Math.exp(-elapsed * lerp / (1 / 60));
+		_smoothedFollowViewOffset.x += (followViewOffset.x - _smoothedFollowViewOffset.x) * mult;
+		_smoothedFollowViewOffset.y += (followViewOffset.y - _smoothedFollowViewOffset.y) * mult;
+	}
+
+	function removeFollowViewOffset():Void
+	{
+		if(!_hasAppliedFollowViewOffset)
+			return;
+
+		scroll.x -= _appliedFollowViewOffset.x;
+		scroll.y -= _appliedFollowViewOffset.y;
+		_appliedFollowViewOffset.set();
+		_hasAppliedFollowViewOffset = false;
+	}
+
+	function applyFollowViewOffset():Void
+	{
+		if(_smoothedFollowViewOffset == null
+			|| (_smoothedFollowViewOffset.x == 0 && _smoothedFollowViewOffset.y == 0))
+			return;
+
+		scroll.x += _smoothedFollowViewOffset.x;
+		scroll.y += _smoothedFollowViewOffset.y;
+		_appliedFollowViewOffset.copyFrom(_smoothedFollowViewOffset);
+		_hasAppliedFollowViewOffset = true;
 	}
 
 	function anglePivotX():Float
@@ -290,14 +355,16 @@ class PsychCamera extends FlxCamera
 		if(targetGraphics == null)
 			return;
 
-		var drawX:Float = CameraResizeFix.pegarFSX(this) - 1;
-		var drawY:Float = CameraResizeFix.pegarFSY(this) - 1;
-		var drawWidth:Float = CameraResizeFix.pegarFSL(this) + 2;
-		var drawHeight:Float = CameraResizeFix.pegarFSA(this) + 2;
+		var resizeLeft:Float = CameraResizeFix.pegarFSX(this);
+		var resizeTop:Float = CameraResizeFix.pegarFSY(this);
+		var drawLeft:Float = Math.floor(Math.min(viewMarginLeft, resizeLeft)) - 1;
+		var drawTop:Float = Math.floor(Math.min(viewMarginTop, resizeTop)) - 1;
+		var drawRight:Float = Math.ceil(Math.max(viewMarginRight, resizeLeft + CameraResizeFix.pegarFSL(this))) + 1;
+		var drawBottom:Float = Math.ceil(Math.max(viewMarginBottom, resizeTop + CameraResizeFix.pegarFSA(this))) + 1;
 
 		targetGraphics.overrideBlendMode(null);
 		targetGraphics.beginFill(Color, FxAlpha);
-		targetGraphics.drawRect(drawX, drawY, drawWidth, drawHeight);
+		targetGraphics.drawRect(drawLeft, drawTop, drawRight - drawLeft, drawBottom - drawTop);
 		targetGraphics.endFill();
 	}
 
@@ -361,4 +428,14 @@ class PsychCamera extends FlxCamera
 			drawScreenFill((graphics == null) ? canvas.graphics : graphics, Color, FxAlpha);
 		}
 	}
+
+	override public function destroy():Void
+	{
+		removeFollowViewOffset();
+		followViewOffset = FlxDestroyUtil.put(followViewOffset);
+		_smoothedFollowViewOffset = FlxDestroyUtil.put(_smoothedFollowViewOffset);
+		_appliedFollowViewOffset = FlxDestroyUtil.put(_appliedFollowViewOffset);
+		super.destroy();
+	}
+
 }

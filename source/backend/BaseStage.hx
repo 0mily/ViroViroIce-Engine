@@ -37,6 +37,7 @@ class BaseStage extends FlxBasic
 	public var boyfriendGroup(get, never):FlxSpriteGroup;
 	public var dadGroup(get, never):FlxSpriteGroup;
 	public var gfGroup(get, never):FlxSpriteGroup;
+	public var stageData(get, never):StageDataController;
 
 	public var unspawnNotes(get, never):Array<Note>;
 	
@@ -97,16 +98,20 @@ class BaseStage extends FlxBasic
 	// Other
 	public function onMoveCamera(character:String) {}
 	
-	// Game Over
-	public function onGameOver() {}
-	public function onGameOverLoop() {}
-	public function onGameOverStart() {}
-	public function onGameOverConfirm(retry:Bool) {}
-
 	// Things to replace FlxGroup stuff and inject sprites directly into the state
-	function add(object:FlxBasic) return FlxG.state.add(object);
+	function add(object:FlxBasic)
+	{
+		if(onPlayState)
+			stageData?.register(object);
+		return FlxG.state.add(object);
+	}
 	function remove(object:FlxBasic, splice:Bool = false) return FlxG.state.remove(object, splice);
-	function insert(position:Int, object:FlxBasic) return FlxG.state.insert(position, object);
+	function insert(position:Int, object:FlxBasic)
+	{
+		if(onPlayState)
+			stageData?.register(object);
+		return FlxG.state.insert(position, object);
+	}
 	
 	public function addBehindGF(obj:FlxBasic) return insert(members.indexOf(game.gfGroup), obj);
 	public function addBehindBF(obj:FlxBasic) return insert(members.indexOf(game.boyfriendGroup), obj);
@@ -170,6 +175,7 @@ class BaseStage extends FlxBasic
 	inline private function get_boyfriendGroup():FlxSpriteGroup return game.boyfriendGroup;
 	inline private function get_dadGroup():FlxSpriteGroup return game.dadGroup;
 	inline private function get_gfGroup():FlxSpriteGroup return game.gfGroup;
+	inline private function get_stageData():StageDataController return game.stageData;
 
 	inline private function get_unspawnNotes():Array<Note>
 	{

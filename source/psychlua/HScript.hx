@@ -371,18 +371,68 @@ class HScript extends Iris {
 		set('Paths', Paths);
 		set('GameOverSubstate', substates.GameOverSubstate);
 		set('gameOver', substates.GameOverSubstate.instance);
+		set('gameOverSubstate', substates.GameOverSubstate.instance);
+		set('stageData', PlayState.instance?.stageData);
 		set('gameOverCharacter', substates.GameOverSubstate.characterName);
+		set('chrMusic', substates.GameOverSubstate.musicCharacterName);
 		set('gameOverMusicCharacter', substates.GameOverSubstate.musicCharacterName);
+		set('changeGameOver', substates.GameOverSubstate.changeGameOver);
+		set('changeGameOverMusic', substates.GameOverSubstate.setGameOverMusic);
 		set('gameOverMusic', function(kind:String = 'loop', track:String = 'music') {
 			substates.GameOverSubstate.setGameOverMusic(kind, track);
 		});
+		set('startGameOver', substates.GameOverSubstate.startGameOver);
+		set('retrySong', substates.GameOverSubstate.retrySong);
 		set('PauseSubState', substates.PauseSubState);
 		set('pauseSubstate', substates.PauseSubState.instance);
+		set('pauseMusic', substates.PauseSubState.pauseMusicName);
 		set('pauseMusicName', substates.PauseSubState.pauseMusicName);
 		set('pauseMusicTrack', substates.PauseSubState.pauseTrackName);
 		set('pauseMusicCharacter', substates.PauseSubState.musicCharacterName);
-		set('pauseMusic', function(name:String = null, track:String = 'music') {
-			substates.PauseSubState.setPauseMusic(name, track);
+		set('pauseCategory', substates.PauseSubState.instance?.currentCategory);
+		set('pauseItems', substates.PauseSubState.instance?.pauseItems ?? []);
+		set('changePauseMusic', substates.PauseSubState.changePauseMusic);
+		set('makeOption', function(tag:String, name:String, order:Int = 0):Bool
+			return substates.PauseSubState.instance != null && substates.PauseSubState.instance.makeOption(tag, name, order));
+		set('setOptionName', function(tag:String, name:String):Bool
+			return substates.PauseSubState.instance != null && substates.PauseSubState.instance.setOptionName(tag, name));
+		set('addOption', function(tag:String):Bool
+			return substates.PauseSubState.instance != null && substates.PauseSubState.instance.addOption(tag));
+		set('removeOption', function(tag:String):Bool
+			return substates.PauseSubState.instance != null && substates.PauseSubState.instance.removeOption(tag));
+		set('switchCategory', function(name:String):Bool
+			return substates.PauseSubState.instance != null && substates.PauseSubState.instance.switchCategory(name));
+		set('switchDefault', function():Bool
+			return substates.PauseSubState.instance != null && substates.PauseSubState.instance.switchDefault());
+		set('openPause', function():Bool
+			return substates.PauseSubState.instance != null && substates.PauseSubState.instance.finishPauseOpen());
+		set('resume', function():Bool
+			return substates.PauseSubState.instance != null && substates.PauseSubState.instance.resumeGame());
+		set('resumeNow', function():Bool
+			return substates.PauseSubState.instance != null && substates.PauseSubState.instance.resumeNow());
+		set('restart', function():Bool
+			return substates.PauseSubState.instance != null && substates.PauseSubState.instance.restartGame());
+		set('exit', function():Bool
+			return substates.PauseSubState.instance != null && substates.PauseSubState.instance.exitGame());
+		set('options', function():Bool
+			return substates.PauseSubState.instance != null && substates.PauseSubState.instance.openOptionsMenu());
+		set('setPauseOptionsCentered', function(value:Bool):Bool
+			return substates.PauseSubState.instance != null && substates.PauseSubState.instance.setOptionsCentered(value));
+		set('addPauseObject', function(object:Dynamic):Bool
+			return substates.PauseSubState.instance != null && substates.PauseSubState.instance.addPauseObject(object));
+		set('registerStageObject', function(object:Dynamic):Bool {
+			if(Std.isOfType(object, String))
+				object = LuaUtils.getObjectDirectly(cast object);
+			return backend.StageDataController.registerFromScript(object, PlayState.instance);
+		});
+		set('unregisterStageObject', function(object:Dynamic):Bool {
+			if(Std.isOfType(object, String))
+				object = LuaUtils.getObjectDirectly(cast object);
+			return backend.StageDataController.unregisterFromScript(object);
+		});
+		set('refreshStageData', function():Bool {
+			PlayState.instance?.stageData?.refresh();
+			return PlayState.instance?.stageData != null;
 		});
 		set('menuMusic', function(menuName:String = 'mainMenu', track:String = 'music') {
 			return Paths.menuMusic(menuName, track);
@@ -895,18 +945,22 @@ class HScript extends Iris {
 			if(obj == null || instance == null || instance.add == null)
 				return false;
 
+			var gameover = substates.GameOverSubstate.instance;
+			var addToGameover:Bool = ((instance == PlayState.instance && PlayState.instance.isDead) || instance == gameover);
 			if(inFront)
 			{
 				instance.add(obj);
 				return true;
 			}
 
-			var gameover = substates.GameOverSubstate.instance;
-			var addToGameover:Bool = ((instance == PlayState.instance && PlayState.instance.isDead) || instance == gameover);
 			if(instance != PlayState.instance || addToGameover)
 			{
 				if(addToGameover && gameover != null)
-					gameover.insert(gameover.members.indexOf(gameover.boyfriend), obj);
+				{
+					var position:Int = gameover.members.indexOf(gameover.boyfriend);
+					if(position < 0) position = 0;
+					gameover.insert(position, obj);
+				}
 				else
 					instance.insert(0, obj);
 			}
@@ -1236,6 +1290,7 @@ class HScript extends Iris {
 				groupObj.remove(obj, true);
 			else
 				targetInstance()?.remove(obj, true);
+			backend.StageDataController.unregisterFromScript(obj);
 			if(destroy)
 			{
 				scriptVariables()?.remove(tag);

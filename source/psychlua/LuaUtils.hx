@@ -501,6 +501,7 @@ class LuaUtils
 		var target:Dynamic = state ?? LuaUtils.getTargetInstance();
 		if(target != null && Reflect.isFunction(Reflect.field(target, 'remove')))
 			target.remove(obj, true);
+		backend.StageDataController.unregisterFromScript(obj);
 		obj.destroy();
 		variables.remove(tag);
 	}

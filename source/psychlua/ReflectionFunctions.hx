@@ -219,15 +219,16 @@ class ReflectionFunctions
 			var obj:Dynamic = (parseSingleInstance(objectName, true) ?? LuaUtils.getObjectDirectly(objectName, false, instance));
 			
 			if (obj != null && instance != null) {
+				var gameover:Dynamic = substates.GameOverSubstate.instance;
+				var addToGameover:Bool = ((instance == PlayState.instance && PlayState.instance.isDead) || instance == gameover); // yea whatever bro
 				if (inFront) {
 					instance.add(obj);
 				} else {
-					var gameover:Dynamic = substates.GameOverSubstate.instance;
-					var addToGameover:Bool = ((instance == PlayState.instance && PlayState.instance.isDead) || instance == gameover); // yea whatever bro
-					
 					if (instance != PlayState.instance || addToGameover) {
 						if (addToGameover) {
-							gameover.insert(gameover.members.indexOf(gameover.boyfriend), obj);
+							var position:Int = gameover.members.indexOf(gameover.boyfriend);
+							if(position < 0) position = 0;
+							gameover.insert(position, obj);
 						} else {
 							instance.insert(0, obj);
 						}

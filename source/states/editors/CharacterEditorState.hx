@@ -105,6 +105,7 @@ class CharacterEditorState extends ScriptedState implements PsychUIEventHandler.
 		Paths.clearUnusedMemory();
 
 		FlxG.sound.music.stop();
+		FlxG.sound.playMusic(Paths.editorMusic('characterEditor'), 1);
 		camEditor = initPsychCamera();
 
 		camHUD = new FlxCamera();

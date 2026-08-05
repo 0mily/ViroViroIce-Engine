@@ -125,6 +125,9 @@ class FunkinLua {
 		set('luaDeprecatedWarnings', true);
 		set('version', MainMenuState.psychEngineVersion.trim());
 		set('modVersion', MainMenuState.modVersion.trim());
+		set('gameOverCharacter', GameOverSubstate.characterName);
+		set('chrMusic', GameOverSubstate.musicCharacterName);
+		set('pauseMusic', PauseSubState.pauseMusicName);
 		
 		set('screenWidth', FlxG.width);
 		set('screenHeight', FlxG.height);
@@ -738,7 +741,9 @@ class FunkinLua {
 		#if HSCRIPT_ALLOWED HScript.implementLocal(this); #end
 		
 		var st:ScriptedSubState = null;
-		if (FlxG.state is ScriptedSubState)
+		if (parentState is ScriptedSubState)
+			st = cast parentState;
+		else if (FlxG.state is ScriptedSubState)
 			st = cast FlxG.state;
 		
 		if (st != null) {
@@ -989,6 +994,56 @@ class FunkinLua {
 		}
 
 		registerMobileRuntimeFunctions();
+
+		registerFunction('changeGameOver', GameOverSubstate.changeGameOver);
+		registerFunction('changeGameOverMusic', GameOverSubstate.setGameOverMusic);
+		registerFunction('gameOverMusic', GameOverSubstate.setGameOverMusic);
+		registerFunction('startGameOver', GameOverSubstate.startGameOver);
+		registerFunction('retrySong', GameOverSubstate.retrySong);
+		registerFunction('changePauseMusic', PauseSubState.changePauseMusic);
+		registerFunction('makeOption', function(tag:String, name:String, order:Int = 0)
+			return PauseSubState.instance != null && PauseSubState.instance.makeOption(tag, name, order));
+		registerFunction('setOptionName', function(tag:String, name:String)
+			return PauseSubState.instance != null && PauseSubState.instance.setOptionName(tag, name));
+		registerFunction('addOption', function(tag:String)
+			return PauseSubState.instance != null && PauseSubState.instance.addOption(tag));
+		registerFunction('removeOption', function(tag:String)
+			return PauseSubState.instance != null && PauseSubState.instance.removeOption(tag));
+		registerFunction('switchCategory', function(name:String)
+			return PauseSubState.instance != null && PauseSubState.instance.switchCategory(name));
+		registerFunction('switchDefault', function()
+			return PauseSubState.instance != null && PauseSubState.instance.switchDefault());
+		registerFunction('openPause', function()
+			return PauseSubState.instance != null && PauseSubState.instance.finishPauseOpen());
+		registerFunction('resume', function()
+			return PauseSubState.instance != null && PauseSubState.instance.resumeGame());
+		registerFunction('resumeNow', function()
+			return PauseSubState.instance != null && PauseSubState.instance.resumeNow());
+		registerFunction('restart', function()
+			return PauseSubState.instance != null && PauseSubState.instance.restartGame());
+		registerFunction('exit', function()
+			return PauseSubState.instance != null && PauseSubState.instance.exitGame());
+		registerFunction('options', function()
+			return PauseSubState.instance != null && PauseSubState.instance.openOptionsMenu());
+		registerFunction('setPauseOptionsCentered', function(value:Bool)
+			return PauseSubState.instance != null && PauseSubState.instance.setOptionsCentered(value));
+		registerFunction('addPauseObject', function(object:Dynamic)
+			return PauseSubState.instance != null && PauseSubState.instance.addPauseObject(object));
+		registerFunction('registerStageObject', function(tag:String)
+		{
+			var obj:Dynamic = LuaUtils.getObjectDirectly(tag);
+			return backend.StageDataController.registerFromScript(obj, PlayState.instance);
+		});
+		registerFunction('unregisterStageObject', function(tag:String)
+		{
+			var obj:Dynamic = LuaUtils.getObjectDirectly(tag);
+			return backend.StageDataController.unregisterFromScript(obj);
+		});
+		registerFunction('refreshStageData', function()
+		{
+			PlayState.instance?.stageData?.refresh();
+			return PlayState.instance?.stageData != null;
+		});
 
 		registerFunction('addNameCropper', function(suffix:String) {
 			if (game.bucetaTira == null)
@@ -2017,6 +2072,7 @@ class FunkinLua {
 				groupObj.remove(obj, true);
 			else
 				LuaUtils.getTargetInstance()?.remove(obj, true);
+			backend.StageDataController.unregisterFromScript(obj);
 			
 			if (destroy) {
 				MusicBeatState.getVariables().remove(tag);

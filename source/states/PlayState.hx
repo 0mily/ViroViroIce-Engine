@@ -1,7 +1,9 @@
 package states;
 
 import backend.Highscore;
+import backend.PsychCamera;
 import backend.StageData;
+import backend.StageDataController;
 import backend.WeekData;
 import backend.Song;
 import backend.Rating;
@@ -160,6 +162,32 @@ class PlayState extends ScriptedState
 	 * Group containing all precached characters the speakers (middle) character will change to (with the Change Character event).
 	*/
 	public var gfGroup:FlxSpriteGroup;
+	/**
+	 * Script-facing controller containing only the current stage's objects.
+	 */
+	public var stageData:StageDataController;
+
+	override public function add(object:FlxBasic):FlxBasic
+	{
+		var added:FlxBasic = super.add(object);
+		registerObjectAddedByScript(object);
+		return added;
+	}
+
+	override public function insert(position:Int, object:FlxBasic):FlxBasic
+	{
+		var added:FlxBasic = super.insert(position, object);
+		registerObjectAddedByScript(object);
+		return added;
+	}
+
+	function registerObjectAddedByScript(object:FlxBasic):Void
+	{
+		if(stageData == null || object == null || isDead)
+			return;
+
+		StageDataController.registerFromCurrentStageScript(object, this);
+	}
 	
 	/**
 	 * The name of the current stage, defined in the song's JSON.
@@ -476,9 +504,11 @@ class PlayState extends ScriptedState
 	@:dox(hide) var cameraMoveTween:FlxTween;
 	@:dox(hide) var cameraZoomTween:FlxTween;
 	static inline final DEFAULT_TWEEN_STEPS:Float = 4;
+	static inline final CAMERA_MOVE_BASE_SPEED:Float = 1;
 	var cameraAngleTweens:Map<FlxCamera, FlxTween> = [];
 	var cameraFocusBaseX:Float = 0;
 	var cameraFocusBaseY:Float = 0;
+	var cameraFocusInitialized:Bool = false;
 	var cameraMoveOffsetX:Float = 0;
 	var cameraMoveOffsetY:Float = 0;
 	var cameraMoveReturning:Bool = false;
@@ -612,7 +642,7 @@ class PlayState extends ScriptedState
 		resolutionLayoutWidth = FlxG.width;
 		resolutionLayoutHeight = FlxG.height;
 
-		PauseSubState.songName = null; //Reset to default
+		PauseSubState.resetVariables();
 		playbackRate = ClientPrefs.getGameplaySetting('songspeed');
 
 		keysArray = [
@@ -666,34 +696,34 @@ class PlayState extends ScriptedState
 
 		curStage = SONG.stage;
 
-		var stageData:StageFile = StageData.getStageFile(curStage);
-		defaultCamZoom = stageData.defaultZoom;
+		var stageFile:StageFile = StageData.getStageFile(curStage);
+		defaultCamZoom = stageFile.defaultZoom;
 
 		stageUI = "normal";
-		if (stageData.stageUI != null && stageData.stageUI.trim().length > 0)
-			stageUI = stageData.stageUI;
-		else if (stageData.isPixelStage == true) //Backward compatibility
+		if (stageFile.stageUI != null && stageFile.stageUI.trim().length > 0)
+			stageUI = stageFile.stageUI;
+		else if (stageFile.isPixelStage == true) //Backward compatibility
 			stageUI = "pixel";
 
-		BF_X = stageData.boyfriend[0];
-		BF_Y = stageData.boyfriend[1];
-		GF_X = stageData.girlfriend[0];
-		GF_Y = stageData.girlfriend[1];
-		DAD_X = stageData.opponent[0];
-		DAD_Y = stageData.opponent[1];
+		BF_X = stageFile.boyfriend[0];
+		BF_Y = stageFile.boyfriend[1];
+		GF_X = stageFile.girlfriend[0];
+		GF_Y = stageFile.girlfriend[1];
+		DAD_X = stageFile.opponent[0];
+		DAD_Y = stageFile.opponent[1];
 
-		if(stageData.camera_speed != null)
-			cameraSpeed = stageData.camera_speed;
+		if(stageFile.camera_speed != null)
+			cameraSpeed = stageFile.camera_speed;
 
-		boyfriendCameraOffset = stageData.camera_boyfriend;
+		boyfriendCameraOffset = stageFile.camera_boyfriend;
 		if(boyfriendCameraOffset == null) //Fucks sake should have done it since the start :rolling_eyes:
 			boyfriendCameraOffset = [0, 0];
 
-		opponentCameraOffset = stageData.camera_opponent;
+		opponentCameraOffset = stageFile.camera_opponent;
 		if(opponentCameraOffset == null)
 			opponentCameraOffset = [0, 0];
 
-		girlfriendCameraOffset = stageData.camera_girlfriend;
+		girlfriendCameraOffset = stageFile.camera_girlfriend;
 		if(girlfriendCameraOffset == null)
 			girlfriendCameraOffset = [0, 0];
 		loadCameraMoveData();
@@ -701,6 +731,7 @@ class PlayState extends ScriptedState
 		boyfriendGroup = new FlxSpriteGroup(BF_X, BF_Y);
 		dadGroup = new FlxSpriteGroup(DAD_X, DAD_Y);
 		gfGroup = new FlxSpriteGroup(GF_X, GF_Y);
+		stageData = new StageDataController(this);
 
 		switch (curStage) {
 			case 'stage': new StageWeek1(); 						//Week 1
@@ -720,7 +751,7 @@ class PlayState extends ScriptedState
 		}
 		if(isPixelStage) introSoundsSuffix = '-pixel';
 
-		if (!stageData.hide_girlfriend) {
+		if (!stageFile.hide_girlfriend) {
 			if(SONG.gfVersion == null || SONG.gfVersion.length < 1) SONG.gfVersion = 'gf'; //Fix for the Chart Editor
 			gf = new Character(0, 0, SONG.gfVersion);
 			startCharacterPos(gf);
@@ -736,11 +767,13 @@ class PlayState extends ScriptedState
 		startCharacterPos(boyfriend);
 		boyfriendGroup.add(boyfriend);
 		
-		if(stageData.objects != null && stageData.objects.length > 0) {
-			var list:Map<String, FlxSprite> = StageData.addObjectsToState(stageData.objects, !stageData.hide_girlfriend ? gfGroup : null, dadGroup, boyfriendGroup, this);
+		if(stageFile.objects != null && stageFile.objects.length > 0) {
+			var list:Map<String, FlxSprite> = StageData.addObjectsToState(stageFile.objects, !stageFile.hide_girlfriend ? gfGroup : null, dadGroup, boyfriendGroup, this);
 			for (key => spr in list)
-				if(!StageData.reservedNames.contains(key))
+				if(!StageData.reservedNames.contains(key)) {
 					variables.set(key, spr);
+					stageData.register(spr);
+				}
 		}
 		else {
 			add(gfGroup);
@@ -757,6 +790,7 @@ class PlayState extends ScriptedState
 		setVar('camHUD', camHUD);
 		setVar('camOther', camOther);
 		setVar('camPause', camOther);
+		setVar('stageData', stageData);
 
 		backend.CameraResizeFix.aplyAll();
 		
@@ -878,7 +912,7 @@ class PlayState extends ScriptedState
 		FlxG.camera.snapToTarget();
 
 		FlxG.worldBounds.set(0, 0, FlxG.width, FlxG.height);
-		moveCameraSection();
+		moveCameraSection(0);
 
 		healthBar = new Bar(0, FlxG.height * (!ClientPrefs.data.downScroll ? 0.89 : 0.11), 'healthBar', function() return health, 0, 2);
 		healthBar.screenCenter(X);
@@ -1009,8 +1043,8 @@ class PlayState extends ScriptedState
 		FlxG.stage.addEventListener(KeyboardEvent.KEY_DOWN, onKeyPress);
 		FlxG.stage.addEventListener(KeyboardEvent.KEY_UP, onKeyRelease);
 		
-		if (PauseSubState.songName != null)
-			Paths.pauseMusic(PauseSubState.songName, boyfriend?.curCharacter, stageUI);
+		if (PauseSubState.pauseMusicName != null)
+			Paths.pauseMusic(PauseSubState.pauseMusicName, boyfriend?.curCharacter, stageUI);
 		else if(Paths.formatToSongPath(ClientPrefs.data.pauseMusic) != 'none')
 			Paths.pauseMusic(ClientPrefs.data.pauseMusic, boyfriend?.curCharacter, stageUI);
 		
@@ -1103,6 +1137,9 @@ class PlayState extends ScriptedState
 		lua.set('totalPlayed', totalPlayed);
 		lua.set('totalNotesHit', totalNotesHit);
 		lua.set('inGameOver', false);
+		lua.set('stageData', stageData);
+		lua.set('blockPause', blockPause);
+		lua.set('blockGameOver', blockGameOver);
 		
 		var curSection:SwagSection = SONG.notes[curSection];
 		lua.set('mustHitSection', curSection != null ? (curSection.mustHitSection == true) : false);
@@ -3777,6 +3814,14 @@ class PlayState extends ScriptedState
 	*/
 	public var canPause:Bool = true;
 	/**
+	 * Blocks the Pause key without disabling scripted PauseSubState usage.
+	 */
+	public var blockPause:Bool = false;
+	/**
+	 * Prevents health/reset checks from opening Game Over.
+	 */
+	public var blockGameOver:Bool = false;
+	/**
 	 * Whether or not the camera should be frozen.
 	*/
 	public var freezeCamera:Bool = false;
@@ -3784,6 +3829,12 @@ class PlayState extends ScriptedState
 	 * Whether or not the player can use the Debug keys to go to the Chart or Character editors.
 	*/
 	public var allowDebugKeys:Bool = true;
+	var pauseOpening:Bool = false;
+
+	override public function prepareMembersDraw():Void
+	{
+		stageData?.refresh();
+	}
 
 	override public function update(elapsed:Float)
 	{
@@ -3809,12 +3860,9 @@ class PlayState extends ScriptedState
 			botplayTxt.alpha = 1 - Math.sin((Math.PI * botplaySine) / 180);
 		}
 
-		if (controls.PAUSE && startedCountdown && canPause)
+		if (controls.PAUSE && startedCountdown && canPause && !blockPause)
 		{
-			var ret:Dynamic = callOnScripts('onPause', null, true);
-			if(ret != LuaUtils.Function_Stop) {
-				openPauseMenu();
-			}
+			openPauseMenu();
 		}
 
 		if(!endingSong && !inCutscene && allowDebugKeys)
@@ -3840,6 +3888,13 @@ class PlayState extends ScriptedState
 					Conductor.songPosition = Conductor.songPosition + 1000 * FlxMath.signOf(timeDiff);
 			}
 		}
+
+		// Some audio backends can reach EOF without dispatching FlxSound.onComplete
+		// Do not leave gameplay running forever with a stopped instrumental
+		if(generatedMusic && !startingSong && !endingSong && !paused && updateTime && finishTimer == null
+			&& FlxG.sound.music != null && !FlxG.sound.music.playing && songLength > 0
+			&& (FlxG.sound.music.time >= FlxG.sound.music.length - 2 || Conductor.songPosition >= songLength - 2))
+			finishSong();
 
 		if (startingSong)
 		{
@@ -4052,6 +4107,22 @@ class PlayState extends ScriptedState
 	*/
 	function openPauseMenu()
 	{
+		if(pauseOpening || paused)
+			return;
+		pauseOpening = true;
+		if(!PauseSubState.requestOpen(this))
+			pauseOpening = false;
+	}
+
+	/**
+	 *Called by PauseSubState after its optional onLoadPre transition.
+	*/
+	public function finishPauseOpen(pauseSubstate:PauseSubState):Bool
+	{
+		if(pauseSubstate == null || paused || isDead)
+			return false;
+
+		pauseOpening = false;
 		FlxG.camera.followLerp = 0;
 		persistentUpdate = false;
 		persistentDraw = true;
@@ -4066,11 +4137,12 @@ class PlayState extends ScriptedState
 					note.resetAnim = 0;
 				}
 		}
-		openSubState(new PauseSubState());
+		openSubState(pauseSubstate);
 
 		#if DISCORD_ALLOWED
 		if(autoUpdateRPC) DiscordClient.changePresence(detailsPausedText, SONG.song + " (" + storyDifficultyText + ")", iconP2.getCharacter());
 		#end
+		return true;
 	}
 
 	/**
@@ -4126,61 +4198,66 @@ class PlayState extends ScriptedState
 	public var isDead:Bool = false; //Don't mess with this on Lua!!!
 	@:dox(hide) var gameOverTimer:FlxTimer;
 	function doDeathCheck(?skipHealthCheck:Bool = false) {
+		if(blockGameOver)
+			return false;
+
 		if (((skipHealthCheck && instakillOnMiss) || health <= 0) && !practiceMode && !isDead && gameOverTimer == null)
 		{
-			stagesFunc((stage:BaseStage) -> stage.onGameOver());
-			var ret:Dynamic = callOnScripts('onGameOver', null, true);
-			if(ret != LuaUtils.Function_Stop)
+			FlxG.animationTimeScale = 1;
+			boyfriend.stunned = true;
+			deathCounter++;
+
+			paused = true;
+			canResync = false;
+			canPause = false;
+			isDead = true;
+			#if VIDEOS_ALLOWED
+			if(videoCutscene != null)
 			{
-				FlxG.animationTimeScale = 1;
-				boyfriend.stunned = true;
-				deathCounter++;
+				videoCutscene.destroy();
+				videoCutscene = null;
+			}
+			#end
 
-				paused = true;
-				canResync = false;
-				canPause = false;
-				#if VIDEOS_ALLOWED
-				if(videoCutscene != null)
+			persistentUpdate = false;
+			persistentDraw = true;
+
+			var openGameOver = function():Void
+			{
+				vocals?.stop();
+				opponentVocals?.stop();
+				FlxG.sound.music?.stop();
+
+				var gameOver:GameOverSubstate = new GameOverSubstate(boyfriend);
+				openSubState(gameOver);
+				if(gameOver.defaultGameOverEnabled)
 				{
-					videoCutscene.destroy();
-					videoCutscene = null;
-				}
-				#end
-
-				persistentUpdate = false;
-				persistentDraw = false;
-				FlxTimer.globalManager.clear();
-				FlxTween.globalManager.clear();
-				FlxG.camera.filters = [];
-
-				if(GameOverSubstate.deathDelay > 0)
-				{
-					gameOverTimer = new FlxTimer().start(GameOverSubstate.deathDelay, function(_)
-					{
-						vocals.stop();
-						opponentVocals.stop();
-						FlxG.sound.music.stop();
-						openSubState(new GameOverSubstate(boyfriend));
-						gameOverTimer = null;
-					});
+					persistentDraw = false;
+					FlxTimer.globalManager.clear();
+					FlxTween.globalManager.clear();
+					FlxG.camera.filters = [];
 				}
 				else
+					persistentDraw = true;
+			};
+
+			if(GameOverSubstate.deathDelay > 0)
+			{
+				gameOverTimer = new FlxTimer().start(GameOverSubstate.deathDelay, function(_)
 				{
-					vocals.stop();
-					opponentVocals.stop();
-					FlxG.sound.music.stop();
-					openSubState(new GameOverSubstate(boyfriend));
-				}
-
-				// MusicBeatState.switchState(new GameOverState(boyfriend.getScreenPosition().x, boyfriend.getScreenPosition().y));
-
-				#if DISCORD_ALLOWED
-				// Game Over doesn't get his its variable because it's only used here
-				if(autoUpdateRPC) DiscordClient.changePresence("Game Over - " + detailsText, SONG.song + " (" + storyDifficultyText + ")", iconP2.getCharacter());
-				#end
-				isDead = true;
-				return true;
+					gameOverTimer = null;
+					openGameOver();
+				});
 			}
+			else
+			{
+				openGameOver();
+			}
+
+			#if DISCORD_ALLOWED
+			if(autoUpdateRPC) DiscordClient.changePresence("Game Over - " + detailsText, SONG.song + " (" + storyDifficultyText + ")", iconP2.getCharacter());
+			#end
+			return true;
 		}
 		return false;
 	}
@@ -4611,18 +4688,14 @@ class PlayState extends ScriptedState
 					if(flValue1 != null || flValue2 != null)
 					{
 						isCameraOnForcedPos = true;
-						if(cameraMoveTween != null)
-						{
-							cameraMoveTween.cancel();
-							cameraMoveTween = null;
-						}
-						cameraMoveOffsetX = 0;
-						cameraMoveOffsetY = 0;
-						cameraMoveReturning = false;
+						clearCameraMoveOffset();
 						if(flValue1 == null) flValue1 = 0;
 						if(flValue2 == null) flValue2 = 0;
 						camFollow.x = flValue1;
 						camFollow.y = flValue2;
+						cameraFocusBaseX = camFollow.x;
+						cameraFocusBaseY = camFollow.y;
+						cameraFocusInitialized = true;
 					}
 				}
 
@@ -5277,8 +5350,9 @@ class PlayState extends ScriptedState
 	}
 
 	public function moveCameraSection(?sec:Null<Int>):Void {
+		if(SONG == null || SONG.notes == null || SONG.notes.length < 1) return;
 		if (sec == null) sec = curSection;
-		if (sec < 0) sec = 0;
+		sec = Std.int(FlxMath.bound(sec, 0, SONG.notes.length - 1));
 
 		if (SONG.notes[sec] == null) return;
 
@@ -5327,6 +5401,7 @@ class PlayState extends ScriptedState
 
 		var character:String = normalizeCameraTarget(target);
 		var focusChanged:Bool = (character != cameraFocus);
+		var firstFocus:Bool = !cameraFocusInitialized;
 		var point:FlxPoint = getCameraFocusPoint(character, x, y);
 		if(point == null) return;
 
@@ -5335,49 +5410,41 @@ class PlayState extends ScriptedState
 			cameraFocusTween.cancel();
 			cameraFocusTween = null;
 		}
-		if(focusChanged && cameraMoveTween != null)
-		{
-			cameraMoveTween.cancel();
-			cameraMoveTween = null;
-		}
-
 		var startX:Float = camFollow.x;
 		var startY:Float = camFollow.y;
 
 		cameraFocus = character;
 		cameraFocusOffsetX = x;
 		cameraFocusOffsetY = y;
-		if(focusChanged)
-		{
-			cameraMoveOffsetX = 0;
-			cameraMoveOffsetY = 0;
-			cameraMoveReturning = false;
-		}
+		if(firstFocus)
+			clearCameraMoveOffset();
+		else if(focusChanged && (cameraMoveTween != null || cameraMoveOffsetX != 0 || cameraMoveOffsetY != 0))
+			setCameraMoveTarget(0, 0);
 		isCameraOnForcedPos = false;
 		setOnScripts('cameraFocus', character);
 		setOnScripts('cameraFocusOffsetX', x);
 		setOnScripts('cameraFocusOffsetY', y);
 
-		camFollow.setPosition(point.x, point.y);
+		cameraFocusBaseX = point.x;
+		cameraFocusBaseY = point.y;
 		point.put();
+		cameraFocusInitialized = true;
 
 		stagesFunc((stage:BaseStage) -> stage.onMoveCamera(character));
 		callOnScripts('onMoveCamera', [character]);
 
-		cameraFocusBaseX = camFollow.x;
-		cameraFocusBaseY = camFollow.y;
-		var targetX:Float = cameraFocusBaseX + cameraMoveOffsetX;
-		var targetY:Float = cameraFocusBaseY + cameraMoveOffsetY;
 		var easeMode:String = normalizeCameraEase(ease);
+		if(firstFocus)
+			easeMode = 'instant';
 
 		switch(easeMode)
 		{
 			case 'instant':
-				camFollow.setPosition(targetX, targetY);
+				camFollow.setPosition(cameraFocusBaseX, cameraFocusBaseY);
 				FlxG.camera.snapToTarget();
 
 			case 'classic':
-				camFollow.setPosition(targetX, targetY);
+				camFollow.setPosition(cameraFocusBaseX, cameraFocusBaseY);
 				if(cameraSpeed <= 0)
 					FlxG.camera.snapToTarget();
 
@@ -5387,13 +5454,12 @@ class PlayState extends ScriptedState
 
 				camFollow.setPosition(startX, startY);
 				FlxG.camera.snapToTarget();
-				cameraFocusTween = FlxTween.tween(camFollow, {x: targetX, y: targetY}, (steps * Conductor.stepCrochet / 1000) / playbackRate, {
+				cameraFocusTween = FlxTween.tween(camFollow, {x: cameraFocusBaseX, y: cameraFocusBaseY}, (steps * Conductor.stepCrochet / 1000) / playbackRate, {
 					ease: getCameraZoomEase(easeMode),
 					onUpdate: (_) -> FlxG.camera.snapToTarget(),
 					onComplete: (_) ->
 					{
 						cameraFocusTween = null;
-						refreshCameraMovePosition();
 						FlxG.camera.snapToTarget();
 					}
 				});
@@ -5516,13 +5582,32 @@ class PlayState extends ScriptedState
 
 	function getCameraMoveDuration():Float
 	{
-		if(cameraMoveSpeed <= 0) return 0;
-		return (Conductor.stepCrochet / 1000) / cameraMoveSpeed / playbackRate;
+		var speed:Float = CAMERA_MOVE_BASE_SPEED * cameraMoveSpeed;
+		if(speed <= 0 || playbackRate <= 0) return 0;
+		return 1 / speed / playbackRate;
+	}
+
+	function clearCameraMoveOffset():Void
+	{
+		if(cameraMoveTween != null)
+		{
+			cameraMoveTween.cancel();
+			cameraMoveTween = null;
+		}
+		cameraMoveOffsetX = 0;
+		cameraMoveOffsetY = 0;
+		cameraMoveReturning = false;
+		refreshCameraMovePosition();
 	}
 
 	function setCameraMoveTarget(x:Float, y:Float):Void
 	{
 		if(camFollow == null) return;
+		if(cameraMoveTween == null && cameraMoveOffsetX == x && cameraMoveOffsetY == y)
+		{
+			cameraMoveReturning = false;
+			return;
+		}
 		if(cameraMoveTween != null)
 		{
 			cameraMoveTween.cancel();
@@ -5556,9 +5641,16 @@ class PlayState extends ScriptedState
 
 	function refreshCameraMovePosition():Void
 	{
-		if(camFollow == null || isCameraOnForcedPos) return;
-		if(cameraFocusTween != null) return;
-		camFollow.setPosition(cameraFocusBaseX + cameraMoveOffsetX, cameraFocusBaseY + cameraMoveOffsetY);
+		if(camGame == null) return;
+		var offsetX:Float = (!cameraMoveEnabled || isCameraOnForcedPos) ? 0 : cameraMoveOffsetX;
+		var offsetY:Float = (!cameraMoveEnabled || isCameraOnForcedPos) ? 0 : cameraMoveOffsetY;
+		if(Std.isOfType(camGame, PsychCamera))
+		{
+			var psychCamera:PsychCamera = cast camGame;
+			psychCamera.setFollowViewOffset(offsetX, offsetY, cameraMoveSpeed * playbackRate);
+		}
+		else
+			camGame.targetOffset.set(offsetX, offsetY);
 	}
 
 	function applyCameraMove(note:Note, character:Character):Void

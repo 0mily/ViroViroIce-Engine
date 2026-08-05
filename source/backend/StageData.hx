@@ -115,6 +115,126 @@ class StageData {
 	}
 
 	public static var reservedNames:Array<String> = ['gf', 'gfGroup', 'dad', 'dadGroup', 'boyfriend', 'boyfriendGroup']; //blocks these names from being used on stage editor's name input text
+	public static function characterObjectRole(type:String):String
+	{
+		return switch(type)
+		{
+			case 'gf', 'gfGroup': 'gf';
+			case 'dad', 'dadGroup': 'dad';
+			case 'boyfriend', 'boyfriendGroup': 'boyfriend';
+			default: null;
+		}
+	}
+
+	public static function isCharacterObjectType(type:String):Bool
+		return characterObjectRole(type) != null;
+
+	public static function applyBasicObjectData(data:Dynamic, spr:FlxSprite):Void
+	{
+		if(data == null || spr == null)
+			return;
+
+		var scale:Array<Dynamic> = Reflect.field(data, 'scale');
+		if(scale != null && scale.length > 1)
+		{
+			var scaleX:Float = Std.parseFloat(Std.string(scale[0]));
+			var scaleY:Float = Std.parseFloat(Std.string(scale[1]));
+			if(!Math.isNaN(scaleX) && !Math.isNaN(scaleY))
+			{
+				// A Character is used instead of its group inside the Stage Editorr
+				if(Std.isOfType(spr, objects.Character) && scaleX == 1 && scaleY == 1)
+				{
+					var character:objects.Character = cast spr;
+					character.scale.set(character.jsonScale, character.jsonScale);
+					character.updateCharacterHitbox();
+				}
+				else
+				{
+					spr.scale.set(scaleX, scaleY);
+					updateBasicObjectHitbox(spr);
+				}
+			}
+		}
+
+		var scroll:Array<Dynamic> = Reflect.field(data, 'scroll');
+		if(scroll != null && scroll.length > 1)
+		{
+			var scrollX:Float = Std.parseFloat(Std.string(scroll[0]));
+			var scrollY:Float = Std.parseFloat(Std.string(scroll[1]));
+			if(!Math.isNaN(scrollX) && !Math.isNaN(scrollY))
+				spr.scrollFactor.set(scrollX, scrollY);
+		}
+
+		var color:Dynamic = Reflect.field(data, 'color');
+		if(color != null)
+			spr.color = CoolUtil.colorFromString(Std.string(color));
+
+		for(varName in ['alpha', 'angle'])
+		{
+			var value:Dynamic = Reflect.field(data, varName);
+			if(value != null)
+				Reflect.setProperty(spr, varName, value);
+		}
+
+		for(varName in ['flipX', 'flipY'])
+		{
+			var value:Dynamic = Reflect.field(data, varName);
+			if(value != null)
+			{
+				if(Std.isOfType(spr, objects.Character) && value == false)
+				{
+					var character:objects.Character = cast spr;
+					Reflect.setProperty(character, varName, varName == 'flipX' ? (character.originalFlipX != character.isPlayer) : false);
+				}
+				else
+					Reflect.setProperty(spr, varName, value);
+			}
+		}
+
+		var antialiasing:Dynamic = Reflect.field(data, 'antialiasing');
+		if(antialiasing != null)
+		{
+			if(Std.isOfType(spr, objects.Character) && antialiasing == true)
+			{
+				var character:objects.Character = cast spr;
+				character.antialiasing = ClientPrefs.data.antialiasing && !character.noAntialiasing;
+			}
+			else
+			{
+				var newAntialiasing:Bool = antialiasing == true && ClientPrefs.data.antialiasing;
+				var changed:Bool = spr.antialiasing != newAntialiasing;
+				spr.antialiasing = newAntialiasing;
+				if(changed && Std.isOfType(spr, FlxSpriteGroup))
+				{
+					var spriteGroup:FlxSpriteGroup = cast spr;
+					for(member in spriteGroup.members)
+						if(member != null)
+							member.antialiasing = spr.antialiasing;
+				}
+			}
+		}
+	}
+
+	static function updateBasicObjectHitbox(spr:FlxSprite):Void
+	{
+		if(Std.isOfType(spr, FlxSpriteGroup))
+		{
+			var spriteGroup:FlxSpriteGroup = cast spr;
+			for(member in spriteGroup.members)
+				if(member != null)
+				{
+					if(Std.isOfType(member, objects.Character))
+						cast(member, objects.Character).updateCharacterHitbox();
+					else
+						member.updateHitbox();
+				}
+		}
+		else if(Std.isOfType(spr, objects.Character))
+			cast(spr, objects.Character).updateCharacterHitbox();
+		else
+			spr.updateHitbox();
+	}
+
 	public static function addObjectsToState(objectList:Array<Dynamic>, gf:FlxSprite, dad:FlxSprite, boyfriend:FlxSprite, ?group:Dynamic = null, ?ignoreFilters:Bool = false)
 	{
 		var addedObjects:Map<String, FlxSprite> = [];
@@ -128,6 +248,7 @@ class StageData {
 					if(gf != null)
 					{
 						gf.ID = num; 
+						applyBasicObjectData(data, gf);
 						if (group != null) group.add(gf);
 						addedObjects.set('gf', gf);
 					}
@@ -135,6 +256,7 @@ class StageData {
 					if(dad != null)
 					{
 						dad.ID = num;
+						applyBasicObjectData(data, dad);
 						if (group != null) group.add(dad);
 						addedObjects.set('dad', dad);
 					}
@@ -142,6 +264,7 @@ class StageData {
 					if(boyfriend != null)
 					{
 						boyfriend.ID = num;
+						applyBasicObjectData(data, boyfriend);
 						if (group != null) group.add(boyfriend);
 						addedObjects.set('boyfriend', boyfriend);
 					}

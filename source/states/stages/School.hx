@@ -13,10 +13,10 @@ class School extends BaseStage
 	override function create()
 	{
 		var _song = PlayState.SONG;
-		if(_song.gameOverSound == null || _song.gameOverSound.trim().length < 1) GameOverSubstate.deathSoundName = 'fnf_loss_sfx';
-		if(_song.gameOverLoop == null || _song.gameOverLoop.trim().length < 1) GameOverSubstate.loopSoundName = 'music';
-		if(_song.gameOverEnd == null || _song.gameOverEnd.trim().length < 1) GameOverSubstate.endSoundName = 'music-end';
-		if(_song.gameOverChar == null || _song.gameOverChar.trim().length < 1) GameOverSubstate.characterName = 'bf-pixel-dead';
+		GameOverSubstate.deathSoundName = 'fnf_loss_sfx';
+		GameOverSubstate.loopSoundName = 'music';
+		GameOverSubstate.endSoundName = 'music-end';
+		GameOverSubstate.characterName = 'bf-pixel-dead';
 
 		var bgSky:BGSprite = new BGSprite('weeb/weebSky', 0, 0, 0.1, 0.1);
 		add(bgSky);

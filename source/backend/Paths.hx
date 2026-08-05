@@ -335,10 +335,12 @@ class Paths
 		var character:String = normalizeGameOverAudioCharacter(characterName);
 		var ui:String = normalizeAudioVariant(uiName, null);
 
-		var folders:Array<String> = [];
+		var folders:Array<String> = ['music/game/gameover/scripts'];
 		for(root in gameOverMusicRoots())
 		{
-			for(folder in audioCharacterScriptFolders(root, character, ui, modsAllowed))
+			var characterFolders:Array<String> = audioCharacterScriptFolders(root, character, ui, modsAllowed);
+			characterFolders.reverse();
+			for(folder in characterFolders)
 				addUniqueString(folders, folder);
 		}
 		return folders;
@@ -349,7 +351,13 @@ class Paths
 		var musicName:String = formatToSongPath(normalizePathPart(pauseMusicName, 'breakfast'));
 		var character:String = normalizeAudioCharacter(characterName);
 		var ui:String = normalizeAudioVariant(uiName, null);
-		return audioCharacterScriptFolders('music/game/pause/$musicName', character, ui, modsAllowed);
+		var root:String = 'music/game/pause/$musicName';
+		var folders:Array<String> = ['music/game/pause/scripts', '$root/scripts'];
+		var characterFolders:Array<String> = audioCharacterScriptFolders(root, character, ui, modsAllowed);
+		characterFolders.reverse();
+		for(folder in characterFolders)
+			addUniqueString(folders, folder);
+		return folders;
 	}
 
 	inline static public function inst(song:String, ?modsAllowed:Bool = true):Sound
@@ -630,7 +638,7 @@ class Paths
 
 	static function gameOverMusicRoots():Array<String>
 	{
-		return ['music/game/gameover', 'music/gameover'];
+		return ['music/game/gameover'];
 	}
 
 	static function gameOverTrackCandidates(track:String):Array<String>

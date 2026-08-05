@@ -21,11 +21,6 @@ typedef SwagSong =
 	var stage:String;
 	var format:String;
 
-	@:optional var gameOverChar:String;
-	@:optional var gameOverSound:String;
-	@:optional var gameOverLoop:String;
-	@:optional var gameOverEnd:String;
-	
 	@:optional var disableNoteRGB:Bool;
 
 	@:optional var arrowSkin:String;
@@ -67,10 +62,6 @@ class Song
 	public var arrowSkin:String;
 	public var splashSkin:String;
 	public var holdSplashSkin:String;
-	public var gameOverChar:String;
-	public var gameOverSound:String;
-	public var gameOverLoop:String;
-	public var gameOverEnd:String;
 	public var disableNoteRGB:Bool = false;
 	public var speed:Float = 1;
 	public var stage:String;
@@ -82,6 +73,10 @@ class Song
 
 	public static function convert(songJson:Dynamic) // converte chart irado
 	{
+		for(legacyGameOverField in ['gameOverChar', 'gameOverSound', 'gameOverLoop', 'gameOverEnd'])
+			if(Reflect.hasField(songJson, legacyGameOverField))
+				Reflect.deleteField(songJson, legacyGameOverField);
+
 		if(songJson.gfVersion == null)
 		{
 			songJson.gfVersion = songJson.player3;

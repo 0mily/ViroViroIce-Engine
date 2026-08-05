@@ -552,11 +552,11 @@ class StageEditorState extends MusicBeatState implements PsychUIEventHandler.Psy
 
 			switch(spr.type)
 			{
-				case 'gf':
+				case 'gf', 'gfGroup':
 					nameList.push('- Girlfriend -');
-				case 'boyfriend':
+				case 'boyfriend', 'boyfriendGroup':
 					nameList.push('- Boyfriend -');
-				case 'dad':
+				case 'dad', 'dadGroup':
 					nameList.push('- Opponent -');
 				default:
 					nameList.push(spr.name);
@@ -772,8 +772,10 @@ class StageEditorState extends MusicBeatState implements PsychUIEventHandler.Psy
 	var flipYCheckBox:PsychUICheckBox;
 	var lowQualityCheckbox:PsychUICheckBox;
 	var highQualityCheckbox:PsychUICheckBox;
+	var objectImageButton:PsychUIButton;
+	var objectAnimationsButton:PsychUIButton;
 
-	function getSelected(blockReserved:Bool = true)
+	function getSelected(blockReserved:Bool = false)
 	{
 		var selected:Int = spriteListRadioGroup.checked;
 		if(selected >= 0)
@@ -797,7 +799,7 @@ class StageEditorState extends MusicBeatState implements PsychUIEventHandler.Psy
 		nameInputText.onChange = function(old:String, cur:String) {
 			// change name
 			var selected = getSelected();
-			if(selected != null)
+			if(selected != null && !selected.characterObject)
 			{
 				var changedName:String = nameInputText.text;
 				if(changedName.length < 1)
@@ -831,14 +833,17 @@ class StageEditorState extends MusicBeatState implements PsychUIEventHandler.Psy
 
 		objY += 35;
 		imgTxt = new FlxText(objX, objY - 15, 200, 'Image: ', 8);
-		var imgButton:PsychUIButton = new PsychUIButton(objX, objY, 'Change Image', function() {
+		objectImageButton = new PsychUIButton(objX, objY, 'Change Image', function() {
+			var selected = getSelected();
+			if(selected == null || selected.characterObject)
+				return;
 			trace('attempt to load image');
 			loadImage();
 		});
-		tab_group.add(imgButton);
+		tab_group.add(objectImageButton);
 		tab_group.add(imgTxt);
 		
-		var animationsButton:PsychUIButton = new PsychUIButton(objX + 90, objY, 'Animations', function() {
+		objectAnimationsButton = new PsychUIButton(objX + 90, objY, 'Animations', function() {
 			var selected = getSelected();
 			if(selected == null)
 				return;
@@ -855,7 +860,7 @@ class StageEditorState extends MusicBeatState implements PsychUIEventHandler.Psy
 			unsavedProgress = true;
 			openSubState(animationEditor);
 		});
-		tab_group.add(animationsButton);
+		tab_group.add(objectAnimationsButton);
 		
 		objY += 45;
 		tab_group.add(new FlxText(objX, objY - 18, 80, 'Color:'));
@@ -1057,6 +1062,7 @@ class StageEditorState extends MusicBeatState implements PsychUIEventHandler.Psy
 			if(selected == null || selected.length < 1) return;
 			dad.changeCharacter(selected);
 			setMetaData('dad', selected);
+			refreshCharacterObjectPreview('dad', dad);
 			repositionDad();
 		});
 		oppDropdown.selectedLabel = dad.curCharacter;
@@ -1067,6 +1073,7 @@ class StageEditorState extends MusicBeatState implements PsychUIEventHandler.Psy
 			if(selected == null || selected.length < 1) return;
 			gf.changeCharacter(selected);
 			setMetaData('gf', selected);
+			refreshCharacterObjectPreview('gf', gf);
 			repositionGirlfriend();
 		});
 		gfDropdown.selectedLabel = gf.curCharacter;
@@ -1077,6 +1084,7 @@ class StageEditorState extends MusicBeatState implements PsychUIEventHandler.Psy
 			if(selected == null || selected.length < 1) return;
 			boyfriend.changeCharacter(selected);
 			setMetaData('boyfriend', selected);
+			refreshCharacterObjectPreview('boyfriend', boyfriend);
 			repositionBoyfriend();
 		});
 		plDropdown.selectedLabel = boyfriend.curCharacter;
@@ -1205,9 +1213,9 @@ class StageEditorState extends MusicBeatState implements PsychUIEventHandler.Psy
 		var displayX:Float = Math.round(selected.x);
 		var displayY:Float = Math.round(selected.y);
 		
-		var char:Character = cast selected.sprite;
-		if(char != null)
+		if(selected.characterObject && Std.isOfType(selected.sprite, Character))
 		{
+			var char:Character = cast selected.sprite;
 			displayX -= char.positionArray[0];
 			displayY -= char.positionArray[1];
 		}
@@ -1217,11 +1225,19 @@ class StageEditorState extends MusicBeatState implements PsychUIEventHandler.Psy
 
 		var selected = getSelected();
 		if(selected == null) return;
+		var isCharacter:Bool = selected.characterObject;
 
 		// Texts/Input Texts
 		colorInputText.text = selected.color;
-		nameInputText.text = selected.name;
-		imgTxt.text = 'Image: ' + selected.image;
+		nameInputText.text = isCharacter ? StageData.characterObjectRole(selected.type) : selected.name;
+		imgTxt.text = isCharacter ? 'Character: ${cast(selected.sprite, Character).curCharacter}' : 'Image: ' + selected.image;
+		nameInputText.active = !isCharacter;
+		objectImageButton.active = !isCharacter;
+		objectAnimationsButton.active = !isCharacter;
+		lowQualityCheckbox.active = !isCharacter;
+		highQualityCheckbox.active = !isCharacter;
+		nameInputText.alpha = objectImageButton.alpha = objectAnimationsButton.alpha = isCharacter ? 0.5 : 1;
+		lowQualityCheckbox.alpha = highQualityCheckbox.alpha = isCharacter ? 0.5 : 1;
 
 		// Steppers
 		if (selected.type != 'square')
@@ -1261,6 +1277,9 @@ class StageEditorState extends MusicBeatState implements PsychUIEventHandler.Psy
 			dad.changeCharacter(stageJson._editorMeta.dad);
 			boyfriend.changeCharacter(stageJson._editorMeta.boyfriend);
 		}
+		refreshCharacterObjectPreview('gf', gf);
+		refreshCharacterObjectPreview('dad', dad);
+		refreshCharacterObjectPreview('boyfriend', boyfriend);
 		repositionGirlfriend();
 		repositionDad();
 		repositionBoyfriend();
@@ -1273,6 +1292,29 @@ class StageEditorState extends MusicBeatState implements PsychUIEventHandler.Psy
 		oppDropdown.selectedLabel = dad.curCharacter;
 		gfDropdown.selectedLabel = gf.curCharacter;
 		plDropdown.selectedLabel = boyfriend.curCharacter;
+	}
+
+	function refreshCharacterObjectPreview(role:String, character:Character):Void
+	{
+		if(character == null)
+			return;
+
+		character.alpha = 1;
+		character.angle = 0;
+		character.color = FlxColor.WHITE;
+		character.flipX = character.originalFlipX != character.isPlayer;
+		character.flipY = false;
+		character.antialiasing = ClientPrefs.data.antialiasing && !character.noAntialiasing;
+		character.scale.set(character.jsonScale, character.jsonScale);
+		character.updateCharacterHitbox();
+		character.scrollFactor.set(role == 'gf' ? 0.95 : 1, role == 'gf' ? 0.95 : 1);
+
+		for(meta in stageSprites)
+			if(meta != null && StageData.characterObjectRole(meta.type) == role)
+			{
+				StageData.applyBasicObjectData(meta.formatToJson(), character);
+				return;
+			}
 	}
 	
 	function reloadStageDropDown()
@@ -1296,17 +1338,8 @@ class StageEditorState extends MusicBeatState implements PsychUIEventHandler.Psy
 
 	function checkUIOnObject()
 	{
-		if(UI_box.selectedName == 'Object')
-		{
-			var selected:Int = spriteListRadioGroup.checked;
-			if(selected >= 0)
-			{
-				var spr = stageSprites[spriteListRadioGroup.labels.length - selected - 1];
-				if(spr != null && StageData.reservedNames.contains(spr.type))
-					UI_box.selectedName = 'Data';
-			}
-			else UI_box.selectedName = 'Data';
-		}
+		if(UI_box.selectedName == 'Object' && getSelected(false) == null)
+			UI_box.selectedName = 'Data';
 	}
 
 	public function UIEvent(id:String, sender:Dynamic)
@@ -1456,7 +1489,7 @@ class StageEditorState extends MusicBeatState implements PsychUIEventHandler.Psy
 				spr.x = displayX = Math.round(spr.x + moveX);
 				spr.y = displayY = Math.round(spr.y + moveY);
 				var char:Character = cast spr.sprite;
-				switch(spr.type)
+				switch(StageData.characterObjectRole(spr.type))
 				{
 					case 'boyfriend':
 						stageJson.boyfriend[0] = displayX = spr.x - char.positionArray[0];
@@ -1830,6 +1863,9 @@ class StageEditorState extends MusicBeatState implements PsychUIEventHandler.Psy
 class StageEditorMetaSprite
 {
 	public var sprite:FlxSprite;
+	public var characterObject(default, null):Bool = false;
+	var loadingData:Bool = false;
+	var characterFields:Map<String, Bool> = new Map<String, Bool>();
 	public var visible(get, set):Bool;
 	function get_visible() return sprite.visible;
 	function set_visible(v:Bool) return (sprite.visible = v);
@@ -1844,19 +1880,39 @@ class StageEditorMetaSprite
 	public var y(get, set):Float;
 	public var alpha(get, set):Float;
 	public var angle(get, set):Float;
+	var characterAlpha:Float = 1;
+	var characterAngle:Float = 0;
 	function get_x() return sprite.x;
 	function set_x(v:Float) return (sprite.x = v);
 	function get_y() return sprite.y;
 	function set_y(v:Float) return (sprite.y = v);
-	function get_alpha() return sprite.alpha;
-	function set_alpha(v:Float) return (sprite.alpha = v);
-	function get_angle() return sprite.angle;
-	function set_angle(v:Float) return (sprite.angle = v);
+	function get_alpha() return characterObject ? characterAlpha : sprite.alpha;
+	function set_alpha(v:Float)
+	{
+		if(characterObject)
+		{
+			characterAlpha = v;
+			markCharacterField('alpha');
+		}
+		return (sprite.alpha = v);
+	}
+	function get_angle() return characterObject ? characterAngle : sprite.angle;
+	function set_angle(v:Float)
+	{
+		if(characterObject)
+		{
+			characterAngle = v;
+			markCharacterField('angle');
+		}
+		return (sprite.angle = v);
+	}
 
 	public var color(default, set):String = 'FFFFFF';
 	function set_color(v:String)
 	{
 		sprite.color = CoolUtil.colorFromString(v);
+		if(characterObject)
+			markCharacterField('color');
 		return (color = v);
 	}
 	public var image(default, set):String = 'unknown';
@@ -1883,13 +1939,26 @@ class StageEditorMetaSprite
 		scroll[0] = (scrX != null ? scrX : scroll[0]);
 		scroll[1] = (scrY != null ? scrY : scroll[1]);
 		sprite.scrollFactor.set(scroll[0], scroll[1]);
+		if(characterObject)
+			markCharacterField('scroll');
 	}
 
 	public var scale:Array<Float> = [1, 1];
 	public var antialiasing(default, set):Bool = true;
 	function set_antialiasing(v:Bool)
 	{
-		sprite.antialiasing = (v && ClientPrefs.data.antialiasing);
+		if(characterObject && Std.isOfType(sprite, Character) && v)
+		{
+			var character:Character = cast sprite;
+			sprite.antialiasing = ClientPrefs.data.antialiasing && !character.noAntialiasing;
+			markCharacterField('antialiasing');
+		}
+		else
+		{
+			sprite.antialiasing = (v && ClientPrefs.data.antialiasing);
+			if(characterObject)
+				markCharacterField('antialiasing');
+		}
 		return (antialiasing = v);
 	}
 
@@ -1897,16 +1966,52 @@ class StageEditorMetaSprite
 	{
 		scale[0] = (wid != null ? wid : scale[0]);
 		scale[1] = (hei != null ? hei : scale[1]);
-		sprite.scale.set(scale[0], scale[1]);
-		sprite.updateHitbox();
+		if(characterObject && Std.isOfType(sprite, Character))
+		{
+			var character:Character = cast sprite;
+			if(scale[0] == 1 && scale[1] == 1)
+				character.scale.set(character.jsonScale, character.jsonScale);
+			else
+				character.scale.set(scale[0], scale[1]);
+			character.updateCharacterHitbox();
+			markCharacterField('scale');
+		}
+		else
+		{
+			sprite.scale.set(scale[0], scale[1]);
+			sprite.updateHitbox();
+		}
 	}
 	
 	public var flipX(get, set):Bool;
 	public var flipY(get, set):Bool;
-	function get_flipX() return sprite.flipX;
-	function set_flipX(v:Bool) return (sprite.flipX = (v && type != 'square'));
-	function get_flipY() return sprite.flipY;
-	function set_flipY(v:Bool) return (sprite.flipY = (v && type != 'square'));
+	var characterFlipX:Bool = false;
+	var characterFlipY:Bool = false;
+	function get_flipX() return characterObject ? characterFlipX : sprite.flipX;
+	function set_flipX(v:Bool)
+	{
+		if(characterObject && Std.isOfType(sprite, Character))
+		{
+			var character:Character = cast sprite;
+			characterFlipX = v;
+			character.flipX = v ? true : (character.originalFlipX != character.isPlayer);
+			markCharacterField('flipX');
+			return v;
+		}
+		return (sprite.flipX = (v && type != 'square'));
+	}
+	function get_flipY() return characterObject ? characterFlipY : sprite.flipY;
+	function set_flipY(v:Bool)
+	{
+		if(characterObject)
+		{
+			characterFlipY = v;
+			sprite.flipY = v;
+			markCharacterField('flipY');
+			return v;
+		}
+		return (sprite.flipY = (v && type != 'square'));
+	}
 
 	// "animatedSprite" only variables
 	public var firstAnimation:String;
@@ -1918,6 +2023,37 @@ class StageEditorMetaSprite
 		if(data == null) return;
 
 		this.type = data.type;
+		characterObject = StageData.isCharacterObjectType(this.type);
+		if(characterObject)
+		{
+			name = StageData.characterObjectRole(this.type);
+			if(Std.isOfType(sprite, Character))
+				image = cast(sprite, Character).curCharacter;
+
+			scroll = [sprite.scrollFactor.x, sprite.scrollFactor.y];
+			scale = [1, 1];
+			loadingData = true;
+			for(v in ['scale', 'scroll', 'color', 'alpha', 'angle', 'antialiasing', 'flipX', 'flipY'])
+			{
+				var dat:Dynamic = Reflect.field(data, v);
+				if(dat == null)
+					continue;
+
+				switch(v)
+				{
+					case 'scale':
+						setScale(dat[0], dat[1]);
+					case 'scroll':
+						setScrollFactor(dat[0], dat[1]);
+					default:
+						Reflect.setProperty(this, v, dat);
+				}
+				characterFields.set(v, true);
+			}
+			loadingData = false;
+			return;
+		}
+
 		switch(this.type)
 		{
 			case 'sprite', 'square', 'animatedSprite':
@@ -1938,6 +2074,24 @@ class StageEditorMetaSprite
 	public function formatToJson()
 	{
 		var obj:Dynamic = {type: type};
+		if(characterObject)
+		{
+			if(characterFields.exists('scale')) obj.scale = scale;
+			if(characterFields.exists('scroll')) obj.scroll = scroll;
+			if(characterFields.exists('color')) obj.color = color;
+			if(characterFields.exists('alpha')) obj.alpha = alpha;
+			if(characterFields.exists('angle')) obj.angle = angle;
+
+			if(characterFields.exists('antialiasing')) obj.antialiasing = antialiasing;
+			if(characterFields.exists('flipX')) obj.flipX = flipX;
+			
+			if(characterFields.exists('flipY')) obj.flipY = flipY;
+
+
+
+			return obj;
+		}
+
 		switch(type)
 		{
 			case 'square', 'sprite', 'animatedSprite':
@@ -1965,6 +2119,12 @@ class StageEditorMetaSprite
 				}
 		}
 		return obj;
+	}
+
+	function markCharacterField(field:String):Void
+	{
+		if(characterObject && !loadingData)
+			characterFields.set(field, true);
 	}
 
 	public function update(curFilters:LoadFilters, elapsed:Float)

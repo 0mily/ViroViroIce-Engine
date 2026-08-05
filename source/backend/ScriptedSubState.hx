@@ -70,8 +70,9 @@ class ScriptedSubState extends MusicBeatSubstate {
 	}
 	
 	var _shouldUpdate:Bool = true;
-	public function preUpdate(elapsed:Float):Void {
+	public function preUpdate(elapsed:Float):Bool {
 		_shouldUpdate = (callOnScripts('onUpdate', [elapsed], true) != LuaUtils.Function_Stop);
+		return _shouldUpdate;
 	}
 	public override function update(elapsed:Float):Void {
 		if (_shouldUpdate)
@@ -95,9 +96,15 @@ class ScriptedSubState extends MusicBeatSubstate {
 	
 	public override function draw():Void {
 		if (callOnScripts('onDraw', true) == LuaUtils.Function_Stop) return;
+		prepareMembersDraw();
 		super.draw();
 		callOnScripts('onDrawPost');
 	}
+
+	/**
+	 *Called after onDraw scripts and immediately before state members are rendered
+	*/
+	public function prepareMembersDraw():Void {}
 	
 	public override function openSubState(subState:flixel.FlxSubState):Void {
 		var stopped:Bool = (callOnHScript('onOpenSubState', [subState], true) == LuaUtils.Function_Stop);
@@ -403,8 +410,8 @@ class ScriptedSubState extends MusicBeatSubstate {
 	 * 
 	 * @return 	A new `FunkinLua` instance if successful, otherwise `null`.
 	*/
-	public function initLuaScript(file:String):FunkinLua {
-		var lua:FunkinLua = FunkinLua.initFromFile(file, this);
+	public function initLuaScript(file:String, autoCallCreate:Bool = true):FunkinLua {
+		var lua:FunkinLua = FunkinLua.initFromFile(file, this, null, autoCallCreate);
 		if (lua != null) luaArray.push(lua);
 		
 		return lua;
@@ -519,14 +526,97 @@ class ScriptedSubState extends MusicBeatSubstate {
 		}
 		return false;
 	}
-	public function initHScript(file:String):HScript {
-		var hs:HScript = HScript.initFromFile(file, this);
+	public function initHScript(file:String, autoCallInitialCallbacks:Bool = true):HScript {
+		var hs:HScript = HScript.initFromFile(file, this, null, autoCallInitialCallbacks);
 		if (hs != null) hscriptArray.push(hs);
 		
 		return hs;
 	}
 	#end
 	
+	public function loadScriptFolderLayers(folders:Array<String>, autoCallbacks:Bool = true):Bool {
+		#if sys
+		if(folders == null || folders.length < 1)
+			return false;
+
+		var orderedKeys:Array<String> = [];
+		var resolvedFiles:Map<String, String> = [];
+
+		for(logicalFolder in folders)
+		{
+			if(logicalFolder == null || logicalFolder.trim().length < 1)
+				continue;
+
+			var physicalFolders:Array<String> = Mods.directoriesWithFile(Paths.getSharedPath(), logicalFolder, true);
+			for(folder in physicalFolders)
+			{
+				if(folder == null || !FileSystem.exists(folder) || !FileSystem.isDirectory(folder))
+					continue;
+
+				var files:Array<String> = FileSystem.readDirectory(folder);
+				files.sort(function(a:String, b:String) return Reflect.compare(a.toLowerCase(), b.toLowerCase()));
+				for(file in files)
+				{
+					var path:String = '$folder/$file';
+					if(FileSystem.isDirectory(path))
+						continue;
+
+					var lower:String = file.toLowerCase();
+					var kind:String = null;
+					var basename:String = file;
+					#if LUA_ALLOWED
+					if(lower.endsWith('.lua'))
+					{
+						kind = 'lua';
+						basename = file.substr(0, file.length - 4);
+					}
+					#end
+					#if HSCRIPT_ALLOWED
+					if(kind == null && HScript.hasScriptExtension(lower))
+					{
+						kind = 'hscript';
+						for(extension in HScript.SCRIPT_EXTENSIONS)
+							if(lower.endsWith(extension.toLowerCase()))
+							{
+								basename = file.substr(0, file.length - extension.length);
+								break;
+							}
+					}
+					#end
+					if(kind == null)
+						continue;
+
+					var key:String = kind + ':' + basename.toLowerCase();
+					if(!resolvedFiles.exists(key))
+						orderedKeys.push(key);
+					resolvedFiles.set(key, path);
+				}
+			}
+		}
+
+		var loaded:Bool = false;
+		for(key in orderedKeys)
+		{
+			var path:String = resolvedFiles.get(key);
+			if(key.startsWith('lua:'))
+			{
+				#if LUA_ALLOWED
+				loaded = (initLuaScript(path, autoCallbacks) != null || loaded);
+				#end
+			}
+			else
+			{
+				#if HSCRIPT_ALLOWED
+				loaded = (initHScript(path, autoCallbacks) != null || loaded);
+				#end
+			}
+		}
+		return loaded;
+		#else
+		return false;
+		#end
+	}
+
 	/**
 	 * Calls a function on all scripts.
 	 * 
