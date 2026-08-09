@@ -20,10 +20,14 @@ import flash.media.Sound;
 
 import backend.Song;
 import backend.StageData;
+import backend.WeekData;
 import objects.Character;
 
 import objects.Note;
 import objects.NoteSplash;
+#if VIDEOS_ALLOWED
+import objects.VideoSprite;
+#end
 
 #if LUA_ALLOWED
 import psychlua.FunkinLua;
@@ -57,6 +61,7 @@ class LoadingState extends ScriptedState
 	public static var threaded:Bool = false;
 	static var futures:Array<Future<Dynamic>> = [];
 	static var jobs:Array<LoaderJob> = [];
+	static var preparedSong:SwagSong = null;
 
 	function new(target:FlxState, stopMusic:Bool)
 	{
@@ -68,7 +73,13 @@ class LoadingState extends ScriptedState
 	}
 
 	inline static public function loadAndSwitchState(target:FlxState, stopMusic = false, intrusive:Bool = true)
+	{
+		if(Std.isOfType(target, PlayState) && preparedSong != PlayState.SONG)
+			prepareToSong();
+		if(Std.isOfType(target, PlayState))
+			preparedSong = null;
 		MusicBeatState.switchState(getNextState(target, stopMusic, intrusive));
+	}
 	
 	var target:FlxState = null;
 	var stopMusic:Bool = false;
@@ -324,8 +335,24 @@ class LoadingState extends ScriptedState
 		#if (target.threaded)
 		if(threaded)
 		{
+			var deferred:Array<LoaderJob> = [];
+			var videoSlots:Int = futures.length < 1 ? 1 : 0;
 			while (jobs.length > 0)
-				startJob(jobs.shift());
+			{
+				var job:LoaderJob = jobs.shift();
+				switch(job)
+				{
+					case VIDEO(_):
+						if(videoSlots > 0)
+						{
+							startJob(job);
+							videoSlots--;
+						}
+						else deferred.push(job);
+					default: startJob(job);
+				}
+			}
+			jobs = deferred;
 			return;
 		}
 		#end
@@ -403,6 +430,10 @@ class LoadingState extends ScriptedState
 		intrusive = false;
 		#end
 
+		#if (hxvlc && SHOW_LOADING_SCREEN)
+		if(!intrusive && videosToPrepare.length > 0)
+			intrusive = true;
+		#end
 		LoadingState.isIntrusive = intrusive;
 		_startPool();
 
@@ -494,6 +525,10 @@ class LoadingState extends ScriptedState
 
 	public static function prepareToSong()
 	{
+		preparedSong = PlayState.SONG;
+		#if VIDEOS_ALLOWED
+		VideoSprite.clearWarmups();
+		#end
 		imagesToPrepare.resize(0);
 		soundsToPrepare.resize(0);
 		musicToPrepare.resize(0);
@@ -640,7 +675,7 @@ class LoadingState extends ScriptedState
 				preloadCharacter(gfVersion, prefixVocals);
 			}
 
-			for(video in collectScriptVideos(folder))
+			for(video in collectScriptVideos(folder, song))
 				if(!videosToPrepare.contains(video))
 					videosToPrepare.push(video);
 
@@ -774,25 +809,32 @@ class LoadingState extends ScriptedState
 			switch (job) {
 				case SOUND(key, path, ignoreMods): initThread(() -> preloadSound(key, path, ignoreMods), 'sound $key');
 				case BMD(key): initThread(() -> preloadGraphic(key), 'image $key');
-				case VIDEO(key): initThread(() -> preloadVideo(key), 'video $key');
+				case VIDEO(key): trackMainThreadJob(preloadVideo(key, true));
 			}
 		} else #end {
 			var result:Dynamic = switch (job) {
 				case SOUND(key, path, ignoreMods): preloadSound(key, path, ignoreMods);
 				case BMD(key): preloadGraphic(key);
-				case VIDEO(key): preloadVideo(key);
+				case VIDEO(key): preloadVideo(key, true);
 			}
-			
-			if (result != null && Std.isOfType(result, Future)) {
-				var future:Future<Dynamic> = cast result;
-				function forward(_:Dynamic) { futures.remove(future); loaded ++; }
-				
-				futures.push(future);
-				future.onComplete(forward).onError(forward);
-			} else {
-				loaded ++;
-			}
+			trackMainThreadJob(result);
 		}
+	}
+
+	static function trackMainThreadJob(result:Dynamic):Void
+	{
+		if (result != null && Std.isOfType(result, Future))
+		{
+			var future:Future<Dynamic> = cast result;
+			function forward(_:Dynamic)
+			{
+				futures.remove(future);
+				loaded++;
+			}
+			futures.push(future);
+			future.onComplete(forward).onError(forward);
+		}
+		else loaded++;
 	}
 
 	inline private static function preloadCharacter(char:String, ?prefixVocals:String)
@@ -842,17 +884,119 @@ class LoadingState extends ScriptedState
 		}
 	}
 
-	static function collectScriptVideos(songFolder:String):Array<String>
+	static function collectScriptVideos(songFolder:String, song:SwagSong):Array<String>
 	{
 		var videos:Array<String> = [];
-		var folders:Array<String> = [];
+		var scriptFiles:Array<String> = [];
+		var scriptExtensions:Array<String> = ['.lua', '.hx', '.hxc', '.hscript'];
+
+		function addScriptFile(path:String):Void
+		{
+			if(path != null && FileSystem.exists(path) && !scriptFiles.contains(path))
+				scriptFiles.push(path);
+		}
+
+		function addScriptFolder(relativeFolder:String):Void
+		{
+			for(folder in Mods.directoriesWithFile(Paths.getSharedPath(), relativeFolder))
+			{
+				if(!FileSystem.exists(folder))
+					continue;
+				for(file in FileSystem.readDirectory(folder))
+				{
+					var lower:String = file.toLowerCase();
+					for(ext in scriptExtensions)
+						if(lower.endsWith(ext))
+						{
+							addScriptFile(haxe.io.Path.join([folder, file]));
+							break;
+						}
+				}
+			}
+		}
+
+		function addNamedScript(relativeName:String):Void
+		{
+			if(relativeName == null || relativeName.length < 1)
+				return;
+			relativeName = relativeName.replace('\\', '/');
+			var slash:Int = relativeName.lastIndexOf('/');
+			var directory:String = slash >= 0 ? relativeName.substr(0, slash + 1) : '';
+			var name:String = slash >= 0 ? relativeName.substr(slash + 1) : relativeName;
+			for(folder in Mods.directoriesWithFile(Paths.getSharedPath(), directory))
+				for(ext in scriptExtensions)
+					addScriptFile(haxe.io.Path.join([folder, name + ext]));
+		}
+
 		if(songFolder != null && songFolder.length > 0)
-			for(folder in Mods.directoriesWithFile(Paths.getSharedPath(), 'songs/$songFolder/'))
-				if(!folders.contains(folder))
-					folders.push(folder);
-		for(folder in Mods.directoriesWithFile(Paths.getSharedPath(), 'data/scripts/'))
-			if(!folders.contains(folder))
-				folders.push(folder);
+			addScriptFolder('songs/$songFolder/');
+		addScriptFolder('data/scripts/');
+
+		if(song != null)
+		{
+			addNamedScript('data/stages/${song.stage}');
+			var levelScript:String = WeekData.getWeekFileName();
+			if(levelScript != null && levelScript.length > 0)
+				addNamedScript(WeekData.LEVELS_PATH + levelScript);
+
+			for(characterName in [song.player1, song.player2, song.gfVersion])
+				if(characterName != null && characterName.length > 0)
+					for(characterFolder in Character.CHARACTER_FILE_FOLDERS)
+						addNamedScript(characterFolder + characterName);
+
+			var noteTypes:Array<String> = [];
+			if(song.notes != null)
+				for(section in song.notes)
+					if(section != null && section.sectionNotes != null)
+						for(noteData in section.sectionNotes)
+						{
+							if(noteData == null || noteData.length < 4)
+								continue;
+							var noteType:String = '';
+							if(Std.isOfType(noteData[3], String))
+								noteType = Std.string(noteData[3]);
+							else
+							{
+								var index:Int = Std.int(noteData[3]);
+								if(index >= 0 && index < Note.defaultNoteTypes.length)
+									noteType = Note.defaultNoteTypes[index];
+							}
+							if(noteType.length > 0 && !noteTypes.contains(noteType))
+								noteTypes.push(noteType);
+						}
+			for(noteType in noteTypes)
+				addNamedScript('data/notetypes/$noteType');
+
+			var eventNames:Array<String> = [];
+			function collectEventNames(events:Array<Dynamic>):Void
+			{
+				if(events == null)
+					return;
+				for(event in events)
+				{
+					if(event == null || event.length < 2 || event[1] == null)
+						continue;
+					for(eventData in (cast event[1]:Array<Dynamic>))
+					{
+						if(eventData == null || eventData.length < 1 || eventData[0] == null)
+							continue;
+						var eventName:String = Std.string(eventData[0]);
+						if(eventName.length > 0 && !eventNames.contains(eventName))
+							eventNames.push(eventName);
+					}
+				}
+			}
+			collectEventNames(song.events);
+			try
+			{
+				var externalEvents:SwagSong = Song.getChart('events', songFolder, 'events');
+				if(externalEvents != null)
+					collectEventNames(externalEvents.events);
+			}
+			catch(e:Dynamic) {}
+			for(eventName in eventNames)
+				addNamedScript('data/events/$eventName');
+		}
 
 		function addVideo(name:String):Void
 		{
@@ -863,42 +1007,34 @@ class LoadingState extends ScriptedState
 				videos.push(name);
 		}
 
-		var videoRegex:EReg = ~/(?:preloadVideo|startVideo)\s*\(\s*(['"])([^'"]+)\1/;
-		var makeVideoRegex:EReg = ~/(?:makeVideo|makeLuaVideo)\s*\(\s*(['"])([^'"]+)\1\s*,\s*(['"])([^'"]+)\3/;
-		for(folder in folders)
+		var videoRegex:EReg = ~/(?:preloadVideo|precacheVideo|startVideo)\s*\(\s*(['"])([^'"]+)\1/;
+		var makeVideoRegex:EReg = ~/(?:makeVideo|makeLuaVideo|createVideo)\s*\(\s*(['"])([^'"]+)\1\s*,\s*(['"])([^'"]+)\3/;
+		for(path in scriptFiles)
 		{
-			if(!FileSystem.exists(folder))
+			var text:String = try File.getContent(path) catch(e:Dynamic) null;
+			if(text == null)
 				continue;
 
-			for(file in FileSystem.readDirectory(folder))
+			var rest:String = text;
+			while(videoRegex.match(rest))
 			{
-				var lower:String = file.toLowerCase();
-				if(!lower.endsWith('.lua') && !lower.endsWith('.hx'))
-					continue;
+				addVideo(videoRegex.matched(2));
+				rest = videoRegex.matchedRight();
+			}
 
-				var text:String = try File.getContent(haxe.io.Path.join([folder, file])) catch(e:Dynamic) null;
-				if(text == null)
-					continue;
-
-				var rest:String = text;
-				while(videoRegex.match(rest))
-				{
-					addVideo(videoRegex.matched(2));
-					rest = videoRegex.matchedRight();
-				}
-
-				rest = text;
-				while(makeVideoRegex.match(rest))
-				{
-					addVideo(makeVideoRegex.matched(4));
-					rest = makeVideoRegex.matchedRight();
-				}
+			rest = text;
+			while(makeVideoRegex.match(rest))
+			{
+				addVideo(makeVideoRegex.matched(4));
+				rest = makeVideoRegex.matchedRight();
 			}
 		}
+		if(videos.length > 0)
+			trace('[Video preload] found in active scripts: ' + videos.join(', '));
 		return videos;
 	}
 
-	public static function preloadVideo(key:String):Dynamic
+	public static function preloadVideo(key:String, warmDecoder:Bool = false):Dynamic
 	{
 		if(key == null || key.trim().length < 1)
 			return null;
@@ -906,7 +1042,21 @@ class LoadingState extends ScriptedState
 		key = key.trim();
 		var file:String = Paths.video(key);
 		if(preloadedVideos.exists(file))
+		{
+			#if VIDEOS_ALLOWED
+			return warmDecoder ? VideoSprite.warmup(file) : file;
+			#else
 			return file;
+			#end
+		}
+
+		#if VIDEOS_ALLOWED
+		if(warmDecoder && (#if sys FileSystem.exists(file) || #end OpenFlAssets.exists(file, BINARY)))
+		{
+			preloadedVideos.set(file, true);
+			return VideoSprite.warmup(file);
+		}
+		#end
 
 		#if sys
 		if(FileSystem.exists(file))
@@ -915,7 +1065,11 @@ class LoadingState extends ScriptedState
 			{
 				File.getBytes(file);
 				preloadedVideos.set(file, true);
+				#if VIDEOS_ALLOWED
+				return warmDecoder ? VideoSprite.warmup(file) : file;
+				#else
 				return file;
+				#end
 			}
 			catch(err:Dynamic)
 				trace('ERROR! fail on preloading video $file -> $err');
@@ -928,7 +1082,11 @@ class LoadingState extends ScriptedState
 			{
 				OpenFlAssets.getBytes(file);
 				preloadedVideos.set(file, true);
+				#if VIDEOS_ALLOWED
+				return warmDecoder ? VideoSprite.warmup(file) : file;
+				#else
 				return file;
+				#end
 			}
 			catch(err:Dynamic)
 			{

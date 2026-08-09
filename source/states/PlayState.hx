@@ -1271,8 +1271,10 @@ class PlayState extends ScriptedState
 		Conductor.offset = Reflect.hasField(PlayState.SONG, 'offset') ? (PlayState.SONG.offset / value) : 0;
 		Conductor.safeZoneOffset = (ClientPrefs.data.safeFrames / 60) * 1000 * value;
 		#if VIDEOS_ALLOWED
-		if(videoCutscene != null)
-			videoCutscene.setPlaybackRate(value);
+		forEachVideo((video) -> {
+			if(video.syncWithSong)
+				video.setPlaybackRate(value);
+		});
 		#end
 		setOnScripts('playbackRate', playbackRate);
 		#else
@@ -2460,6 +2462,7 @@ class PlayState extends ScriptedState
 		video.tag = tag;
 		video.pauseWithGame = pauseWithGame;
 		video.syncWithSong = syncWithSong;
+		if(syncWithSong) video.setPlaybackRate(playbackRate);
 		video.playOnAdd = playOnLoad;
 		video.setPosition(x, y);
 		video.cameras = [LuaUtils.cameraFromString(camera)];
@@ -2528,16 +2531,15 @@ class PlayState extends ScriptedState
 		function handle(video:VideoSprite):Void
 		{
 			if(video != null && !handled.contains(video) && (!onlyPauseManaged || video.pauseWithGame))
-			{
 				handled.push(video);
-				func(video);
-			}
 		}
 
 		handle(videoCutscene);
 		for(value in variables)
 			if(value != null && Std.isOfType(value, VideoSprite))
 				handle(cast value);
+		for(video in handled)
+			func(video);
 		#end
 	}
 
@@ -2548,13 +2550,23 @@ class PlayState extends ScriptedState
 		#end
 	}
 
-	function syncVideosToSongTime():Void
+	function syncVideosToSongTime(force:Bool = true):Void
 	{
 		#if VIDEOS_ALLOWED
 		var videoTime:Float = Math.max(0, Conductor.songPosition - Conductor.offset);
 		forEachVideo((video) -> {
 			if(video.syncWithSong)
-				video.setTime(videoTime);
+				video.syncToTime(videoTime, force);
+		});
+		#end
+	}
+
+	function syncVideosAfterSongSeek(songTime:Float, delta:Float):Void
+	{
+		#if VIDEOS_ALLOWED
+		forEachVideo((video) -> {
+			if(video.syncWithSong)
+				video.syncAfterSongSeek(songTime, delta);
 		});
 		#end
 	}
@@ -3260,6 +3272,8 @@ class PlayState extends ScriptedState
 	*/
 	public function setSongTime(time:Float, offset:Bool = true)
 	{
+		var previousSongTime:Float = Conductor.songPosition - Conductor.offset;
+		var targetSongTime:Float = time - (offset ? 0 : Conductor.offset);
 		FlxG.sound.music.pause();
 		vocals.pause();
 		opponentVocals.pause();
@@ -3269,7 +3283,7 @@ class PlayState extends ScriptedState
 			#if FLX_PITCH FlxG.sound.music.pitch = playbackRate; #end
 			FlxG.sound.music.play();
 
-			if (Conductor.songPosition < vocals.length)
+			if (FlxG.sound.music.time < vocals.length)
 			{
 				vocals.time = FlxG.sound.music.time;
 				#if FLX_PITCH vocals.pitch = playbackRate; #end
@@ -3277,7 +3291,7 @@ class PlayState extends ScriptedState
 			}
 			else vocals.pause();
 
-			if (Conductor.songPosition < opponentVocals.length)
+			if (FlxG.sound.music.time < opponentVocals.length)
 			{
 				opponentVocals.time = FlxG.sound.music.time;
 				#if FLX_PITCH opponentVocals.pitch = playbackRate; #end
@@ -3287,7 +3301,7 @@ class PlayState extends ScriptedState
 		}
 		
 		Conductor.songPosition = (time + (offset ? Conductor.offset : 0));
-		syncVideosToSongTime();
+		syncVideosAfterSongSeek(targetSongTime, targetSongTime - previousSongTime);
 	}
 
 	public function startNextDialogue() {
@@ -3888,6 +3902,8 @@ class PlayState extends ScriptedState
 					Conductor.songPosition = Conductor.songPosition + 1000 * FlxMath.signOf(timeDiff);
 			}
 		}
+		if(startedCountdown && !paused && !startingSong)
+			syncVideosToSongTime(false);
 
 		// Some audio backends can reach EOF without dispatching FlxSound.onComplete
 		// Do not leave gameplay running forever with a stopped instrumental

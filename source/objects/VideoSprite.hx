@@ -4,6 +4,8 @@ import flixel.addons.display.FlxPieDial;
 
 #if hxvlc
 import hxvlc.flixel.FlxVideoSprite;
+import lime.app.Future; // and here we go
+import lime.app.Promise;
 #elseif js
 import openfl.events.NetStatusEvent;
 import openfl.media.SoundTransform;
@@ -20,7 +22,9 @@ class VideoSprite extends FlxSpriteGroup {
 	final _timeToSkip:Float = 1;
 	public var tag:String = null;
 	public var pauseWithGame:Bool = true;
-	public var syncWithSong:Bool = false;
+	public var syncWithSong(get, set):Bool;
+	var _syncWithSong:Bool = false;
+	public var loops(default, null):Bool = false;
 	public var playOnAdd:Bool = false;
 	public var holdingTime:Float = 0;
 	public var skipSprite:FlxPieDial;
@@ -42,7 +46,17 @@ class VideoSprite extends FlxSpriteGroup {
 	var playAttempts:Int = 0;
 	var nativePlayStarted:Bool = false;
 	var textureReady:Bool = false;
+	var pendingSeekTime:Null<Float> = null;
+	var syncSeekCooldown:Float = 0;
+	var songSyncOrigin:Null<Float> = null;
+	var playbackRequested:Bool = false;
 	static inline final MAX_PLAY_ATTEMPTS:Int = 12;
+	static inline final MAX_SYNC_DRIFT:Float = 160;
+
+	#if hxvlc
+	static var warmedPlayers:Map<String, FlxVideoSprite> = new Map();
+	static var pendingWarmups:Map<String, Future<String>> = new Map();
+	#end
 
 	#if js
 	public var videoSprite:FlxVideo;
@@ -53,6 +67,7 @@ class VideoSprite extends FlxSpriteGroup {
 		super();
 
 		this.videoName = videoName;
+		loops = shouldLoop == true;
 		scrollFactor.set();
 		cameras = [FlxG.cameras.list[FlxG.cameras.list.length - 1]];
 
@@ -67,48 +82,63 @@ class VideoSprite extends FlxSpriteGroup {
 		}
 
 		// initialize sprites
-		
 		#if js
 		videoSprite = new FlxVideo(videoName);
-		videoSprite.finishCallback= finishVideo;
+		videoSprite.finishCallback = finishVideo;
+		videoSprite.readyCallback = handleTextureReady;
 		#else
-		videoSprite = new FlxVideoSprite();
-		if(!shouldLoop) videoSprite.bitmap.onEndReached.add(finishVideo);
-		#end
-		videoSprite.antialiasing = ClientPrefs.data.antialiasing;
+		var wasWarmed:Bool = false;
+		if(!loops)
+		{
+			videoSprite = takeWarmedPlayer(videoName);
+			wasWarmed = videoSprite != null;
+		}
 
-		#if hxvlc
-		videoSprite.load(videoName, shouldLoop ? ['input-repeat=65545'] : null);
-		videoSprite.bitmap.onEncounteredError.add(function(message:String)
-		{
-			notifyError(message);
-		});
-		
-		videoSprite.bitmap.onFormatSetup.add(function()
-		#else
-		videoSprite.bitmap.onEncounteredError.add(function()
-		{
-			notifyError('Video playback error');
-		});
-		videoSprite.bitmap.onTextureSetup.add(function()
-		#end
-		{
+		/*{
 			textureReady = true;
 			pendingPlay = false;
-			/*
+			
 			#if hxvlc
 			var wd:Int = videoSprite.bitmap.formatWidth;
 			var hg:Int = videoSprite.bitmap.formatHeight;
 			trace('Video Resolution: ${wd}x${hg}');
 			videoSprite.scale.set(FlxG.width / wd, FlxG.height / hg);
 			#end
-			*/
+			
 			videoSprite.setGraphicSize(FlxG.width);
 			videoSprite.updateHitbox();
 			storeBaseVideoScale();
 			applyVideoScale(true);
 			notifyReady();
+		});*/
+
+		if(videoSprite == null)
+			videoSprite = new FlxVideoSprite();
+		if(!loops) videoSprite.bitmap.onEndReached.add(finishVideo);
+		#end
+		videoSprite.antialiasing = ClientPrefs.data.antialiasing;
+
+		#if hxvlc
+		videoSprite.bitmap.onEncounteredError.add(function(message:String)
+		{
+			notifyError(message);
 		});
+		videoSprite.bitmap.onFormatSetup.add(handleTextureReady);
+		if(wasWarmed)
+		{
+			videoSprite.bitmap.volumeAdjust = 1;
+			videoSprite.bitmap.time = 0;
+			handleTextureReady();
+		}
+		else if(!videoSprite.load(videoName, loops ? ['input-repeat=65545'] : null))
+			notifyError('Video failed to load');
+		#elseif !js
+		videoSprite.bitmap.onEncounteredError.add(function()
+		{
+			notifyError('Video playback error');
+		});
+		videoSprite.bitmap.onTextureSetup.add(handleTextureReady);
+		#end
 
 		// callbacks
 		add(videoSprite);
@@ -117,6 +147,127 @@ class VideoSprite extends FlxSpriteGroup {
 	
 		// start video and adjust resolution to screen size
 	}
+
+	function handleTextureReady():Void
+	{
+		if(alreadyDestroyed || textureReady)
+			return;
+
+		textureReady = true;
+		pendingPlay = false;
+		videoSprite.setGraphicSize(FlxG.width);
+		videoSprite.updateHitbox();
+		storeBaseVideoScale();
+		applyVideoScale(true);
+		applyPendingSeek();
+		notifyReady();
+	}
+
+	#if hxvlc
+	/**
+	 * Opens a video during the loading screen and keeps its initialized player
+	 * ready for the first matching VideoSprite created by gameplay.
+
+	 * It probably worked?
+	 */
+	public static function warmup(videoName:String, timeout:Float = 15):Dynamic
+	{
+		if(videoName == null || videoName.length < 1)
+			return null;
+		if(warmedPlayers.exists(videoName))
+			return Future.withValue(videoName);
+		if(pendingWarmups.exists(videoName))
+			return pendingWarmups.get(videoName);
+
+		var promise:Promise<String> = new Promise<String>();
+		var player:FlxVideoSprite = new FlxVideoSprite();
+		var timer:FlxTimer = null;
+		var settled:Bool = false;
+
+		function cleanup(success:Bool, ?message:String):Void
+		{
+			if(settled)
+				return;
+			settled = true;
+			pendingWarmups.remove(videoName);
+			if(timer != null)
+			{
+				timer.cancel();
+				timer = null;
+			}
+
+			if(success)
+			{
+				player.pause();
+				player.bitmap.time = 0;
+				warmedPlayers.set(videoName, player);
+				trace('[Video preload] decoder ready: $videoName');
+				promise.complete(videoName);
+			}
+			else
+			{
+				trace('[Video preload] failed: $videoName -> $message');
+				player.destroy();
+				promise.error(message ?? 'Video warmup failed');
+			}
+		}
+
+		player.visible = false;
+		player.bitmap.visible = false;
+		player.bitmap.volumeAdjust = 0;
+		player.bitmap.onEncounteredError.add((message:String) -> cleanup(false, message));
+		player.bitmap.onFormatSetup.add(() -> cleanup(true));
+
+		pendingWarmups.set(videoName, promise.future);
+		if(!player.load(videoName))
+			cleanup(false, 'Video failed to load');
+		else
+		{	
+			/*
+			 * hxvlc recomends starting playback on the next tick after load
+			 * waiting onformatsetup basically means the file was actually opened and its decoder/first texture were initialized, not merely read into RAM
+			*/
+
+			timer = new FlxTimer().start(0.01, (_) -> {
+				timer = null;
+				if(settled)
+					return;
+				if(!player.play())
+					cleanup(false, 'Video playback failed to start');
+				else
+					timer = new FlxTimer().start(timeout, (_) -> cleanup(false, 'Video warmup timed out'));
+			});
+		}
+		return promise.future;
+	}
+
+	static function takeWarmedPlayer(videoName:String):FlxVideoSprite
+	{
+		var player:FlxVideoSprite = warmedPlayers.get(videoName);
+		if(player != null)
+		{
+			warmedPlayers.remove(videoName);
+			player.exists = true;
+			player.active = true;
+			player.visible = true;
+			trace('[Video preload] claimed by gameplay: $videoName');
+		}
+		return player;
+	}
+
+	public static function clearWarmups():Void
+	{
+		for(player in warmedPlayers)
+			if(player != null)
+				player.destroy();
+		warmedPlayers.clear();
+	}
+	#else
+	public static function warmup(videoName:String, timeout:Float = 15):Dynamic
+		return videoName;
+
+	public static function clearWarmups():Void {}
+	#end
 
 	var alreadyDestroyed:Bool = false;
 	override function destroy()
@@ -166,6 +317,8 @@ class VideoSprite extends FlxSpriteGroup {
 
 	override function update(elapsed:Float)
 	{
+		syncSeekCooldown = Math.max(0, syncSeekCooldown - elapsed);
+		applyPendingSeek();
 		applyVideoScale(false);
 
 		if(canSkip)
@@ -255,22 +408,39 @@ class VideoSprite extends FlxSpriteGroup {
 		skipSprite.amount = Math.min(1, Math.max(0, (holdingTime / _timeToSkip) * 1.025));
 		skipSprite.alpha = FlxMath.remapToRange(skipSprite.amount, 0.025, 1, 0, 1);
 	}
-
-	#if js
-	public function play() videoSprite?.resumeVideo();
-	public function resume() videoSprite?.resumeVideo();
-	public function pause() videoSprite?.pauseVideo();
-	#else
-	public function play()
-	{
-		pendingPlay = true;
-		nativePlayStarted = false;
-		playAttempts = 0;
-		schedulePlayAttempt(0.02);
-	}
+	
 
 	function get_ready():Bool
 		return textureReady;
+
+	function get_syncWithSong():Bool
+		return _syncWithSong;
+
+	function set_syncWithSong(value:Bool):Bool
+	{
+		if(_syncWithSong == value)
+			return value;
+
+		_syncWithSong = value;
+		songSyncOrigin = null;
+		if(value && playbackRequested)
+		{
+			var songTime:Float = Math.max(0, Conductor.songPosition - Conductor.offset);
+			var videoTime:Float = pendingSeekTime != null ? pendingSeekTime : Math.max(0, getTime());
+			songSyncOrigin = songTime - videoTime;
+		}
+		return value;
+	}
+
+	function prepareSongSync():Void
+	{
+		playbackRequested = true;
+		if(!syncWithSong || songSyncOrigin != null)
+			return;
+		var songTime:Float = Math.max(0, Conductor.songPosition - Conductor.offset);
+		var videoTime:Float = pendingSeekTime != null ? pendingSeekTime : (textureReady ? Math.max(0, getTime()) : 0);
+		songSyncOrigin = songTime - videoTime;
+	}
 
 	function notifyReady():Void
 	{
@@ -289,6 +459,28 @@ class VideoSprite extends FlxSpriteGroup {
 		}
 		if(errorCallback != null)
 			errorCallback(message);
+	}
+
+	#if js
+	public function play()
+	{
+		prepareSongSync();
+		videoSprite?.resumeVideo();
+	}
+	public function resume()
+	{
+		prepareSongSync();
+		videoSprite?.resumeVideo();
+	}
+	public function pause() videoSprite?.pauseVideo();
+	#else
+	public function play()
+	{
+		prepareSongSync();
+		pendingPlay = true;
+		nativePlayStarted = false;
+		playAttempts = 0;
+		schedulePlayAttempt(0.02);
 	}
 
 	function schedulePlayAttempt(delay:Float):Void
@@ -312,6 +504,8 @@ class VideoSprite extends FlxSpriteGroup {
 
 		nativePlayStarted = startNativePlayback();
 		playAttempts++;
+		if(nativePlayStarted)
+			applyPendingSeek();
 
 		if(pendingPlay && !textureReady && !nativePlayStarted && playAttempts < MAX_PLAY_ATTEMPTS)
 			schedulePlayAttempt(0.25);
@@ -326,22 +520,40 @@ class VideoSprite extends FlxSpriteGroup {
 		return videoSprite != null && videoSprite.play();
 	}
 
-	public function resume() videoSprite?.resume();
+	public function resume()
+	{
+		prepareSongSync();
+		videoSprite?.resume();
+	}
 	public function pause() videoSprite?.pause();
 	#end
 	public function stop() destroy();
 
 	public function muteForPreload():Void
 	{
+		#if js
+		videoSprite?.setVolume(0);
+		#else
 		if(videoSprite != null && videoSprite.bitmap != null)
 			videoSprite.bitmap.volumeAdjust = 0;
+		#end
 	}
 
 	public function setTime(timeMs:Float):Void
 	{
 		if(Math.isNaN(timeMs))
 			timeMs = 0;
-		timeMs = Math.max(0, timeMs);
+		pendingSeekTime = Math.max(0, timeMs);
+		applyPendingSeek();
+	}
+
+	function applyPendingSeek():Void
+	{
+		if(pendingSeekTime == null || !textureReady || !isSeekable())
+			return;
+
+		var timeMs:Float = pendingSeekTime;
+		pendingSeekTime = null;
 
 		#if js
 		videoSprite?.seekVideo(timeMs / 1000);
@@ -349,6 +561,68 @@ class VideoSprite extends FlxSpriteGroup {
 		if(videoSprite != null && videoSprite.bitmap != null)
 			videoSprite.bitmap.time = Std.int(timeMs);
 		#end
+	}
+
+	/* Keeps a songsynced video aligned without seeking on evry frame */              //IT SHOULD BUT IT DOESN'T AAAAAAAAAAAAAAAAAAAGGRRRHHHH
+	public function syncToTime(timeMs:Float, force:Bool = false):Void
+	{
+		if(alreadyDestroyed)
+			return;
+		if(Math.isNaN(timeMs))
+			timeMs = 0;
+		timeMs = Math.max(0, timeMs);
+		if(songSyncOrigin == null)
+		{
+			if(!playbackRequested)
+				return;
+			var currentTime:Float = textureReady ? Math.max(0, getTime()) : 0;
+			songSyncOrigin = timeMs - currentTime;
+		}
+		timeMs = Math.max(0, timeMs - songSyncOrigin);
+
+		var length:Float = getLength();
+		if(!loops && length > 0 && timeMs >= length - 1)
+		{
+			finishVideo();
+			return;
+		}
+
+		if(force)
+		{
+			syncSeekCooldown = 0.25;
+			setTime(timeMs);
+			return;
+		}
+
+		if(pendingSeekTime != null || syncSeekCooldown > 0)
+			return;
+		var currentTime:Float = getTime();
+		if(currentTime < 0 || Math.abs(currentTime - timeMs) > MAX_SYNC_DRIFT)
+		{
+			syncSeekCooldown = 0.25;
+			setTime(timeMs);
+		}
+	}
+
+	public function syncAfterSongSeek(songTimeMs:Float, deltaMs:Float):Void
+	{
+		if(alreadyDestroyed || !syncWithSong || !playbackRequested || Math.isNaN(deltaMs))
+			return;
+
+		var currentTime:Float = pendingSeekTime != null ? pendingSeekTime : getTime();
+		if(Math.isNaN(currentTime) || currentTime < 0)
+			currentTime = 0;
+		var targetTime:Float = Math.max(0, currentTime + deltaMs);
+		var length:Float = getLength();
+		if(!loops && length > 0 && targetTime >= length - 1)
+		{
+			finishVideo();
+			return;
+		}
+
+		songSyncOrigin = Math.max(0, songTimeMs) - targetTime;
+		syncSeekCooldown = 0.25;
+		setTime(targetTime);
 	}
 
 	public function getTime():Float
@@ -404,8 +678,9 @@ class FlxVideo extends FlxSprite
 
   	/**
    	* A callback to execute when the video finishes.
-   	*/
+	*/
   	public var finishCallback:Void->Void;
+	public var readyCallback:Void->Void;
 
   	public function new(videoPath:String)
   	{
@@ -502,6 +777,11 @@ class FlxVideo extends FlxSprite
     return netStream != null ? netStream.time * 1000 : 0;
   }
 
+	public function setVolume(volume:Float):Void
+	{
+		onVolumeChanged(volume);
+	}
+
   /**
    * Tell the FlxVideo to end.
    */
@@ -547,6 +827,8 @@ class FlxVideo extends FlxSprite
     onVolumeChanged(FlxG.sound.muted ? 0 : FlxG.sound.volume);
 
     makeGraphic(Std.int(video.width), Std.int(video.height), FlxColor.TRANSPARENT);
+
+	if (readyCallback != null) readyCallback();
   }
 
   function onVolumeChanged(volume:Float):Void
