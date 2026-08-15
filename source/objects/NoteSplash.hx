@@ -206,8 +206,11 @@ class NoteSplash extends FlxSprite
 
 	public function spawnSplashNote(?x:Float = 0, ?y:Float = 0, ?noteData:Int = 0, ?note:Note, ?randomize:Bool = true)
 	{
-		if (note != null && note.noteSplashData.disabled)
+		if (PlayState.instance?.noteSplash?.disabled == true || (note != null && note.noteSplashData.disabled))
+		{
+			kill();
 			return;
+		}
 
 		aliveTime = 0;
 

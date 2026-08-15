@@ -1,5 +1,14 @@
 {
 	"image": "NOTE_assets-future",
+	"bitmap_size": null,
+	"pivot": {
+		"static": "center",
+		"press": "center",
+		"confirm": "center",
+		"notes": "center",
+		"sustain": "up",
+		"sustain_end": "up"
+	},
 	"fps": 24,
 	"offsets_static": {
 		"left": [0, 0],

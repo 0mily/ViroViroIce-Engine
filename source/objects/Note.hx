@@ -149,7 +149,10 @@ class Note extends FlxSprite
 	var skinOffsetX:Float = 0;
 	var skinOffsetY:Float = 0;
 	var skinOffsetAngle:Float = 0;
-	public var rgbOverride:Null<FlxColor> = null;
+	public var rgbOverrideR:Null<FlxColor> = null;
+	public var rgbOverrideG:Null<FlxColor> = null;
+	public var rgbOverrideB:Null<FlxColor> = null;
+	public var holdSplashTexture:String = null;
 
 	public var noAnimation:Bool = false;
 	public var noMissAnimation:Bool = false;
@@ -283,8 +286,22 @@ class Note extends FlxSprite
 
 	public function setRGBOverride(color:Null<FlxColor>):Void
 	{
-		rgbOverride = color;
-		if (rgbOverride == null)
+		setRGBPalette(color, color, color);
+	}
+
+	public function setRGBPalette(r:Null<FlxColor>, g:Null<FlxColor>, b:Null<FlxColor>):Void
+	{
+		rgbOverrideR = r;
+		rgbOverrideG = g;
+		rgbOverrideB = b;
+		if (noteSplashData != null)
+		{
+			noteSplashData.r = r != null ? r : -1;
+			noteSplashData.g = g != null ? g : -1;
+			noteSplashData.b = b != null ? b : -1;
+		}
+
+		if (!hasRGBOverride())
 			defaultRGB();
 		else
 		{
@@ -304,13 +321,29 @@ class Note extends FlxSprite
 			return;
 		}
 
-		if (rgbOverride == null)
+		if (!hasRGBOverride())
 			return;
 
 		rgbShader.enabled = true;
-		rgbShader.r = rgbOverride;
-		rgbShader.g = rgbOverride;
-		rgbShader.b = rgbOverride;
+		if (rgbOverrideR != null) rgbShader.r = rgbOverrideR;
+		if (rgbOverrideG != null) rgbShader.g = rgbOverrideG;
+		if (rgbOverrideB != null) rgbShader.b = rgbOverrideB;
+	}
+
+	public inline function hasRGBOverride():Bool
+		return rgbOverrideR != null || rgbOverrideG != null || rgbOverrideB != null;
+
+	public function clearRGBOverride():Void
+	{
+		rgbOverrideR = null;
+		rgbOverrideG = null;
+		rgbOverrideB = null;
+		if (noteSplashData != null)
+		{
+			noteSplashData.r = -1;
+			noteSplashData.g = -1;
+			noteSplashData.b = -1;
+		}
 	}
 
 	function set_useRGBShader(value:Bool):Bool
@@ -324,10 +357,10 @@ class Note extends FlxSprite
 
 		if (!value)
 		{
-			rgbOverride = null;
+			clearRGBOverride();
 			rgbShader.enabled = false;
 		}
-		else if (rgbOverride != null)
+		else if (hasRGBOverride())
 			applyRGBOverride();
 		else
 			defaultRGB();
@@ -516,6 +549,15 @@ class Note extends FlxSprite
 		
 		if (validSkin != null) {
 			var actualSkin:String = '$validSkin$skinPostfix';
+			if (loadedTexture == actualSkin && graphic != null)
+			{
+				skinConfig = NoteSkinData.getNoteConfigForImage(actualSkin);
+				applyNoteSkinOffsets();
+				applyNoteSkinProperties();
+				if (animName != null)
+					animation.play(animName, true);
+				return;
+			}
 			loadedTexture = actualSkin;
 			skinConfig = NoteSkinData.getNoteConfigForImage(actualSkin);
 			
@@ -538,11 +580,15 @@ class Note extends FlxSprite
 			} else {
 				frames = Paths.getSparrowAtlas(actualSkin);
 				loadNoteAnims();
-				if(!isSustainNote)
-				{
-					centerOffsets();
+			}
+
+			var skinType:String = isSustainNote ? (isSustainEnd ? 'sustain_end' : 'sustain') : 'notes';
+			NoteSkinData.applyBitmapSize(this, skinConfig, skinType);
+			if (!isSustainNote)
+			{
+				centerOffsets();
+				if (!NoteSkinData.applyPivot(this, skinConfig, skinType))
 					centerOrigin();
-				}
 			}
 			
 			updateHitbox();
@@ -700,7 +746,10 @@ class Note extends FlxSprite
 	}
 	public function updateSustain(myStrum:StrumNote, noteSpeed:Float = 1) {
 		if (!isSustainEnd) {
-			var sustainScaleY:Float = Note.getDistance(sustainLength, noteSpeed) / frameHeight; // PROVAVELMENTE otimiza principalmente no mily mc 
+			// probably will makes that one sustain 1px bug fixed
+			var sustainPixels:Float = Note.getDistance(sustainLength, noteSpeed);
+			var seamOverlap:Float = sustainPixels == 0 ? 0 : (sustainPixels < 0 ? -1 : 1);
+			var sustainScaleY:Float = (sustainPixels + seamOverlap) / frameHeight; // PROVAVELMENTE otimiza principalmente no mily mc
 			scale.y = sustainScaleY;
 
 			if (_lastSustainScaleY != sustainScaleY || _lastSustainFrameHeight != frameHeight) {
@@ -709,7 +758,9 @@ class Note extends FlxSprite
 				updateHitbox();
 			}
 		}
-		origin.set(frameWidth * .5, 0);
+		var skinType:String = isSustainEnd ? 'sustain_end' : 'sustain';
+		if (!NoteSkinData.applyPivot(this, skinConfig, skinType))
+			origin.set(frameWidth * .5, 0);
 		offset.set();
 		
 		flipX = myStrum.downScroll;
@@ -775,7 +826,7 @@ class Note extends FlxSprite
 		while (remaining > 0.001)
 		{
 			final pieceHeck:Float = Math.min(tileLength, remaining);
-			final seamOverlap:Float = remaining > pieceHeck ? Math.min(0.75, pieceHeck * 0.1) : 0;
+			final seamOverlap:Float = remaining > pieceHeck ? Math.min(1, pieceHeck * 0.1) : 0;
 
 			x = savedX + directionX * offset;
 			y = savedY + directionY * offset;

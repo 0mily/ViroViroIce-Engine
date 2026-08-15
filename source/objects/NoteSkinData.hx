@@ -16,6 +16,8 @@ typedef NoteSkinConfig = {
 	var image:String;
 	var offsets:Map<String, Array<NoteSkinOffset>>;
 	var fps:Map<String, Int>;
+	var bitmapSize:Dynamic;
+	var pivot:Dynamic;
 	var properties:Dynamic;
 }
 
@@ -23,8 +25,10 @@ class NoteSkinData
 {
 	public static inline final NOTES_PATH:String = 'noteskins/notes';
 	public static inline final SPLASHES_PATH:String = 'noteskins/splashes';
+	public static inline final HOLD_SPLASHES_PATH:String = 'noteskins/holdSplashes';
 	public static inline final LEGACY_NOTES_PATH:String = 'noteSkins';
 	public static inline final LEGACY_SPLASHES_PATH:String = 'noteSplashes'; // haha old
+	public static inline final LEGACY_HOLD_SPLASHES_PATH:String = 'holdCovers';
 
 	static final OFFSET_FIELDS:Map<String, String> = [
 		'static' => 'offsets_static',
@@ -102,6 +106,32 @@ class NoteSkinData
 			if (imageExists(candidate))
 				return candidate;
 
+		return splash;
+	}
+
+	public static function resolveHoldSplashPath(splash:String):String
+	{
+		splash = normalizeImageKey(splash);
+		if (splash == null || splash.length < 1)
+			return splash;
+
+		if (imageExists(splash))
+			return splash;
+
+		var candidates:Array<String> = [];
+		var bare:String = stripKnownPrefixes(splash);
+		var postfix:String = optionPostfix(splash);
+		addCandidate(candidates, '$HOLD_SPLASHES_PATH/$bare');
+		addCandidate(candidates, '$HOLD_SPLASHES_PATH/holdSplash-$bare');
+		addCandidate(candidates, '$HOLD_SPLASHES_PATH/holdCover-$bare');
+		addCandidate(candidates, 'noteskins/$bare');
+		addCandidate(candidates, '$LEGACY_HOLD_SPLASHES_PATH/$bare');
+		addCandidate(candidates, '$LEGACY_HOLD_SPLASHES_PATH/holdCover-$bare');
+		addCandidate(candidates, '$LEGACY_HOLD_SPLASHES_PATH/holdCover-$postfix');
+
+		for (candidate in candidates)
+			if (imageExists(candidate))
+				return candidate;
 		return splash;
 	}
 
@@ -184,6 +214,62 @@ class NoteSkinData
 		return fps != null && fps >= 0 ? fps : fallback;
 	}
 
+	public static function applyBitmapSize(sprite:FlxSprite, config:NoteSkinConfig, type:String):Bool
+	{
+		if (sprite == null || config == null)
+			return false;
+
+		var value:Dynamic = getTypedValue(config.bitmapSize, type);
+		var size:Array<Float> = readSize(value);
+		if (size == null)
+			return false;
+
+		var width:Int = Std.int(Math.max(1, Math.round(size[0])));
+		var height:Int = Std.int(Math.max(1, Math.round(size.length > 1 ? size[1] : size[0])));
+		sprite.setGraphicSize(width, height);
+		sprite.updateHitbox();
+		return true;
+	}
+
+	public static function applyPivot(sprite:FlxSprite, config:NoteSkinConfig, type:String):Bool
+	{
+		if (sprite == null || config == null)
+			return false;
+
+		var value:Dynamic = getTypedValue(config.pivot, type);
+		if (value == null)
+			return false;
+
+		if (Std.isOfType(value, Array))
+		{
+			var values:Array<Dynamic> = cast value;
+			sprite.origin.set(parseFloat(values[0], sprite.frameWidth * 0.5), parseFloat(values[1], sprite.frameHeight * 0.5));
+			return true;
+		}
+		if (!Std.isOfType(value, String) && (Reflect.hasField(value, 'x') || Reflect.hasField(value, 'y')))
+		{
+			sprite.origin.set(
+				parseFloat(Reflect.field(value, 'x'), sprite.frameWidth * 0.5),
+				parseFloat(Reflect.field(value, 'y'), sprite.frameHeight * 0.5));
+			return true;
+		}
+
+		var pivot:String = Std.string(value).toLowerCase().trim().replace('_', '-');
+		switch (pivot)
+		{
+			case 'up' | 'top': sprite.origin.set(sprite.frameWidth * 0.5, 0);
+			case 'down' | 'bottom': sprite.origin.set(sprite.frameWidth * 0.5, sprite.frameHeight);
+			case 'left': sprite.origin.set(0, sprite.frameHeight * 0.5);
+			case 'right': sprite.origin.set(sprite.frameWidth, sprite.frameHeight * 0.5);
+			case 'd-upleft' | 'top-left' | 'upleft': sprite.origin.set(0, 0);
+			case 'd-upright' | 'top-right' | 'upright': sprite.origin.set(sprite.frameWidth, 0);
+			case 'd-downleft' | 'bottom-left' | 'downleft': sprite.origin.set(0, sprite.frameHeight);
+			case 'd-downright' | 'bottom-right' | 'downright': sprite.origin.set(sprite.frameWidth, sprite.frameHeight);
+			default: sprite.origin.set(sprite.frameWidth * 0.5, sprite.frameHeight * 0.5);
+		}
+		return true;
+	}
+
 	public static function applyPropertiesToNote(note:Note, config:NoteSkinConfig):Void // fuck txt, me and the gals love using json or xml
 	{
 		var props:Dynamic = config?.properties;
@@ -257,6 +343,8 @@ class NoteSkinData
 			image: image,
 			offsets: new Map(),
 			fps: new Map(),
+			bitmapSize: Reflect.field(rawData, 'bitmap_size'),
+			pivot: Reflect.field(rawData, 'pivot'),
 			properties: Reflect.field(rawData, 'properties')
 		};
 
@@ -362,6 +450,54 @@ class NoteSkinData
 		};
 	}
 
+	static function getTypedValue(value:Dynamic, type:String):Dynamic
+	{
+		if (value == null || Std.isOfType(value, String) || Std.isOfType(value, Int) || Std.isOfType(value, Float) || Std.isOfType(value, Array))
+			return value;
+		if (Reflect.hasField(value, 'x') || Reflect.hasField(value, 'y') || Reflect.hasField(value, 'width') || Reflect.hasField(value, 'height'))
+			return value;
+
+		var fields:Array<String> = [type];
+		switch (type)
+		{
+			case 'confirm': fields.push('press'); fields.push('static');
+			case 'press': fields.push('static');
+			case 'sustain_end': fields.push('sustain');
+			default:
+		}
+		fields.push('default');
+
+		for (field in fields)
+			if (Reflect.hasField(value, field))
+				return Reflect.field(value, field);
+		return null;
+	}
+
+	static function readSize(value:Dynamic):Array<Float>
+	{
+		if (value == null)
+			return null;
+		if (Std.isOfType(value, Int) || Std.isOfType(value, Float))
+		{
+			var size:Float = parseFloat(value, Math.NaN);
+			return Math.isNaN(size) ? null : [size, size];
+		}
+
+		var values:Array<Dynamic> = null;
+		if (Std.isOfType(value, Array))
+			values = cast value;
+		else if (Std.isOfType(value, String))
+			values = [for (part in Std.string(value).replace(',', ' ').split(' ')) if (part.trim().length > 0) part.trim()];
+		else
+			values = [Reflect.field(value, 'width') ?? Reflect.field(value, 'x'), Reflect.field(value, 'height') ?? Reflect.field(value, 'y')];
+
+		if (values == null || values.length < 1)
+			return null;
+		var width:Float = parseFloat(values[0], Math.NaN);
+		var height:Float = parseFloat(values.length > 1 ? values[1] : values[0], width);
+		return Math.isNaN(width) || Math.isNaN(height) ? null : [width, height];
+	}
+
 	static function readSideImage(data:Dynamic, player:Int):String
 	{
 		var field:String = player == 0 ? 'opponentSkin' : 'playerSkin';
@@ -401,7 +537,7 @@ class NoteSkinData
 	static function stripKnownPrefixes(key:String):String
 	{
 		key = normalizeImageKey(key);
-		for (prefix in [NOTES_PATH, SPLASHES_PATH, LEGACY_NOTES_PATH, LEGACY_SPLASHES_PATH, 'noteskins'])
+		for (prefix in [NOTES_PATH, SPLASHES_PATH, HOLD_SPLASHES_PATH, LEGACY_NOTES_PATH, LEGACY_SPLASHES_PATH, LEGACY_HOLD_SPLASHES_PATH, 'noteskins'])
 			if (key.startsWith(prefix + '/'))
 				return key.substr(prefix.length + 1);
 		return key;

@@ -1451,7 +1451,7 @@ class FunkinLua {
 						var originalTag:String = tag;
 						var variables = MusicBeatState.getVariables();
 						tag = LuaUtils.formatVariable('tween_$tag');
-						variables.set(tag, FlxTween.tween(penisExam, values, duration, myOptions != null ? {
+						variables.set(tag, objects.NoteRuntimeLane.NoteRuntimeTween.tween(penisExam, values, duration, myOptions != null ? {
 							type: myOptions.type,
 							ease: myOptions.ease,
 							startDelay: myOptions.startDelay,
@@ -1466,7 +1466,7 @@ class FunkinLua {
 						} : null));
 						return tag;
 					} else {
-						FlxTween.tween(penisExam, values, duration, myOptions != null ? {
+						objects.NoteRuntimeLane.NoteRuntimeTween.tween(penisExam, values, duration, myOptions != null ? {
 							type: myOptions.type,
 							ease: myOptions.ease,
 							startDelay: myOptions.startDelay,
@@ -2622,13 +2622,12 @@ class FunkinLua {
 		registerFunction('noteTweenAlpha', function(tag:String, note:Int, value:Dynamic, duration:Float, ?ease:String = 'linear') return noteTweenFunction(tag, note, {alpha: value}, duration, ease));
 		registerFunction('noteTweenDirection', function(tag:String, note:Int, value:Dynamic, duration:Float, ?ease:String = 'linear') return noteTweenFunction(tag, note, {direction: value}, duration, ease));
 
-		// haha, notes (RGB never used and i uhhmmmm theres 3 colors on rgb i'm stupid) PROBABLY SHIHO WILL FIX IT LATER
+		// haha, notes (RGB never used and i uhhmmmm theres 3 colors on rgb i'm stupid) PROBABLY SHIHO WILL FIX IT LATER     // FIXED
 		registerFunction('setStrumSkin', function(strum:Dynamic, skinName:String) return game.setStrumSkin(strum, skinName));
-		registerFunction('setPlayerSplash', function(splashName:String) return game.setPlayerSplash(splashName));
-		registerFunction('setStrumRGB', function(strum:Dynamic, colorHex:String) return game.setStrumRGB(strum, colorHex));
-		registerFunction('allowStrumRGB', function(strum:Dynamic, ?enabled:Bool = true) return game.allowStrumRGB(strum, enabled));
-		registerFunction('tweenStrumRGB', function(tag:String, strum:Dynamic, seconds:Float, colorHex:String, ?ease:String = 'linear')
-			return game.tweenStrumRGB(tag, strum, seconds, colorHex, ease));
+		registerFunction('setSplashSkin', function(skinName:String, ?noteIndex:Int) return game.setSplashSkin(skinName, noteIndex));
+		registerFunction('setHoldSplashSkin', function(skinName:String, ?noteIndex:Int) return game.setHoldSplashSkin(skinName, noteIndex));
+		registerFunction('setStrumRGB', function(strum:Dynamic, colors:Dynamic) return game.setStrumRGB(strum, colors));
+		registerFunction('allowStrumRGB', function(strum:Dynamic, enabled:Bool) return game.allowStrumRGB(strum, enabled)); // idk why the MAIN THING was optional
 	}
 }
 #end

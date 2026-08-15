@@ -39,6 +39,8 @@ import openfl.filters.ShaderFilter;
 import objects.VideoSprite;
 import objects.Note.EventNote;
 import objects.*;
+import objects.NoteRuntimeLane.NoteRuntimeCollection;
+import objects.NoteRuntimeLane.NoteRuntimeScope;
 import states.stages.*;
 import states.stages.objects.*;
 
@@ -345,10 +347,20 @@ class PlayState extends ScriptedState
 	public var opponentStrums:FlxTypedGroup<StrumNote> = new FlxTypedGroup<StrumNote>();
 	public var strumSkinOverrides:Array<String> = [for (_ in 0...8) null];
 	public var noteSkinOverrides:Array<String> = [for (_ in 0...8) null];
-	public var strumRGBOverrides:Array<Null<FlxColor>> = [for (_ in 0...8) null];
-	public var noteRGBOverrides:Array<Null<FlxColor>> = [for (_ in 0...8) null];
+	public var strumRGBOverrides:Array<Null<Array<FlxColor>>> = [for (_ in 0...8) null];
+	public var noteRGBOverrides:Array<Null<Array<FlxColor>>> = [for (_ in 0...8) null];
 	public var strumRGBAllowedOverrides:Array<Null<Bool>> = [for (_ in 0...8) null];
 	public var noteRGBAllowedOverrides:Array<Null<Bool>> = [for (_ in 0...8) null];
+	public var splashSkinOverrides:Array<String> = [for (_ in 0...4) null];
+	public var holdSplashSkinOverrides:Array<String> = [for (_ in 0...4) null];
+	public var noteLanes(default, null):Array<NoteRuntimeLane> = [];
+	public var noteLaneCollection(default, null):NoteRuntimeCollection;
+	public var strumLane(default, null):Array<NoteRuntimeLane> = [];
+	public var strumLaneCollection(default, null):NoteRuntimeCollection;
+	public var strums(default, null):Array<NoteRuntimeLane> = [];
+	public var strumsCollection(default, null):NoteRuntimeCollection;
+	public var noteSplash(default, null):SplashRuntime;
+	public var holdSplash(default, null):SplashRuntime;
 	/**
 	 * Group containing all note splashes.
 	*/
@@ -636,6 +648,7 @@ class PlayState extends ScriptedState
 
 		// for lua
 		instance = this;
+		initNoteRuntimeAPI();
 		backend.ResolutionManager.syncForState(this);
 		// Keep the dimensions that will be used by objects created before script onCreate callbacks. ( SORRY JULIEEEEE )
 		// now scripts should probably work better
@@ -1409,6 +1422,10 @@ class PlayState extends ScriptedState
 			strum.downScroll = ClientPrefs.data.downScroll;
 			if(closeTo(strum.y, strum.downScroll ? oldHeight - strum.height - 50 : 50))
 				strum.y = strum.downScroll ? getDownscrollStrumY(strum) : 50;
+
+			var runtimeIndex:Int = strum.noteData + (player ? 4 : 0);
+			strumLane[runtimeIndex]?.applyToStrum(strum);
+			strums[runtimeIndex]?.applyToStrum(strum);
 		}
 	}
 
@@ -1430,7 +1447,7 @@ class PlayState extends ScriptedState
 		for (index in parsed.noteIndices)
 			noteSkinOverrides[index] = skinName;
 
-		forEachGameplayNote(function(note:Note) {
+		forEachActiveGameplayNote(function(note:Note) {
 			var index:Int = getRuntimeNoteIndex(note);
 			if (parsed.noteIndices.contains(index))
 			{
@@ -1441,80 +1458,88 @@ class PlayState extends ScriptedState
 		return parsed.staticIndices.length > 0 || parsed.noteIndices.length > 0;
 	}
 
-	public function setPlayerSplash(splashName:String):Bool
+	function initNoteRuntimeAPI():Void
 	{
-		if (splashName == null || splashName.trim().length < 1)
+		if (noteLanes.length != 8)
+			noteLanes = [for (index in 0...8) new NoteRuntimeLane(this, index, MOVING_NOTES)];
+		if (strumLane.length != 8)
+			strumLane = [for (index in 0...8) new NoteRuntimeLane(this, index, RECEPTOR)];
+		if (strums.length != 8)
+			strums = [for (index in 0...8) new NoteRuntimeLane(this, index, ALL)];
+
+		noteLaneCollection ??= new NoteRuntimeCollection(this, noteLanes, MOVING_NOTES);
+		strumLaneCollection ??= new NoteRuntimeCollection(this, strumLane, RECEPTOR);
+		strumsCollection ??= new NoteRuntimeCollection(this, strums, ALL);
+		noteSplash ??= new SplashRuntime(this, false);
+		holdSplash ??= new SplashRuntime(this, true);
+	}
+
+	public function getRuntimeLaneCollection(value:Dynamic):NoteRuntimeCollection
+	{
+		if (value == noteLanes || value == noteLaneCollection)
+			return noteLaneCollection;
+		if (value == strumLane || value == strumLaneCollection)
+			return strumLaneCollection;
+		if (value == strums || value == strumsCollection)
+			return strumsCollection;
+		return null;
+	}
+
+	public function setSplashSkin(skinName:String, ?noteIndex:Int):Bool
+	{
+		if (skinName == null || skinName.trim().length < 1)
 			return false;
 
-		var resolvedSplash:String = NoteSplash.resolveSplashPath(splashName);
-		if (SONG != null)
-			SONG.splashSkin = resolvedSplash;
+		var indices:Array<Int> = splashTargetIndices(noteIndex);
+		if (indices.length < 1)
+			return false;
 
-		forEachGameplayNote(function(note:Note) {
-			if (note.mustPress)
-				note.noteSplashData.texture = resolvedSplash;
+		var resolved:String = NoteSplash.resolveSplashPath(skinName);
+		for (index in indices)
+			splashSkinOverrides[index] = resolved;
+		forEachActiveGameplayNote(function(note:Note) {
+			if (indices.contains(note.noteData))
+				note.noteSplashData.texture = resolved;
 		});
 		return true;
 	}
 
-	public function setStrumRGB(target:Dynamic, colorHex:String):Bool
+	public function setHoldSplashSkin(skinName:String, ?noteIndex:Int):Bool
 	{
-		var color:FlxColor = CoolUtil.colorFromString(colorHex);
+		if (skinName == null || skinName.trim().length < 1)
+			return false;
+
+		var indices:Array<Int> = splashTargetIndices(noteIndex);
+		if (indices.length < 1)
+			return false;
+
+		var resolved:String = NoteSkinData.resolveHoldSplashPath(skinName);
+		for (index in indices)
+			holdSplashSkinOverrides[index] = resolved;
+		forEachActiveGameplayNote(function(note:Note) {
+			if (indices.contains(note.noteData))
+				note.holdSplashTexture = resolved;
+		});
+		return true;
+	}
+
+	public function setStrumRGB(target:Dynamic, colors:Dynamic):Bool
+	{
+		var palette:Array<FlxColor> = parseRuntimeRGBPalette(colors);
+		if (palette == null)
+			return false;
+
 		var parsed:StrumRuntimeTarget = parseStrumRuntimeTarget(target, true, true);
 		applyRuntimeRGBAllowed(parsed, true);
-		applyRuntimeRGB(parsed, color);
+		applyRuntimeRGB(parsed, palette);
 		return parsed.staticIndices.length > 0 || parsed.noteIndices.length > 0;
 	}
 
-	public function allowStrumRGB(target:Dynamic, enabled:Bool = true):Bool
+	public function allowStrumRGB(target:Dynamic, enabled:Bool):Bool
 	{
 		var parsed:StrumRuntimeTarget = parseStrumRuntimeTarget(target, true, true);
 		applyRuntimeRGBAllowed(parsed, enabled);
 		return parsed.staticIndices.length > 0 || parsed.noteIndices.length > 0;
-	}
-
-	public function tweenStrumRGB(tag:String, target:Dynamic, seconds:Float, colorHex:String, ease:String = 'linear'):String
-	{
-		var parsed:StrumRuntimeTarget = parseStrumRuntimeTarget(target, true, true);
-		if (parsed.staticIndices.length < 1 && parsed.noteIndices.length < 1)
-			return null;
-
-		applyRuntimeRGBAllowed(parsed, true);
-		var targetColor:FlxColor = CoolUtil.colorFromString(colorHex);
-		var staticStart:Array<FlxColor> = [for (index in parsed.staticIndices) getRuntimeStrumRGB(index)];
-		var noteStart:Array<FlxColor> = [for (index in parsed.noteIndices) getRuntimeNoteRGB(index)];
-		var tweenTag:String = tag != null && tag.length > 0 ? 'tween_' + formatRuntimeTweenTag(tag) : null;
-
-		if (tweenTag != null)
-		{
-			var oldTween:FlxTween = MusicBeatState.getVariables().get(tweenTag);
-			if (oldTween != null)
-			{
-				oldTween.cancel();
-				oldTween.destroy();
-			}
-		}
-
-		var tween:FlxTween = FlxTween.num(0, 1, Math.max(seconds, 0), {
-			ease: getRuntimeTweenEase(ease),
-			onComplete: function(twn:FlxTween) {
-				if (tweenTag != null)
-					MusicBeatState.getVariables().remove(tweenTag);
-				#if LUA_ALLOWED
-				if (tag != null && tag.length > 0)
-					FunkinLua.luaCallGlobal('onTweenCompleted', [tag]);
-				#end
-			}
-		}, function(value:Float) {
-			for (i in 0...parsed.staticIndices.length)
-				applyRuntimeRGBToStatic(parsed.staticIndices[i], FlxColor.interpolate(staticStart[i], targetColor, value));
-			for (i in 0...parsed.noteIndices.length)
-				applyRuntimeRGBToNotes(parsed.noteIndices[i], FlxColor.interpolate(noteStart[i], targetColor, value));
-		});
-
-		if (tweenTag != null)
-			MusicBeatState.getVariables().set(tweenTag, tween);
-		return tweenTag;
 	}
 
 	function applyRuntimeNoteOverrides(note:Note):Void
@@ -1523,8 +1548,19 @@ class PlayState extends ScriptedState
 		var skin:String = noteSkinOverrides[index];
 		if (skin != null && skin.length > 0)
 			applyNoteSkinOverride(note, skin);
+		if (note.noteData >= 0 && note.noteData < 4)
+		{
+			var splashSkin:String = splashSkinOverrides[note.noteData];
+			if (splashSkin != null)
+				note.noteSplashData.texture = splashSkin;
+			var holdSkin:String = holdSplashSkinOverrides[note.noteData];
+			if (holdSkin != null)
+				note.holdSplashTexture = holdSkin;
+		}
 
 		applyRuntimeNoteRGBState(note, index);
+		noteLanes[index]?.applyToNote(note);
+		strums[index]?.applyToNote(note);
 	}
 
 	function applyRuntimeNoteRGBState(note:Note, index:Int):Void
@@ -1533,9 +1569,9 @@ class PlayState extends ScriptedState
 		if (allowed != null)
 			note.useRGBShader = allowed;
 
-		var color:Null<FlxColor> = noteRGBOverrides[index];
-		if (color != null && note.useRGBShader)
-			note.setRGBOverride(color);
+		var palette:Array<FlxColor> = noteRGBOverrides[index];
+		if (palette != null && note.useRGBShader)
+			note.setRGBPalette(palette[0], palette[1], palette[2]);
 	}
 
 	function applyStrumSkinOverride(index:Int, skinName:String):Void
@@ -1553,9 +1589,9 @@ class PlayState extends ScriptedState
 		if (allowed != null)
 			strum.setRGBAllowed(allowed);
 
-		var color:Null<FlxColor> = strumRGBOverrides[index];
-		if (color != null && strum.useRGBShader)
-			strum.setRGBOverride(color);
+		var palette:Array<FlxColor> = strumRGBOverrides[index];
+		if (palette != null && strum.useRGBShader)
+			strum.setRGBPalette(palette[0], palette[1], palette[2]);
 
 		if (strum.animation.curAnim == null)
 			strum.playAnim('static', true);
@@ -1570,35 +1606,39 @@ class PlayState extends ScriptedState
 		note.applyNoteSkinOffsets();
 	}
 
-	function applyRuntimeRGB(target:StrumRuntimeTarget, color:FlxColor):Void
+	function applyRuntimeRGB(target:StrumRuntimeTarget, palette:Array<FlxColor>):Void
 	{
 		for (index in target.staticIndices)
-			applyRuntimeRGBToStatic(index, color);
+			applyRuntimeRGBToStatic(index, palette);
 		for (index in target.noteIndices)
-			applyRuntimeRGBToNotes(index, color);
+			applyRuntimeRGBToNotes(index, palette);
 	}
 
-	function applyRuntimeRGBToStatic(index:Int, color:FlxColor):Void
+	function applyRuntimeRGBToStatic(index:Int, palette:Array<FlxColor>):Void
 	{
-		strumRGBOverrides[index] = color;
+		strumRGBOverrides[index] = palette.copy();
 		if (strumRGBAllowedOverrides[index] == false)
 			return;
 
 		var strum:StrumNote = strumLineNotes.members[index];
 		if (strum != null)
-			strum.setRGBOverride(color);
+			strum.setRGBPalette(palette[0], palette[1], palette[2]);
 	}
 
-	function applyRuntimeRGBToNotes(index:Int, color:FlxColor):Void
+	function applyRuntimeRGBToNotes(index:Int, palette:Array<FlxColor>):Void
 	{
-		noteRGBOverrides[index] = color;
+		noteRGBOverrides[index] = palette.copy();
 		if (noteRGBAllowedOverrides[index] == false)
+		{
+			applyPressedRGBToStrum(index, null);
 			return;
+		}
 
-		forEachGameplayNote(function(note:Note) {
+		forEachActiveGameplayNote(function(note:Note) {
 			if (getRuntimeNoteIndex(note) == index)
-				note.setRGBOverride(color);
+				note.setRGBPalette(palette[0], palette[1], palette[2]);
 		});
+		applyPressedRGBToStrum(index, palette);
 	}
 
 	function applyRuntimeRGBAllowed(target:StrumRuntimeTarget, enabled:Bool):Void
@@ -1618,53 +1658,132 @@ class PlayState extends ScriptedState
 
 		strum.setRGBAllowed(enabled);
 		if (enabled && strumRGBOverrides[index] != null)
-			strum.setRGBOverride(strumRGBOverrides[index]);
+		{
+			var palette:Array<FlxColor> = strumRGBOverrides[index];
+			strum.setRGBPalette(palette[0], palette[1], palette[2]);
+		}
 	}
 
 	function applyRuntimeRGBAllowedToNotes(index:Int, enabled:Bool):Void
 	{
 		noteRGBAllowedOverrides[index] = enabled;
-		forEachGameplayNote(function(note:Note) {
+		forEachActiveGameplayNote(function(note:Note) {
 			if (getRuntimeNoteIndex(note) == index)
 			{
 				note.useRGBShader = enabled;
 				if (enabled && noteRGBOverrides[index] != null)
-					note.setRGBOverride(noteRGBOverrides[index]);
+				{
+					var palette:Array<FlxColor> = noteRGBOverrides[index];
+					note.setRGBPalette(palette[0], palette[1], palette[2]);
+				}
 			}
 		});
+		applyPressedRGBToStrum(index, enabled ? noteRGBOverrides[index] : null);
 	}
 
-	function getRuntimeStrumRGB(index:Int):FlxColor
+	function applyPressedRGBToStrum(index:Int, palette:Array<FlxColor>):Void
 	{
-		var colorOverride:Null<FlxColor> = strumRGBOverrides[index];
-		if (colorOverride != null)
-			return colorOverride;
-
+		if (strumLineNotes == null || index < 0 || index >= strumLineNotes.members.length)
+			return;
 		var strum:StrumNote = strumLineNotes.members[index];
-		if (strum != null && strum.rgbOverride != null)
-			return strum.rgbOverride;
+		if (strum == null)
+			return;
 
-		var noteData:Int = Std.int(Math.abs(index) % 4);
-		var arr:Array<FlxColor> = PlayState.isPixelStage ? ClientPrefs.data.arrowRGBPixel[noteData] : ClientPrefs.data.arrowRGB[noteData];
-		return arr != null && arr.length > 0 ? arr[0] : FlxColor.WHITE;
+		if (palette == null || palette.length < 3)
+			strum.setPressedRGBPalette(null, null, null);
+		else
+			strum.setPressedRGBPalette(palette[0], palette[1], palette[2]);
 	}
 
-	function getRuntimeNoteRGB(index:Int):FlxColor
+	public function getRuntimeRGBChannel(index:Int, scope:NoteRuntimeScope, channel:Int):FlxColor
 	{
-		var colorOverride:Null<FlxColor> = noteRGBOverrides[index];
-		if (colorOverride != null)
-			return colorOverride;
-		return getRuntimeStrumRGB(index);
+		if (index < 0 || index >= 8 || channel < 0 || channel >= 3)
+			return FlxColor.WHITE;
+
+		var palette:Array<FlxColor> = scope == RECEPTOR ? strumRGBOverrides[index] : noteRGBOverrides[index];
+		if (scope == ALL && palette == null)
+			palette = strumRGBOverrides[index];
+		if (palette == null)
+			palette = getDefaultRuntimePalette(index);
+		return palette[channel];
 	}
 
-	function forEachGameplayNote(callback:Note->Void):Void
+	public function setRuntimeRGBChannel(index:Int, scope:NoteRuntimeScope, channel:Int, color:FlxColor):Void
+	{
+		if (index < 0 || index >= 8 || channel < 0 || channel >= 3)
+			return;
+
+		if (scope == RECEPTOR || scope == ALL)
+		{
+			var staticPalette:Array<FlxColor> = strumRGBOverrides[index];
+			if (staticPalette == null) staticPalette = getDefaultRuntimePalette(index);
+			else staticPalette = staticPalette.copy();
+			staticPalette[channel] = color;
+			applyRuntimeRGBAllowedToStatic(index, true);
+			applyRuntimeRGBToStatic(index, staticPalette);
+		}
+		if (scope == MOVING_NOTES || scope == ALL)
+		{
+			var movingPalette:Array<FlxColor> = noteRGBOverrides[index];
+			if (movingPalette == null) movingPalette = getDefaultRuntimePalette(index);
+			else movingPalette = movingPalette.copy();
+			movingPalette[channel] = color;
+			applyRuntimeRGBAllowedToNotes(index, true);
+			applyRuntimeRGBToNotes(index, movingPalette);
+		}
+	}
+
+	function getDefaultRuntimePalette(index:Int):Array<FlxColor>
+	{
+		var noteData:Int = Std.int(Math.abs(index) % 4);
+		var palette:Array<FlxColor> = PlayState.isPixelStage ? ClientPrefs.data.arrowRGBPixel[noteData] : ClientPrefs.data.arrowRGB[noteData];
+		if (palette == null || palette.length < 3)
+			return [FlxColor.RED, FlxColor.GREEN, FlxColor.BLUE];
+		return [palette[0], palette[1], palette[2]];
+	}
+
+	static function parseRuntimeRGBPalette(colors:Dynamic):Array<FlxColor>
+	{
+		if (colors == null)
+			return null;
+
+		var values:Array<Dynamic> = [];
+		if (Std.isOfType(colors, Array))
+		{
+			var array:Array<Dynamic> = cast colors;
+			if (array.length < 3) return null;
+			values = [array[0], array[1], array[2]];
+		}
+		else
+		{
+			for (channel in ['r', 'g', 'b'])
+			{
+				var found:Dynamic = null;
+				for (field in Reflect.fields(colors))
+					if (field.toLowerCase() == channel)
+					{
+						found = Reflect.field(colors, field);
+						break;
+					}
+				if (found == null) return null;
+				values.push(found);
+			}
+		}
+
+		return [for (value in values) NoteRuntimeLane.colorFromDynamic(value)];
+	}
+
+	static function splashTargetIndices(noteIndex:Null<Int>):Array<Int>
+	{
+		if (noteIndex == null)
+			return [0, 1, 2, 3];
+		return noteIndex >= 0 && noteIndex < 4 ? [noteIndex] : [];
+	}
+
+	function forEachActiveGameplayNote(callback:Note->Void):Void
 	{
 		if (callback == null)
 			return;
-
-		for (note in unspawnNotes)
-			if (note != null)
-				callback(note);
 
 		if (notes != null)
 		{
@@ -1784,7 +1903,7 @@ class PlayState extends ScriptedState
 
 		return switch (value)
 		{
-			case 'bf' | 'boyfriend' | 'player': [4, 5, 6, 7];
+			case 'bf' | 'boyfriend' | 'ply' | 'player': [4, 5, 6, 7];
 			case 'dad' | 'opponent' | 'opp': [0, 1, 2, 3];
 			case 'both' | 'all' | 'gen' | 'strum_gen': [0, 1, 2, 3, 4, 5, 6, 7];
 			case 'left': [0, 4];
@@ -1837,17 +1956,6 @@ class PlayState extends ScriptedState
 				parsed;
 		}
 	}
-
-	static function getRuntimeTweenEase(ease:String):Dynamic
-	{
-		if (ease == null || ease.length < 1)
-			return FlxEase.linear;
-		var tweenEase:Dynamic = Reflect.field(FlxEase, ease);
-		return tweenEase != null ? tweenEase : FlxEase.linear;
-	}
-
-	static function formatRuntimeTweenTag(tag:String):String
-		return tag.trim().replace(' ', '_').replace('.', '');
 
 	/**
 	 * Precaches a character.
@@ -3413,7 +3521,7 @@ class PlayState extends ScriptedState
 		catch (e:Dynamic) {}
 		FlxG.sound.list.add(inst);
 
-		notes = new FlxTypedGroup<Note>();
+		notes = new NoteRenderGroup();
 		noteGroup.add(notes);
 
 		try
@@ -3697,7 +3805,17 @@ class PlayState extends ScriptedState
 			}
 
 			if (strumRGBOverrides[runtimeIndex] != null && babyArrow.useRGBShader)
-				babyArrow.setRGBOverride(strumRGBOverrides[runtimeIndex]);
+			{
+				var palette:Array<FlxColor> = strumRGBOverrides[runtimeIndex];
+				babyArrow.setRGBPalette(palette[0], palette[1], palette[2]);
+			}
+
+			var pressedPalette:Array<FlxColor> = noteRGBAllowedOverrides[runtimeIndex] == false ? null : noteRGBOverrides[runtimeIndex];
+			if (pressedPalette != null)
+				babyArrow.setPressedRGBPalette(pressedPalette[0], pressedPalette[1], pressedPalette[2]);
+
+			strumLane[runtimeIndex]?.applyToStrum(babyArrow);
+			strums[runtimeIndex]?.applyToStrum(babyArrow);
 		}
 	}
 	function tweenInArrows():Void {
@@ -3963,6 +4081,8 @@ class PlayState extends ScriptedState
 			while (unspawnNotes.length > 0 && unspawnNotes[0].strumTime - Conductor.songPosition < time)
 			{
 				var dunceNote:Note = unspawnNotes[0];
+				// Apply runtime changes lazily
+				applyRuntimeNoteOverrides(dunceNote);
 				notes.insert(0, dunceNote);
 				dunceNote.spawned = true;
 
@@ -6568,6 +6688,8 @@ class PlayState extends ScriptedState
 	 * @param 	note 	The note to use.
 	*/
 	public function spawnNoteSplashOnNote(note:Note):NoteSplash {
+		if (noteSplash?.disabled == true)
+			return null;
 		if(note != null) {
 			var strum:StrumNote = playerStrums.members[note.noteData];
 			if(strum != null)
@@ -6578,7 +6700,8 @@ class PlayState extends ScriptedState
 
 	public function spawnHoldSplashOnNote(note:Note)
 		{
-			if (ClientPrefs.data.holdSplashAlpha <= 0)
+			if (holdSplash?.disabled == true || (holdSplash == null && ClientPrefs.data.holdSplashAlpha <= 0)
+				|| (holdSplash != null && holdSplash.resolveAlpha(ClientPrefs.data.holdSplashAlpha) <= 0))
 				return;
 
 			if (note != null)
@@ -6591,9 +6714,12 @@ class PlayState extends ScriptedState
 
 	public function spawnHoldSplash(note:Note)
 		{
+			if (holdSplash?.disabled == true)
+				return;
 			var end:Note = note.isSustainNote ? note.parent.tail[note.parent.tail.length - 1] : note.tail[note.tail.length - 1];
 			var splash:SustainSplash = grpHoldSplashes.recycle(SustainSplash);
 			splash.setupSusSplash((note.mustPress ? playerStrums : opponentStrums).members[note.noteData], note, playbackRate);
+			holdSplash?.applyTo(splash);
 			grpHoldSplashes.add(end.noteHoldSplash = splash);
 		}
 
@@ -6609,9 +6735,12 @@ class PlayState extends ScriptedState
 	 * @return 	A new `NoteSplash` instance.
 	*/
 	public function spawnNoteSplash(x:Float = 0, y:Float = 0, ?data:Int = 0, ?note:Note, ?strum:StrumNote):NoteSplash {
+		if (noteSplash?.disabled == true)
+			return null;
 		var splash:NoteSplash = grpNoteSplashes.recycle(NoteSplash);
 		splash.babyArrow = strum;
 		splash.spawnSplashNote(x, y, data, note);
+		noteSplash?.applyTo(splash);
 		grpNoteSplashes.add(splash);
 		return splash;
 	}

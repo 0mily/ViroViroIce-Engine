@@ -166,7 +166,9 @@ class HealthIcon extends FlxSprite
 		currentPivot = readString(Reflect.field(config, 'pivot'), 'center');
 		iconAllowsGPU = allowGPU;
 
-		antialiasing = !char.endsWith('-pixel') && ClientPrefs.data.antialiasing; // still not tested with pixel icons tho. I should make a conf to them or smth later on
+		antialiasing = readBoolAliases(config, [
+			'anti_aliasing', 'antialiasing', 'antiAliasing', 'antiAlising', 'anti_alising'
+		], !char.endsWith('-pixel') && ClientPrefs.data.antialiasing);
 		applyBitmapSize(bitmapWidth, bitmapHeight);
 		configureIconAnimations(config, hasConfig, char);
 	}
@@ -211,7 +213,7 @@ class HealthIcon extends FlxSprite
 		if(bitmapWidth == sourceFrameWidth && bitmapHeight == sourceFrameHeight)
 			return sourceIconGraphic;
 
-		var scaledKey:String = 'health-icon-bitmap:$sourceIconImage:${bitmapWidth}x$bitmapHeight';
+		var scaledKey:String = 'health-icon-bitmap:$sourceIconImage:${bitmapWidth}x$bitmapHeight:aa-$antialiasing';
 		if(Paths.currentTrackedAssets.exists(scaledKey))
 		{
 			Paths.localTrackedAssets.push(scaledKey);
@@ -376,6 +378,14 @@ class HealthIcon extends FlxSprite
 			case 'true' | '1' | 'yes' | 'on': return true;
 			case 'false' | '0' | 'no' | 'off': return false;
 		}
+		return fallback;
+	}
+
+	static function readBoolAliases(data:Dynamic, fields:Array<String>, fallback:Bool):Bool {
+		if(data != null)
+			for(field in fields)
+				if(Reflect.hasField(data, field))
+					return readBool(Reflect.field(data, field), fallback);
 		return fallback;
 	}
 

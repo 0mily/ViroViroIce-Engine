@@ -20,7 +20,12 @@ class StrumNote extends FlxSprite
 	public var texture(default, set):String = null;
 	public var skinConfig:NoteSkinConfig = null;
 	public var skinOffsetAngle:Float = 0;
-	public var rgbOverride:Null<FlxColor> = null;
+	public var rgbOverrideR:Null<FlxColor> = null;
+	public var rgbOverrideG:Null<FlxColor> = null;
+	public var rgbOverrideB:Null<FlxColor> = null;
+	public var pressedRGBR:Null<FlxColor> = null;
+	public var pressedRGBG:Null<FlxColor> = null;
+	public var pressedRGBB:Null<FlxColor> = null;
 	private function set_texture(value:String):String {
 		if(texture != value) {
 			texture = value;
@@ -75,8 +80,15 @@ class StrumNote extends FlxSprite
 
 	public function setRGBOverride(color:Null<FlxColor>):Void
 	{
-		rgbOverride = color;
-		if (rgbOverride == null)
+		setRGBPalette(color, color, color);
+	}
+
+	public function setRGBPalette(r:Null<FlxColor>, g:Null<FlxColor>, b:Null<FlxColor>):Void
+	{
+		rgbOverrideR = r;
+		rgbOverrideG = g;
+		rgbOverrideB = b;
+		if (!hasRGBOverride())
 			applyDefaultRGB();
 		else
 		{
@@ -89,13 +101,13 @@ class StrumNote extends FlxSprite
 	{
 		useRGBShader = value;
 		if (!value && clearOverride)
-			rgbOverride = null;
+			clearRGBOverride();
 
 		if (value)
 		{
 			if (animation?.curAnim != null)
 				rgbShader.enabled = true;
-			if (rgbOverride != null)
+			if (hasRGBOverride())
 				applyRGBOverride();
 			else
 				applyDefaultRGB();
@@ -114,14 +126,33 @@ class StrumNote extends FlxSprite
 
 	public function applyRGBOverride():Bool
 	{
-		if (rgbOverride == null)
+		if (!hasRGBOverride())
 			return false;
 
 		rgbShader.enabled = true;
-		rgbShader.r = rgbOverride;
-		rgbShader.g = rgbOverride;
-		rgbShader.b = rgbOverride;
+		if (rgbOverrideR != null) rgbShader.r = rgbOverrideR;
+		if (rgbOverrideG != null) rgbShader.g = rgbOverrideG;
+		if (rgbOverrideB != null) rgbShader.b = rgbOverrideB;
 		return true;
+	}
+
+	public inline function hasRGBOverride():Bool
+		return rgbOverrideR != null || rgbOverrideG != null || rgbOverrideB != null;
+
+	public function clearRGBOverride():Void
+	{
+		rgbOverrideR = null;
+		rgbOverrideG = null;
+		rgbOverrideB = null;
+	}
+
+	public function setPressedRGBPalette(r:Null<FlxColor>, g:Null<FlxColor>, b:Null<FlxColor>):Void
+	{
+		pressedRGBR = r;
+		pressedRGBG = g;
+		pressedRGBB = b;
+		if (useRGBShader && !hasRGBOverride() && animation?.curAnim != null && animation.curAnim.name != 'static')
+			applyStateRGB();
 	}
 
 	function applyDefaultRGB():Void
@@ -134,6 +165,33 @@ class StrumNote extends FlxSprite
 			rgbShader.r = arr[0];
 			rgbShader.g = arr[1];
 			rgbShader.b = arr[2];
+		}
+	}
+
+	function applyStateRGB():Void
+	{
+		if (animation?.curAnim != null && animation.curAnim.name != 'static')
+		{
+			if (pressedRGBR != null && pressedRGBG != null && pressedRGBB != null)
+			{
+				rgbShader.r = pressedRGBR;
+				rgbShader.g = pressedRGBG;
+				rgbShader.b = pressedRGBB;
+			}
+			else
+				applyDefaultRGB();
+		}
+		else if (!PlayState.isPixelStage)
+		{
+			rgbShader.r = 0x87A3AD;
+			rgbShader.g = 0xFFFFFFFF;
+			rgbShader.b = 0x00000000;
+		}
+		else
+		{
+			rgbShader.r = 0xA2BAC8;
+			rgbShader.g = 0xFFFFFFFF;
+			rgbShader.b = 0x404047;
 		}
 	}
 
@@ -170,10 +228,19 @@ class StrumNote extends FlxSprite
 		
 		if (validSkin != null) {
 			var actualSkin:String = '$validSkin$skinPostfix';
+			if (loadedTexture == actualSkin && frames != null)
+			{
+				skinConfig = NoteSkinData.getNoteConfigForImage(actualSkin);
+				NoteSkinData.applyPropertiesToStrum(this, skinConfig);
+				if (lastAnim != null)
+					playAnim(lastAnim, true);
+				return;
+			}
 			loadedTexture = actualSkin;
 			skinConfig = NoteSkinData.getNoteConfigForImage(actualSkin);
 			
 			var data:Int = Std.int(Math.abs(noteData) % 4);
+
 			if (PlayState.isPixelStage) {
 				loadGraphic(Paths.image(actualSkin));
 				width = (width / 4);
@@ -205,6 +272,7 @@ class StrumNote extends FlxSprite
 				animation.addByPrefix('pressed', '$name press', NoteSkinData.getFPS(skinConfig, 'press', 24), false);
 				animation.addByPrefix('confirm', '$name confirm', NoteSkinData.getFPS(skinConfig, 'confirm', 24), false);
 			}
+			NoteSkinData.applyBitmapSize(this, skinConfig, 'static');
 			updateHitbox();
 			NoteSkinData.applyPropertiesToStrum(this, skinConfig);
 			if (PlayState.isPixelStage)
@@ -256,37 +324,8 @@ class StrumNote extends FlxSprite
             }
         }
 		if(useRGBShader){
-			if(applyRGBOverride())
-			{
-				// RGB override from scripts wins over the default strum-state palette.
-			}
-			else if(animation.curAnim != null && animation.curAnim.name != 'static')
-			{
-				var arr:Array<FlxColor> = ClientPrefs.data.arrowRGB[noteData];
-				if(PlayState.isPixelStage) arr = ClientPrefs.data.arrowRGBPixel[noteData];
-				
-				if(arr != null && noteData <= arr.length)
-				{
-					@:bypassAccessor
-					{
-						rgbShader.r = arr[0];
-						rgbShader.g = arr[1];
-						rgbShader.b = arr[2];
-					}
-				}
-			}
-			else
-			{
-				if(!PlayState.isPixelStage){
-					rgbShader.r = 0x87A3AD;
-					rgbShader.g = 0xFFFFFFFF;
-					rgbShader.b = 0x00000000;
-				}else{
-					rgbShader.r = 0xA2BAC8;
-					rgbShader.g = 0xFFFFFFFF;
-					rgbShader.b = 0x404047;
-				}
-			}
+			if (!applyRGBOverride())
+				applyStateRGB();
 		}
 		else if (rgbShader != null)
 			rgbShader.enabled = false;
@@ -298,12 +337,20 @@ class StrumNote extends FlxSprite
 		if(animation.curAnim != null)
 		{
 			centerOffsets();
-			centerOrigin();
+			var pivotType:String = switch (animation.curAnim.name)
+			{
+				case 'pressed': 'press';
+				case 'confirm': 'confirm';
+				default: 'static';
+			};
+			if (!NoteSkinData.applyPivot(this, skinConfig, pivotType))
+				centerOrigin();
 			NoteSkinData.applyStrumOffset(this, animation.curAnim.name, skinConfig);
 		}
 		if (useRGBShader) {
 			rgbShader.enabled = (animation.curAnim != null);
-			applyRGBOverride();
+			if (!applyRGBOverride())
+				applyStateRGB();
 		}
 		else
 			rgbShader.enabled = false;

@@ -6,6 +6,7 @@ class SustainSplash extends FlxSprite
 	public static var frameRate:Int;
 
 	public var strumNote:StrumNote;
+	public var texture(default, null):String;
 
 	var timer:FlxTimer;
 
@@ -14,14 +15,28 @@ class SustainSplash extends FlxSprite
 		super();
 
 		x = -50000;
-		var path:String = (PlayState.SONG != null && PlayState.SONG.holdSplashSkin != null && PlayState.SONG.holdSplashSkin.length > 0) ? PlayState.SONG.holdSplashSkin : 'holdCovers/holdCover-${ClientPrefs.data.holdSkin}';
+		loadSplash(defaultTexture());
+	}
 
-		frames = Paths.getSparrowAtlas(path);
+	public function loadSplash(path:String):Void
+	{
+		path = NoteSkinData.resolveHoldSplashPath(path);
+		if (path == null || path.length < 1 || texture == path)
+			return;
 
+		texture = path;
+		frames = Paths.getSparrowAtlas(texture);
 		animation.addByPrefix('start', 'holdCoverStart0', 24, false);
 		animation.addByPrefix('hold', 'holdCover0', 12, true);
 		animation.addByPrefix('end', 'holdCoverEnd0', 24, false);
 		if(!animation.getNameList().contains("hold")) trace("Hold splash is missing 'hold' anim!");
+	}
+
+	static function defaultTexture():String
+	{
+		if (PlayState.SONG != null && PlayState.SONG.holdSplashSkin != null && PlayState.SONG.holdSplashSkin.length > 0)
+			return PlayState.SONG.holdSplashSkin;
+		return 'holdCovers/holdCover-${ClientPrefs.data.holdSkin}';
 	}
 
 	override function update(elapsed)
@@ -51,15 +66,22 @@ class SustainSplash extends FlxSprite
 	function syncToStrumNote():Void
 	{
 		setPosition(strumNote.x, strumNote.y);
-		visible = strumNote.visible;
-		alpha = ClientPrefs.data.holdSplashAlpha - (1 - strumNote.alpha);
+		var runtime:SplashRuntime = PlayState.instance?.holdSplash;
+		visible = strumNote.visible && (runtime == null || runtime.visible);
+		var baseAlpha:Float = ClientPrefs.data.holdSplashAlpha - (1 - strumNote.alpha);
+		alpha = runtime != null ? runtime.resolveAlpha(baseAlpha) : baseAlpha;
+		if (runtime != null)
+			antialiasing = runtime.resolveAntialiasing(antialiasing);
 	}
 
 	public function setupSusSplash(strum:StrumNote, daNote:Note, ?playbackRate:Float = 1):Void
 	{
+		loadSplash(daNote != null && daNote.holdSplashTexture != null ? daNote.holdSplashTexture : defaultTexture());
 		strumNote = strum;
 
-		alpha = ClientPrefs.data.holdSplashAlpha * strumNote.alpha;
+		var runtime:SplashRuntime = PlayState.instance?.holdSplash;
+		var baseAlpha:Float = ClientPrefs.data.holdSplashAlpha * strumNote.alpha;
+		alpha = runtime != null ? runtime.resolveAlpha(baseAlpha) : baseAlpha;
 		offset.set(PlayState.isPixelStage ? 112.5 : 106.25, 100);
 		clipRect = new flixel.math.FlxRect(0, !PlayState.isPixelStage ? 0 : -210, frameWidth, frameHeight);
 

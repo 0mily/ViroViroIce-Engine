@@ -363,7 +363,7 @@ class HScript extends Iris {
 		set('FlxBar', flixel.ui.FlxBar);
 		set('PsychCamera', backend.PsychCamera);
 		set('FlxTimer', flixel.util.FlxTimer);
-		set('FlxTween', flixel.tweens.FlxTween);
+		set('FlxTween', createScriptFlxTweenProxy()); // mudando issoa qui rapidão      // ata
 		set('FlxEase', flixel.tweens.FlxEase);
 		set('FlxColor', CustomFlxColor);
 		set('Countdown', backend.BaseStage.Countdown);
@@ -581,6 +581,16 @@ class HScript extends Iris {
 				set('resetStateConductor', function(position:Float = 0) beatState.resetStateConductor(position));
 				set('setStateConductorPosition', function(position:Float) return beatState.setStateConductorPosition(position));
 			} // minha postura de camarão
+		}
+
+		if (parentState is PlayState)
+		{
+			var playState:PlayState = cast parentState;
+			set('notes', playState.noteLanes);
+			set('strumLane', playState.strumLane);
+			set('strums', playState.strums);
+			set('noteSplash', playState.noteSplash);
+			set('holdSplash', playState.holdSplash);
 		}
 
 		if(PlayState.instance != null) {
@@ -2132,6 +2142,16 @@ class HScript extends Iris {
 
 		return varsToBring = values;
 	}
+
+	static function createScriptFlxTweenProxy():Dynamic
+	{
+		var proxy:Dynamic = {};
+		for (field in Type.getClassFields(flixel.tweens.FlxTween))
+			Reflect.setField(proxy, field, Reflect.field(flixel.tweens.FlxTween, field));
+		Reflect.setField(proxy, 'tween', objects.NoteRuntimeLane.NoteRuntimeTween.tween);
+		Reflect.setField(proxy, 'cancelTweensOf', objects.NoteRuntimeLane.NoteRuntimeTween.cancelTweensOf);
+		return proxy;
+	}
 }
 
 class CustomFlxColor {
@@ -2199,6 +2219,14 @@ class CustomInterp extends crowplexus.hscript.Interp {
 	override function get(o:Dynamic, id:String):Dynamic {
 		if (o == null)
 			error(EInvalidAccess(id));
+
+		if (id == 'skin' && PlayState.instance != null && o == PlayState.instance.noteLanes)
+			return function(skinName:String, ?strum:Dynamic)
+				return PlayState.instance.setStrumSkin(strum, skinName);
+
+		var runtimeCollection:objects.NoteRuntimeLane.NoteRuntimeCollection = PlayState.instance?.getRuntimeLaneCollection(o);
+		if (runtimeCollection != null && isRuntimeCollectionField(id))
+			return Reflect.getProperty(runtimeCollection, id);
 		
 		var val:Dynamic = Reflect.getProperty(o, id);
 		val ??= Reflect.field(o, id);
@@ -2212,6 +2240,13 @@ class CustomInterp extends crowplexus.hscript.Interp {
 	override function set(o:Dynamic, id:String, v:Dynamic):Dynamic {
 		if (o == null)
 			error(EInvalidAccess(id));
+
+		var runtimeCollection:objects.NoteRuntimeLane.NoteRuntimeCollection = PlayState.instance?.getRuntimeLaneCollection(o);
+		if (runtimeCollection != null && isRuntimeCollectionField(id))
+		{
+			Reflect.setProperty(runtimeCollection, id, v);
+			return v;
+		}
 		
 		var hadField:Bool = LuaUtils.hasField(o, id);
 		try {
@@ -2228,6 +2263,10 @@ class CustomInterp extends crowplexus.hscript.Interp {
 		}
 		return v;
 	}
+
+	static inline function isRuntimeCollectionField(id:String):Bool
+		return id == 'x' || id == 'y' || id == 'alpha' || id == 'scale' || id == 'blend'
+			|| id == 'angle' || id == 'visible' || id == 'color' || id == 'r' || id == 'g' || id == 'b';
 	override function resolve(id:String):Dynamic {
 		if (locals.exists(id)) 
 			return locals.get(id).r;

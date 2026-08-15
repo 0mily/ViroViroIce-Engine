@@ -213,7 +213,8 @@ class LuaUtils
 			}
 			
 			var access:Array<String> = id.split('[');
-			var gotObj:Dynamic = getVariableFR(access.shift());
+			var root:String = access.shift();
+			var gotObj:Dynamic = (Std.isOfType(object, PlayState) && root == 'notes') ? cast(object, PlayState).noteLanes : getVariableFR(root);
 			
 			for (i => item in access) {
 				if (item.indexOf(']') < item.length - 1) {
@@ -270,7 +271,8 @@ class LuaUtils
 			}
 
 			var access:Array<String> = id.split('[');
-			var gotObj:Dynamic = getVariable(object, access.shift());
+			var root:String = access.shift();
+			var gotObj:Dynamic = (Std.isOfType(object, PlayState) && root == 'notes') ? cast(object, PlayState).noteLanes : getVariable(object, root);
 
 			for (i => item in access) {
 				if (item.indexOf(']') < item.length - 1) {
@@ -312,6 +314,12 @@ class LuaUtils
 	}
 	
 	public static function getPropertyLoop(variable:String, allowMaps:Bool = false, ?base:Dynamic):Dynamic {
+		var runtimePath:Dynamic = getRuntimeCollectionPath(variable, base);
+		if (runtimePath != null) {
+			base = runtimePath.collection;
+			variable = runtimePath.path;
+		}
+
 		if (variable.indexOf('.') != -1) {
 			var obj:Dynamic = base;
 			for (id in variable.split('.'))
@@ -323,6 +331,12 @@ class LuaUtils
 		}
 	}
 	public static function setPropertyLoop(variable:String, value:Dynamic, allowMaps:Bool = false, ?base:Dynamic):Dynamic {
+		var runtimePath:Dynamic = getRuntimeCollectionPath(variable, base);
+		if (runtimePath != null) {
+			base = runtimePath.collection;
+			variable = runtimePath.path;
+		}
+
 		if (variable.indexOf('.') != -1) {
 			var split:Array<String> = variable.split('.');
 			var obj:Dynamic = base;
@@ -342,6 +356,31 @@ class LuaUtils
 	
 	public static function getObjectDirectly(objectName:String, allowMaps:Bool = false, ?state:flixel.FlxState):Dynamic {
 		return getPropertyLoop(objectName, allowMaps, state ?? FlxG.state);
+	}
+
+	// do the legacy thing
+	static function getRuntimeCollectionPath(variable:String, base:Dynamic):Dynamic
+	{
+		if (!Std.isOfType(base, PlayState) || variable == null)
+			return null;
+
+		var dot:Int = variable.indexOf('.');
+		if (dot < 1)
+			return null;
+
+		var root:String = variable.substring(0, dot);
+		if (root.indexOf('[') != -1)
+			return null;
+
+		var game:PlayState = cast base;
+		var collection:Dynamic = switch (root)
+		{
+			case 'notes': game.noteLaneCollection;
+			case 'strumLane': game.strumLaneCollection;
+			case 'strums': game.strumsCollection;
+			default: null;
+		};
+		return collection == null ? null : {collection: collection, path: variable.substring(dot + 1)};
 	}
 	
 	public static var fieldCache:Map<String, Array<String>> = [];
@@ -530,7 +569,11 @@ class LuaUtils
 				fields.push(field);
 		}
 
-		if(fields.length > 0)
+		if (Std.isOfType(target, objects.NoteRuntimeLane)
+			|| Std.isOfType(target, objects.NoteRuntimeLane.NoteRuntimeCollection)
+			|| (PlayState.instance != null && PlayState.instance.getRuntimeLaneCollection(target) != null))
+			objects.NoteRuntimeLane.NoteRuntimeTween.cancelTweensOf(target, fields);
+		else if(fields.length > 0)
 			FlxTween.cancelTweensOf(target, fields);
 		else
 			FlxTween.cancelTweensOf(target);
@@ -553,6 +596,18 @@ class LuaUtils
 
 	public static function tweenPrepare(tag:String, object:String) {
 		if (tag != null) cancelTween(tag);
+		if (PlayState.instance != null)
+		{
+			var directCollection:Dynamic = switch (object)
+			{
+				case 'notes': PlayState.instance.noteLaneCollection;
+				case 'strumLane': PlayState.instance.strumLaneCollection;
+				case 'strums': PlayState.instance.strumsCollection;
+				default: null;
+			};
+			if (directCollection != null)
+				return directCollection;
+		}
 		return getObjectDirectly(object);
 	}
 

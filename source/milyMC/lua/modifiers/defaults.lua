@@ -665,7 +665,8 @@ function updateNoteMath(objID, strumE, strumID, songPos, beat, noteInfo)
     end
 
     local canHideOverlap = finalAlpha >= 0.999
-    local overlap = 0
+    -- makes a overlap of  hte sustain idk
+    local overlap = 1
     if canHideOverlap then
         overlap = lerp(1, 3, receptorScrollVal)
         if drunkPressure > 0 and receptorScrollVal > 0 then
