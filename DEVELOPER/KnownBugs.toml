@@ -48,18 +48,15 @@ estado = true
 
 [CRASH_MOBILE]
 chatice = 10
-estado = false
-# Te faz LITERALMENTE incapaz de jogar a build mobile com um crash sem motivo.
+estado = true
+# Te amamos, Starnova
 
 # ----------------------------------------------------------------------
 
 [CHANGEBPM_BUG]
 chatice = 8
-estado = false
-# O Chart Editor algumas vezes buga na hora de mudar o BPM, sendo obrigatório sempre fazer as mudanças
-# antes de chartar.
-# O bug consiste no chart INTEIRO ficando off sync após mudar para alguns BPMs específicos.
-# TALVEZ seja algum bug restante do Psych Mint, como o de Copy and Paste.
+estado = true
+# Eu refiz tudo umas semana atrás
 
 # ----------------------------------------------------------------------
 
@@ -72,9 +69,8 @@ estado = true
 
 [CAMERA_FLASH]
 chatice = 1
-estado = false
-# Camera Flash ficam (por alguma razão) bugados no camGame e camHUD.
-# O bug já é conhecido, e é culpa do CameraResizeFix.
+estado = true
+# funcionou, eu só tive q ajustar mesmo
 
 # ----------------------------------------------------------------------
 
@@ -97,7 +93,7 @@ estado = false
 [CHR_DISAPPEAR]
 chatice = 8
 estado = true
-#fiz um reforço pra ter CERTEZA que não vai bugar dnv
+# FlixelAnimate
 
 # ----------------------------------------------------------------------
 
@@ -112,8 +108,8 @@ estado = false
 
 [NOANIM_NOTE]
 chatice = 3
-estado = false
-# Bug do personagem ainda continuar cantando mesmo com a nota "no Animation Note".
+estado = true
+# arrumei faz uma cota, era papo de 4 linha nem lembro direito tava no 396ca0a
 
 # ----------------------------------------------------------------------
 # Por agora é mais isso. Ao longo do tempo, vamos atualizando e resolvendo os bugs.
