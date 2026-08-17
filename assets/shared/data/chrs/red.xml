@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<character assetPath="characters/RedSurprised" icon="face" scale="1.5" singDuration="4" x="190" y="370" cameraX="0" cameraY="-200" flipX="false" noAntialiasing="false" healthColor="#A1A1A1" vocalsFile="" vsliceHolds="false" isEditor_Icons="" isEditor_Name="Red">
+<character assetPath="characters/RedSurprised" icon="red" scale="1.5" singDuration="4" x="190" y="370" cameraX="0" cameraY="-200" flipX="false" noAntialiasing="false" healthColor="#D81A47" vocalsFile="" vsliceHolds="false" isEditor_Icons="red" isEditor_Name="Red">
 	<assets>
 		<asset path="characters/RedSurprised"/>
 	</assets>
