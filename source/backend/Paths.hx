@@ -920,10 +920,10 @@ class Paths
 
 	#if ADDONS_ALLOWED
 	inline static public function mods(key:String = '')
-		return Mods.resolveModPath(key);
+		return #if mobile StorageSystem.getDirectory() + #end Mods.resolveModPath(key);
 
 	inline static public function contents(key:String = '')
-		return Mods.resolveContentPath(key);
+		return #if mobile StorageSystem.getDirectory() + #end Mods.resolveContentPath(key);
 
 	inline static public function modsJson(key:String)
 		return modFolders('data/' + key + '.json');
@@ -979,7 +979,7 @@ class Paths
 			if(FileSystem.exists(rootFile))
 				return rootFile;
 		}
-		return Mods.rootAddonsAllowed() ? mods(key) : '__disabled_addons__/' + key;
+		return #if mobile StorageSystem.getDirectory() + #end Mods.rootAddonsAllowed() ? mods(key) : '__disabled_addons__/' + key;
 	}
 	#end
 

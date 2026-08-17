@@ -112,22 +112,22 @@ class Mods
 	{
 		key = normalizeFolderKey(key);
 		if (key.length < 1)
-			return #if mobile StorageSystem.getDirectory() + #end '$ADDONS_FOLDER/';
+			return '$ADDONS_FOLDER/';
 		if (key == ADDONS_FOLDER || key.startsWith('$ADDONS_FOLDER/'))
-			return #if mobile StorageSystem.getDirectory() + #end key;
+			return key;
 		if (key == CONTENTS_FOLDER || key.startsWith('$CONTENTS_FOLDER/'))
-			return #if mobile StorageSystem.getDirectory() + #end key;
-		return #if mobile StorageSystem.getDirectory() + #end '$ADDONS_FOLDER/$key';
+			return key;
+		return '$ADDONS_FOLDER/$key';
 	}
 
 	public static function resolveContentPath(key:String = ''):String
 	{
 		key = normalizeFolderKey(key);
-		return key.length < 1 ? #if mobile StorageSystem.getDirectory() + #end '$CONTENTS_FOLDER/' : #if mobile StorageSystem.getDirectory() + #end '$CONTENTS_FOLDER/$key';
+		return key.length < 1 ? '$CONTENTS_FOLDER/' : '$CONTENTS_FOLDER/$key';
 	}
 
 	inline public static function contentRootDirectory(content:String):String
-		return #if mobile StorageSystem.getDirectory() + #end '$CONTENTS_FOLDER/${normalizeFolderKey(content)}';
+		return '$CONTENTS_FOLDER/${normalizeFolderKey(content)}';
 
 	inline public static function contentModDirectory(content:String, modFolder:String):String
 		return contentRootDirectory(content) + '/' + normalizeFolderKey(modFolder);
@@ -364,7 +364,7 @@ class Mods
 
 		if (mod.length < 1)
 			return rootFolder + (packageName.length > 0 ? '/$packageName' : '');
-		return #if mobile StorageSystem.getDirectory() + #end '$mod/$rootFolder' + (packageName.length > 0 ? '/$packageName' : '');
+		return '$mod/$rootFolder' + (packageName.length > 0 ? '/$packageName' : '');
 	}
 
 	inline public static function getModDirectories():Array<String>
@@ -1158,9 +1158,9 @@ class Mods
 		#if ADDONS_ALLOWED
 		#if sys
 		var listFile:String = FileSystem.exists(#if mobile StorageSystem.getDirectory() + #end ADDONS_LIST_FILE) ? ADDONS_LIST_FILE : LEGACY_MODS_LIST_FILE;
-		if (FileSystem.exists(#if mobile StorageSystem.getDirectory() + #end listFile)) {
+		if (FileSystem.exists(listFile)) {
 			try {
-				for (mod in CoolUtil.coolTextFile(#if mobile StorageSystem.getDirectory() + #end listFile)) {
+				for (mod in CoolUtil.coolTextFile(listFile)) {
 					if (mod.trim().length < 1) continue;
 
 					var dat = mod.split('|');

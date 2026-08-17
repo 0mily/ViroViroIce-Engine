@@ -216,6 +216,8 @@
         <!--<android extension="mobile.backend.java.FileUtils" />-->
         
         <certificate path="key.keystore" password="viroviroice" alias="viroviroice" alias-password="viroviroice"/>
+        
+        <template path="art/android/gradle.properties" rename="gradle.properties" />
     </section>
 
     <java path="source" if="android"/>
