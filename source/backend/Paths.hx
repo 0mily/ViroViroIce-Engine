@@ -979,7 +979,7 @@ class Paths
 			if(FileSystem.exists(rootFile))
 				return rootFile;
 		}
-		return #if mobile StorageSystem.getDirectory() + #end Mods.rootAddonsAllowed() ? mods(key) : '__disabled_addons__/' + key;
+		return Mods.rootAddonsAllowed() ? mods(key) : '__disabled_addons__/' + key;
 	}
 	#end
 
