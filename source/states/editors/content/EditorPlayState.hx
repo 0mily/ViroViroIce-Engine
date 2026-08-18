@@ -4,6 +4,7 @@ import backend.Song;
 import backend.Rating;
 
 import objects.Note;
+import objects.NoteRenderGroup;
 import objects.NoteSplash;
 import objects.StrumNote;
 
@@ -330,7 +331,7 @@ class EditorPlayState extends ScriptedSubState
 
 		inst.volume = vocals.volume = opponentVocals.volume = 0;
 
-		notes = new FlxTypedGroup<Note>();
+		notes = new NoteRenderGroup();
 		add(notes);
 
 		var daBpm:Float = (PlayState.SONG.notes[0].changeBPM == true) ? PlayState.SONG.notes[0].bpm : PlayState.SONG.bpm;
@@ -397,6 +398,7 @@ class EditorPlayState extends ScriptedSubState
 
 			var curStepCrochet:Float = 60 / daBpm * 1000 / 4.0;
 			final roundSus:Int = Math.round(swagNote.sustainLength / Conductor.stepCrochet);
+			var sustainEndTime:Float = swagNote.strumTime + swagNote.sustainLength;
 			if(roundSus > 0)
 			{
 				for (susNote in 0...roundSus)
@@ -405,6 +407,11 @@ class EditorPlayState extends ScriptedSubState
 
 					var sustainNote:Note = new Note(swagNote.strumTime + (curStepCrochet * susNote), note.noteData, oldNote, true, this);
 					sustainNote.sustainLength = curStepCrochet;
+					if (susNote == roundSus - 1)
+					{
+						sustainNote.visualStrumTime = sustainEndTime;
+						sustainNote.sustainLength = Math.max(0, sustainEndTime - sustainNote.strumTime);
+					}
 					sustainNote.mustPress = swagNote.mustPress;
 					sustainNote.noteType = swagNote.noteType;
 					sustainNote.gfNote = swagNote.gfNote;

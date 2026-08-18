@@ -53,6 +53,7 @@ import psychlua.HScript;
 
 import backend.DropShadowData;
 import backend.DropShadowData.CharacterSpecificData;
+import shaders.DropShadowShader;
 
 typedef StrumRuntimeTarget = {
 	var staticIndices:Array<Int>;
@@ -1077,9 +1078,9 @@ class PlayState extends ScriptedState
 		if(dropshadowData == null)
 			dropshadowData = new DropShadowData(curStage);
 
-		DropShadowData.applyToCharacter(dad, dropshadowData.dad, ClientPrefs.data.shaders);
-		DropShadowData.applyToCharacter(gf, dropshadowData.girlfriend, ClientPrefs.data.shaders);
-		DropShadowData.applyToCharacter(boyfriend, dropshadowData.boyfriend, ClientPrefs.data.shaders);
+		applyDropshadowToGroup(dadGroup, dropshadowData.dad);
+		applyDropshadowToGroup(gfGroup, dropshadowData.girlfriend);
+		applyDropshadowToGroup(boyfriendGroup, dropshadowData.boyfriend);
 	}
 
 	function applyDropshadowToGroup(group:FlxSpriteGroup, data:CharacterSpecificData)
@@ -1088,7 +1089,7 @@ class PlayState extends ScriptedState
 			return;
 
 		for(member in group.members)
-			if(Std.isOfType(member, Character) && member.alpha > 0.001)
+			if(Std.isOfType(member, Character))
 				DropShadowData.applyToCharacter(cast member, data, ClientPrefs.data.shaders);
 	}
 
@@ -1106,6 +1107,40 @@ class PlayState extends ScriptedState
 			case 2:
 				DropShadowData.applyToCharacter(character, dropshadowData.girlfriend, ClientPrefs.data.shaders);
 		}
+	}
+
+	function applyChrSwapState(oldCharacter:Character, newCharacter:Character, type:Int):Void
+	{
+		if(oldCharacter == null || newCharacter == null)
+			return;
+
+		var lastAlpha:Float = oldCharacter.alpha;
+		var lastShader = oldCharacter.shader;
+
+		oldCharacter.alpha = 0.00001;
+		oldCharacter.shader = null;
+
+		newCharacter.alpha = lastAlpha;
+		newCharacter.syncHeckAnim(oldCharacter);
+		if(!attachShader(lastShader, newCharacter))
+		{
+			newCharacter.shader = lastShader;
+			applyDropshadowForType(newCharacter, type);
+		}
+	}
+
+	function attachShader(shader:Dynamic, character:Character):Bool
+	{
+		if(character == null || !Std.isOfType(shader, DropShadowShader))
+			return false;
+
+		var dropShadow:DropShadowShader = cast shader;
+		if(character.dropShadow != null && character.dropShadow != dropShadow && character.dropShadow.attachedSprite == character)
+			character.dropShadow.attachedSprite = null;
+		character.dropShadow = dropShadow;
+		dropShadow.attachedSprite = character;
+		character.shader = dropShadow.enabled && ClientPrefs.data.shaders ? dropShadow : null;
+		return true;
 	}
 	
 	#if LUA_ALLOWED
@@ -2229,7 +2264,11 @@ class PlayState extends ScriptedState
 		applyExtraCharacterOffsetSide(character, usePlayerOffsets);
 		startCharacterPos(character);
 		character.alpha = alpha;
-		character.shader = shader;
+		character.syncHeckAnim(oldCharacter);
+		if(oldCharacter != null)
+			oldCharacter.shader = null;
+		if(!attachShader(shader, character))
+			character.shader = shader;
 		group.add(character);
 		extraCharacterMap.set(tag, character);
 		variables.set(tag + 'Character', character);
@@ -3584,6 +3623,7 @@ class PlayState extends ScriptedState
 				
 				var sustainStartStep:Float = Conductor.getStep(spawnTime);
 				var sustainEndStep:Float = Conductor.getStep(spawnTime + swagNote.sustainLength);
+				var sustainEndTime:Float = swagNote.strumTime + swagNote.sustainLength;
 				final roundSus:Int = Math.round(sustainEndStep - sustainStartStep);
 				if(roundSus > 0)
 				{
@@ -3594,6 +3634,11 @@ class PlayState extends ScriptedState
 						var sustainNextTime:Float = Conductor.stepToSeconds(sustainStartStep + susNote + 1);
 						var sustainNote:Note = new Note(sustainTime, noteColumn, oldNote, true);
 						sustainNote.sustainLength = sustainNextTime - sustainTime;
+						if (susNote == roundSus - 1) // pretty sus
+						{
+							sustainNote.visualStrumTime = sustainEndTime;
+							sustainNote.sustainLength = Math.max(0, sustainEndTime - sustainNote.strumTime);
+						}
 						sustainNote.animSuffix = swagNote.animSuffix;
 						sustainNote.mustPress = swagNote.mustPress;
 						sustainNote.noteType = swagNote.noteType;
@@ -4889,15 +4934,9 @@ class PlayState extends ScriptedState
 								addCharacterToList(value2, charType);
 							}
 
-							var lastAlpha:Float = boyfriend.alpha;
-							var lastShader = boyfriend.shader;
-							if(lastShader == boyfriend.dropShadow) lastShader = null;
-							boyfriend.alpha = 0.00001;
-							boyfriend.shader = null;
+							var oldBoyfriend:Character = boyfriend;
 							boyfriend = boyfriendMap.get(value2);
-							boyfriend.alpha = lastAlpha;
-							boyfriend.shader = lastShader;
-							applyDropshadowForType(boyfriend, charType);
+							applyChrSwapState(oldBoyfriend, boyfriend, charType);
 							iconP1.changeIcon(boyfriend.healthIcon);
 						}
 						setOnScripts('boyfriendName', boyfriend.curCharacter);
@@ -4908,12 +4947,8 @@ class PlayState extends ScriptedState
 								addCharacterToList(value2, charType);
 							}
 
-							var wasGf:Bool = dad.curCharacter.startsWith('gf-') || dad.curCharacter == 'gf';
-							var lastAlpha:Float = dad.alpha;
-							var lastShader = dad.shader;
-							if(lastShader == dad.dropShadow) lastShader = null;
-							dad.alpha = 0.00001;
-							dad.shader = null;
+							var oldDad:Character = dad;
+							var wasGf:Bool = oldDad.curCharacter.startsWith('gf-') || oldDad.curCharacter == 'gf';
 							dad = dadMap.get(value2);
 							if(!dad.curCharacter.startsWith('gf-') && dad.curCharacter != 'gf') {
 								if(wasGf && gf != null) {
@@ -4922,9 +4957,7 @@ class PlayState extends ScriptedState
 							} else if(gf != null) {
 								gf.visible = false;
 							}
-							dad.alpha = lastAlpha;
-							dad.shader = lastShader;
-							applyDropshadowForType(dad, charType);
+							applyChrSwapState(oldDad, dad, charType);
 							iconP2.changeIcon(dad.healthIcon);
 						}
 						setOnScripts('dadName', dad.curCharacter);
@@ -4938,15 +4971,9 @@ class PlayState extends ScriptedState
 									addCharacterToList(value2, charType);
 								}
 
-								var lastAlpha:Float = gf.alpha;
-								var lastShader = gf.shader;
-								if(lastShader == gf.dropShadow) lastShader = null;
-								gf.alpha = 0.00001;
-								gf.shader = null;
+								var oldGf:Character = gf;
 								gf = gfMap.get(value2);
-								gf.alpha = lastAlpha;
-								gf.shader = lastShader;
-								applyDropshadowForType(gf, charType);
+								applyChrSwapState(oldGf, gf, charType);
 							}
 							setOnScripts('gfName', gf.curCharacter);
 						}

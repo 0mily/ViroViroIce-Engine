@@ -1183,6 +1183,41 @@ class Character extends FlxAnimate
 		return true;
 	}
 
+	public function syncHeckAnim(source:Character):Bool
+	{
+		if(source == null || source.isAnimationNull() || isNullCharacter)
+			return false;
+
+		var animationName:String = source.getAnimationName();
+		if(animationName == null)
+			return false;
+
+		if(!hasAnimation(animationName))
+			animationName = resolveSingAnimation(animationName);
+		if(!hasAnimation(animationName))
+			return false;
+
+		var sourceAnimation = source.animation.curAnim;
+		var targetAnimation = animation.getByName(animationName);
+		var targetFrame:Int = 0;
+		if(sourceAnimation.numFrames > 1 && targetAnimation.numFrames > 1) {
+			var progress:Float = sourceAnimation.curFrame / (sourceAnimation.numFrames - 1);
+			targetFrame = Math.round(progress * (targetAnimation.numFrames - 1));
+		}
+
+		var reversed:Bool = sourceAnimation.reversed;
+		var playFrame:Int = reversed ? targetAnimation.numFrames - 1 - targetFrame : targetFrame;
+		playAnim(animationName, true, reversed, playFrame);
+
+		holdTimer = source.holdTimer;
+		heyTimer = source.heyTimer;
+		specialAnim = source.specialAnim;
+		danced = source.danced;
+		if(sourceAnimation.paused && !isAnimationNull())
+			animation.curAnim.paused = true;
+		return true;
+	}
+
 	function resolveSingAnimation(anim:String):String
 	{
 		if(anim == null || hasAnimation(anim)) return anim;

@@ -302,8 +302,7 @@ class Mods
 		}
 
 		for (mod in getEnabledAddonMods(parseList())) {
-			var pack:Dynamic = getPack(mod);
-			if (pack != null && pack.runsGlobally && !globalMods.contains(mod)) globalMods.push(mod);
+			if (modRunsGlobally(mod, false) && !globalMods.contains(mod)) globalMods.push(mod);
 
 			for(packageFolder in getPackageDirectories(mod))
 			{
@@ -338,9 +337,13 @@ class Mods
 		var pack:Dynamic = getPack(folder);
 		if(pack == null)
 			return fallback;
-		if(!Reflect.hasField(pack, 'runsGlobally'))
-			return false;
-		return parseContentBool(Std.string(Reflect.field(pack, 'runsGlobally')), fallback);
+
+		// globally shitr
+
+		for(field in ['runsGlobally', 'globally', 'global'])
+			if(Reflect.hasField(pack, field))
+				return parseContentBool(Std.string(Reflect.field(pack, field)), fallback);
+		return false;
 	}
 
 	inline public static function clearPackageDirectory():Void
@@ -442,6 +445,9 @@ class Mods
 		var rootAbsolute:String = Paths.mods(rootRelative);
 		if (FileSystem.exists(rootAbsolute) && FileSystem.isDirectory(rootAbsolute))
 		{
+			if (directoryIsMod(rootRelative))
+				list.push(rootRelative);
+
 			for (folder in FileSystem.readDirectory(rootAbsolute))
 			{
 				var relative:String = contentModDirectory(content, folder);
@@ -455,8 +461,6 @@ class Mods
 		}
 		list.sort(Reflect.compare);
 
-		if (list.length < 1 && directoryIsMod(rootRelative))
-			list.push(rootRelative);
 		contentModDirectoriesCache.set(content, list.copy());
 		#end
 
@@ -483,8 +487,11 @@ class Mods
 
 	public static function getGameplayModDirectories(?list:ModsList):Array<String>
 	{
-		var directories:Array<String> = getContentModDirectories();
+		var directories:Array<String> = [];
 		for (mod in getEnabledAddonMods(list))
+			if (!directories.contains(mod))
+				directories.push(mod);
+		for (mod in getContentModDirectories())
 			if (!directories.contains(mod))
 				directories.push(mod);
 		return directories;
@@ -516,17 +523,43 @@ class Mods
 				directories.push(directory);
 		}
 
+		var curShitisContent:Bool = directoryBelongsToContent(currentModDirectory, selectedContent);
+
+		if(!curShitisContent)
+			addDirectory(currentModDirectory);
+
+		for (mod in getGlobalMods())
+			if(!directoryBelongsToContent(mod, selectedContent))
+				addDirectory(mod);
+
 		if(selectedContent.length > 0)
 			for(mod in getContentOverrideDirectories(currentModDirectory, selectedContent))
 				addDirectory(mod);
 
-		addDirectory(currentModDirectory);
+		if(curShitisContent)
+			addDirectory(currentModDirectory);
+
+		if(selectedContent.length > 0)
+			for(mod in getContentModDirectories(selectedContent))
+				addDirectory(mod);
 
 		for (mod in getGlobalMods())
-			addDirectory(mod);
+			if(directoryBelongsToContent(mod, selectedContent))
+				addDirectory(mod);
 		activeModDirectoriesCacheKey = cacheKey;
 		activeModDirectoriesCache = directories.copy();
 		return directories;
+	}
+
+	static function directoryBelongsToContent(directory:String, content:String):Bool
+	{
+		directory = normalizeFolderKey(directory);
+		content = normalizeFolderKey(content);
+		if(directory.length < 1 || content.length < 1)
+			return false;
+
+		var root:String = normalizeFolderKey(contentRootDirectory(content));
+		return directory == root || directory.startsWith(root + '/');
 	}
 
 	/**
@@ -1214,7 +1247,7 @@ class Mods
 		for (mod in list.available)
 			content += '$mod|${list.enabled.contains(mod) ? 1 : 0}\n';
 
-		File.saveContent(#if mobile StorageSystem.getDirectory() + #end ADDONS_LIST_FILE, content);
+		File.saveContent(ADDONS_LIST_FILE, content);
 		#end
 
 		updatedOnState = true;

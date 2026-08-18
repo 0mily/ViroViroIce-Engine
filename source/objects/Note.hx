@@ -12,6 +12,7 @@ import objects.NoteSkinData.NoteSkinConfig;
 import objects.NoteSkinData.NoteSkinOffset;
 
 import flixel.group.FlxGroup.FlxTypedGroup;
+import flixel.graphics.frames.FlxFrame;
 import flixel.math.FlxRect;
 
 using StringTools;
@@ -55,6 +56,8 @@ class Note extends FlxSprite
 	];
 
 	public var strumTime:Float = 0;
+	/** totally optional render thingie used by the exact visual end of a sustain */
+	public var visualStrumTime:Null<Float> = null;
 	public var noteData:Int = 0;
 
 	public var mustPress(default, set):Bool = false;
@@ -74,6 +77,8 @@ class Note extends FlxSprite
 
 	public var tail:Array<Note> = []; // for sustains
 	public var parent:Note;
+	public var sustainMeshStartX:Float = Math.NaN;
+	public var sustainMeshStartY:Float = Math.NaN;
 	
 	public var blockHit:Bool = false; // only works for player
 
@@ -656,6 +661,22 @@ class Note extends FlxSprite
 		} else animation.add(colArray[noteData] + 'Scroll', [noteData + 4], NoteSkinData.getFPS(skinConfig, 'notes', 24), true);
 	}
 
+	public function getSustainBodyFrame():FlxFrame
+	{
+		if (!isSustainNote || frames == null || animation == null)
+			return frame;
+
+		var bodyAnimation = animation.getByName(colArray[noteData % colArray.length] + 'hold');
+		if (bodyAnimation == null || bodyAnimation.frames == null || bodyAnimation.frames.length < 1)
+			return frame;
+
+		var animationFrame:Int = 0;
+		if (animation.curAnim == bodyAnimation)
+			animationFrame = bodyAnimation.curFrame;
+		animationFrame = Std.int(FlxMath.bound(animationFrame, 0, bodyAnimation.frames.length - 1));
+		return frames.frames[bodyAnimation.frames[animationFrame]];
+	}
+
 	function attemptToAddAnimationByPrefix(name:String, prefix:String, framerate:Float = 24, doLoop:Bool = true)
 	{
 		var animFrames = [];
@@ -727,7 +748,8 @@ class Note extends FlxSprite
 		var noteSpeed:Float = songSpeed * multSpeed;
 		var strumDir:Float = myStrum.direction;
 		
-		distance = getDistance(strumTime - Conductor.songPosition, noteSpeed);
+		var renderTime:Float = visualStrumTime != null ? visualStrumTime : strumTime;
+		distance = getDistance(renderTime - Conductor.songPosition, noteSpeed);
 		var scrollMult:Int = (myStrum.downScroll ? -1 : 1);
 		
 		if(copyAlpha)
@@ -743,6 +765,14 @@ class Note extends FlxSprite
 		
 		if (isSustainNote)
 			updateSustain(myStrum, noteSpeed);
+	}
+
+	public inline function storeSustainMeshStart():Void
+	{
+		if (offset == null || origin == null)
+			return;
+		sustainMeshStartX = x - offset.x + origin.x;
+		sustainMeshStartY = y - offset.y + origin.y;
 	}
 	public function updateSustain(myStrum:StrumNote, noteSpeed:Float = 1) {
 		if (!isSustainEnd) {
@@ -872,6 +902,13 @@ class Note extends FlxSprite
 			return PsychCamera.containsRectWithPadding(camera, getScreenBounds(_rect, camera), playState.getDownscrollNoteCullPadding(this));
 
 		return super.isOnScreen(camera);
+	}
+
+	override public function destroy():Void
+	{
+		if (!isSustainNote && tail.length > 0 && Math.isNaN(sustainMeshStartX))
+			storeSustainMeshStart();
+		super.destroy();
 	}
 
 	@:noCompletion

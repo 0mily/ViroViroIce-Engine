@@ -22,6 +22,13 @@ typedef WeekFile =
 	var difficulties:String;
 }
 
+private typedef WeekSource =
+{
+	var root:String;
+	var modFolder:String;
+	var packageFolder:String;
+}
+
 class WeekData {
 	public static inline var LEVELS_PATH:String = 'data/levels/';
 	public static inline var LEVEL_LIST:String = LEVELS_PATH + 'levelList.txt';
@@ -84,101 +91,100 @@ class WeekData {
 	{
 		weeksList = [];
 		weeksLoaded.clear();
+		var sources:Array<WeekSource> = [];
+		var addSource = function(root:String, modFolder:String = '', packageFolder:String = ''):Void
+		{
+			if(root == null || root.trim().length < 1)
+				return;
+			root = root.replace('\\', '/');
+			if(!root.endsWith('/'))
+				root += '/';
+			for(source in sources)
+				if(source.root == root)
+					return;
+			sources.push({root: root, modFolder: modFolder, packageFolder: packageFolder});
+		};
+
 		#if ADDONS_ALLOWED
-		var directories:Array<String> = [];
-		if (Mods.rootAddonsAllowed())
-			directories.push(Paths.mods());
-		directories.push(Paths.getSharedPath());
-		var originalLength:Int = directories.length;
+		for(addon in Mods.getEnabledAddonMods())
+			addSource(Paths.mods(addon + '/'), addon);
 
-		for (mod in Mods.getGameplayModDirectories())
-			directories.push(Paths.mods(mod + '/'));
-		#else
-		var directories:Array<String> = [Paths.getSharedPath()];
-		var originalLength:Int = directories.length;
+		if(Mods.rootAddonsAllowed())
+			addSource(Paths.mods());
+
+		// and then the content turns into peak assets
+		for(contentLayer in Mods.getContentModDirectories())
+			addSource(Paths.mods(contentLayer + '/'), contentLayer);
 		#end
+		addSource(Paths.getSharedPath());
 
-		var legacyLevelList:Array<String> = CoolUtil.coolTextFile(Paths.getSharedPath(LEVEL_LIST)); // pior mudança do mundo foi ter colocado levelList ao invés de sexList, mas era isso, ou quem ler fica confuso. Vai ficar que nem a Shiho no charting editor
+		var levelNames:Array<String> = [];
+		var addLevelName = function(name:String):Void
+		{
+			if(name == null)
+				return;
+			name = name.trim();
+			if(name.length > 0 && !levelNames.contains(name))
+				levelNames.push(name);
+		};
+
 		var scriptedLevelList:Array<String> = ListLoader.names(ListLoader.load(LEVEL, FlxG.state));
-		var levelList:Array<String> = scriptedLevelList.length > 0 ? scriptedLevelList.copy() : legacyLevelList.copy();
-		for(level in legacyLevelList)
-			if(!levelList.contains(level))
-				levelList.push(level);
-		for (i in 0...levelList.length) {
-			for (j in 0...directories.length) {
-				var fileToCheck:String = directories[j] + LEVELS_PATH + levelList[i] + '.xml';
-				if(!weeksLoaded.exists(levelList[i])) {
-					var week:WeekFile = getWeekFile(fileToCheck);
-					if(week != null) {
-						var weekFile:WeekData = new WeekData(week, levelList[i]);
+		for(level in scriptedLevelList)
+			addLevelName(level);
 
-						#if ADDONS_ALLOWED
-						if(j >= originalLength) {
-							weekFile.folder = Mods.folderFromDirectoryPath(directories[j]);
-						}
-						#end
+		var discoverySources:Array<WeekSource> = sources.copy();
+		discoverySources.reverse();
+		for(source in discoverySources)
+		{
+			var directory:String = source.root + LEVELS_PATH;
+			if(!FileSystem.exists(directory) || !FileSystem.isDirectory(directory))
+				continue;
 
-						if(weekFile != null && (isStoryMode == null || (isStoryMode && !weekFile.hideStoryMode) || (!isStoryMode && !weekFile.hideFreeplay))) {
-							weeksLoaded.set(levelList[i], weekFile);
-							weeksList.push(levelList[i]);
-						}
-					}
-				}
+			var listPath:String = directory + 'levelList.txt';
+			if(FileSystem.exists(listPath))
+				for(level in CoolUtil.coolTextFile(listPath))
+					addLevelName(level);
+
+			var files:Array<String> = FileSystem.readDirectory(directory);
+			files.sort(function(a:String, b:String) return Reflect.compare(a.toLowerCase(), b.toLowerCase()));
+			for(file in files)
+			{
+				var path:String = haxe.io.Path.join([directory, file]);
+				if(!FileSystem.isDirectory(path) && file.toLowerCase().endsWith('.xml'))
+					addLevelName(file.substr(0, file.length - 4));
 			}
 		}
 
-		#if ADDONS_ALLOWED
-		for (i in 0...directories.length) {
-			var directory:String = directories[i] + LEVELS_PATH;
-			if(FileSystem.exists(directory)) {
-				var listOfLevels:Array<String> = CoolUtil.coolTextFile(directory + 'levelList.txt');
-				for (daLevel in listOfLevels)
-				{
-					var path:String = directory + daLevel + '.xml';
-					if(FileSystem.exists(path))
-					{
-						addWeek(daLevel, path, directories[i], i, originalLength, isStoryMode);
-					}
-				}
+		for(levelName in levelNames)
+		{
+			for(source in sources)
+			{
+				var path:String = source.root + LEVELS_PATH + levelName + '.xml';
+				if(!FileSystem.exists(path))
+					continue;
 
-				for (file in FileSystem.readDirectory(directory))
-				{
-					var path = haxe.io.Path.join([directory, file]);
-					if (!FileSystem.isDirectory(path) && file.endsWith('.xml'))
-					{
-						addWeek(file.substr(0, file.length - 4), path, directories[i], i, originalLength, isStoryMode);
-					}
-				}
+				addWeek(levelName, path, isStoryMode, source.modFolder, source.packageFolder);
+				break;
 			}
 		}
-		#end
 	}
 
-	private static function addWeek(weekToCheck:String, path:String, directory:String, i:Int, originalLength:Int, ?isStoryMode:Null<Bool>, ?modFolder:String, ?packageFolder:String)
+	private static function addWeek(weekToCheck:String, path:String, ?isStoryMode:Null<Bool>, ?modFolder:String, ?packageFolder:String)
 	{
-		if(!weeksLoaded.exists(weekToCheck))
+		if(weeksLoaded.exists(weekToCheck))
+			return;
+
+		var week:WeekFile = getWeekFile(path);
+		if(week == null)
+			return;
+
+		var weekFile:WeekData = new WeekData(week, weekToCheck);
+		weekFile.folder = modFolder ?? '';
+		weekFile.packageFolder = packageFolder ?? '';
+		if(isStoryMode == null || (isStoryMode && !weekFile.hideStoryMode) || (!isStoryMode && !weekFile.hideFreeplay))
 		{
-			var week:WeekFile = getWeekFile(path);
-			if(week != null)
-			{
-				var weekFile:WeekData = new WeekData(week, weekToCheck);
-				if (modFolder != null && modFolder.length > 0)
-				{
-					weekFile.folder = modFolder;
-					weekFile.packageFolder = packageFolder ?? '';
-				}
-				else if(i >= originalLength)
-				{
-					#if ADDONS_ALLOWED
-					weekFile.folder = Mods.folderFromDirectoryPath(directory);
-					#end
-				}
-				if(isStoryMode == null || (isStoryMode && !weekFile.hideStoryMode) || (!isStoryMode && !weekFile.hideFreeplay))
-				{
-					weeksLoaded.set(weekToCheck, weekFile);
-					weeksList.push(weekToCheck);
-				}
-			}
+			weeksLoaded.set(weekToCheck, weekFile);
+			weeksList.push(weekToCheck);
 		}
 	}
 
