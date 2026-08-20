@@ -180,7 +180,7 @@ class ClientPrefs {
 		'accept'		=> [A, START],
 		'back'			=> [B],
 		'pause'			=> [START],
-		'reset'			=> [BACK]
+		'reset'			=> [BACK],
 		'screenshot'    => [RIGHT_ANALOG_STICK] // ?
 	];
 	public static var defaultKeys:Map<String, Array<FlxKey>> = null;
