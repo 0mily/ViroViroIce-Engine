@@ -567,6 +567,7 @@ class EventNoteGui extends FlxSpriteGroup {
 					// if (!charter.selectedNotes.contains(eventNote)) charter.selectedNotes.push(eventNote);
 					charter.selectedEvents.push({event: events[closest.ID], note: eventNote});
 					//charter.updateSelectedEventText();
+					if(charter.chartEditorEvents != null) charter.chartEditorEvents.onSelectionChanged();
 				}
 			}
 			
