@@ -29,5 +29,10 @@ class ChartEditorEvents
 	{
 		return ['', '', '']; // o vazio do HaxeFlixel
 	}
-  
+
+	public function destroy():Void
+	{
+		editor = null;
+		tab = null;
+	}
 }
