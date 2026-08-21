@@ -153,6 +153,7 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 
 	var chartEditorSave:FlxSave;
 	var mainBox:PsychUIBox;
+	public var chartEditorEvents(default, null):ChartEditorEvents;
 	var mainBoxPosition:FlxPoint = FlxPoint.get(LEFT_PANEL_X, LEFT_PANEL_TOP);
 	var infoBox:PsychUIBox;
 	var infoBoxPosition:FlxPoint = FlxPoint.get(LEFT_PANEL_X, LEFT_PANEL_TOP + MAIN_BOX_HEIGHT + 18);
@@ -483,6 +484,7 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 		////// for main box
 		addChartingTab();
 		addDataTab();
+		chartEditorEvents = new ChartEditorEvents(this, mainBox.getTab('Events').menu);
 		addNoteTab();
 		addSectionTab();
 		addSongTab();
@@ -1296,6 +1298,8 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 			lastFocus = PsychUIInputText.focusOn;
 			return;
 		}
+		if(chartEditorEvents != null)
+			chartEditorEvents.update(elapsed);
 		updateScriptCharacterDropdownData(elapsed);
 		var charterFocus:Bool = focusedOnEditor();
 		
@@ -1872,8 +1876,7 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 						{
 							trace('Added event at time: $strumTime');
 							var didAdd:Bool = false;
-							// prob gonna do that at another code
-							var eventSetup:Array<String> = ['', '', ''];
+							var eventSetup:Array<String> = chartEditorEvents.buildEventData(); // make this more efficient mily // ok mily
 							var addsTempo:Bool = eventDataIsBPMChange(cast eventSetup);
 							var oldBPMMap:Array<BPMChangeEvent> = addsTempo ? Conductor.copyBPMChanges() : null;
 							var eventAdded:EventMetaNote = createEvent([strumTime, [eventSetup]]);
@@ -2322,6 +2325,8 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 			noteTypeDropDown.selectedLabel = '';
 		}
 		forceDataUpdate = true;
+		if(chartEditorEvents != null)
+			chartEditorEvents.onSelectionChanged();
 	}
 
 	function createGrids()
@@ -3916,6 +3921,9 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 
 	function reloadNotesDropdowns()
 	{
+		if(chartEditorEvents != null)
+			chartEditorEvents.reload();
+
 		// Note type drop down
 		if(noteTypeDropDown != null)
 		{
@@ -6560,6 +6568,11 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 	override function destroy()
 	{
 		instance = null;
+		if(chartEditorEvents != null)
+		{
+			chartEditorEvents.destroy();
+			chartEditorEvents = null;
+		}
 		
 		Note.globalRgbShaders = [];
 		backend.NoteTypesConfig.clearNoteTypesData();
