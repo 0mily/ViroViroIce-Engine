@@ -2186,6 +2186,7 @@ class CharacterHealthColorPicker extends MusicBeatSubstate
 	var selectedColor:FlxColor;
 	var presets:Array<FlxColor>;
 	var callback:FlxColor->Void;
+	var pickerTitle:String;
 
 	var bg:FlxSprite;
 	var panel:FlxSprite;
@@ -2199,12 +2200,13 @@ class CharacterHealthColorPicker extends MusicBeatSubstate
 	var storedPickerColor:FlxColor = FlxColor.WHITE;
 	var presetSprites:Array<FlxSprite> = [];
 
-	public function new(color:FlxColor, presets:Array<FlxColor>, callback:FlxColor->Void)
+	public function new(color:FlxColor, presets:Array<FlxColor>, callback:FlxColor->Void, pickerTitle:String = 'Health Bar Color')
 	{
 		originalColor = color;
 		selectedColor = color;
 		this.presets = presets;
 		this.callback = callback;
+		this.pickerTitle = pickerTitle;
 		super();
 	}
 
@@ -2225,7 +2227,7 @@ class CharacterHealthColorPicker extends MusicBeatSubstate
 		panel.cameras = cameras;
 		add(panel);
 
-		var title:FlxText = new FlxText(panel.x, panel.y + 14, panel.width, 'Health Bar Color', 14);
+		var title:FlxText = new FlxText(panel.x, panel.y + 14, panel.width, pickerTitle, 14);
 		title.alignment = CENTER;
 		title.scrollFactor.set();
 		title.cameras = cameras;
