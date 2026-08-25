@@ -20,6 +20,7 @@ class MainMenuState extends ScriptedState
 {
 	public static var psychEngineVersion:String = '0.0.5';
 	public static var modVersion = '0.1.6';
+	public static final buildCommit:String = backend.macro.BuildInfo.getCommit();
 	public static var curSelected:Int = 0;
 	public static var curColumn:MainMenuColumn = CENTER;
 	var allowMouse:Bool = true; //Turn this off to block mouse movement in menus
@@ -115,7 +116,7 @@ class MainMenuState extends ScriptedState
 	    #if officialBuild
 		psychVer = new FlxText(12, FlxG.height - 40, 0, 'ViroViroIce v$modVersion', 12);
 	    #else
-		psychVer = new FlxText(12, FlxG.height - 40, 0, 'ViroViroIce ICEBREAK v$modVersion.commitLegalAqui', 12);
+		psychVer = new FlxText(12, FlxG.height - 40, 0, 'ViroViroIce ICEBREAK v${modVersion}.${buildCommit}', 12);
 	    #end
 		psychVer.scrollFactor.set();
 		psychVer.setFormat(Paths.font("vcr.ttf"), 15, FlxColor.WHITE, LEFT, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
