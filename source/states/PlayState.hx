@@ -1265,39 +1265,6 @@ class PlayState extends ScriptedState
 	}
 	#end
 
-	public function setMC(name:String, value:Dynamic, ?target:Dynamic, ?tag:String):Dynamic
-		return milyMC.MilyMC.setMC(name, value, target, tag);
-
-	public function easeMC(name:String, value:Dynamic, time:Float, ease:String, ?target:Dynamic, ?tag:String):Dynamic
-		return milyMC.MilyMC.easeMC(name, value, time, ease, target, tag);
-
-	public function removeMC(tag:String, ?target:Dynamic):Dynamic
-		return milyMC.MilyMC.removeMC(tag, target);
-
-	public function setQueueMC(step:Float, name:String, value:Dynamic, ?target:Dynamic, ?tag:String):Dynamic
-		return milyMC.MilyMC.setQueueMC(step, name, value, target, tag);
-
-	public function easeQueueMC(stepRange:Dynamic, name:String, value:Dynamic, ease:String, ?target:Dynamic, ?tag:String):Dynamic
-		return milyMC.MilyMC.easeQueueMC(stepRange, name, value, ease, target, tag);
-
-	public function removeQueueMC(step:Float, tag:String, ?target:Dynamic):Dynamic
-		return milyMC.MilyMC.removeQueueMC(step, tag, target);
-
-	public function kickMC(name:String, value:Dynamic, endValue:Dynamic, time:Float, ease:String, ?target:Dynamic, ?tag:String):Dynamic
-		return milyMC.MilyMC.kickMC(name, value, endValue, time, ease, target, tag);
-
-	public function setStrum(option:String, value:Dynamic, ?target:Dynamic, ?tag:String):Dynamic
-		return milyMC.MilyMC.setStrum(option, value, target, tag);
-
-	public function easeStrum(option:String, value:Dynamic, time:Float, ease:String, ?target:Dynamic, ?tag:String):Dynamic
-		return milyMC.MilyMC.easeStrum(option, value, time, ease, target, tag);
-
-	public function setQueueStrum(step:Float, option:String, value:Dynamic, ?target:Dynamic, ?tag:String):Dynamic
-		return milyMC.MilyMC.setQueueStrum(step, option, value, target, tag);
-
-	public function easeQueueStrum(stepRange:Dynamic, option:String, value:Dynamic, ease:String, ?target:Dynamic, ?tag:String):Dynamic
-		return milyMC.MilyMC.easeQueueStrum(stepRange, option, value, ease, target, tag);
-
 	function set_songSpeed(value:Float):Float
 	{
 		songSpeed = value;

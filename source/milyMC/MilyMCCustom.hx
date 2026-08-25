@@ -58,15 +58,15 @@ class MilyMCCustom
 	}
 
 	#if HSCRIPT_ALLOWED
-	public static function installHScript(owner:HScript):Void
+	public static function installHScript(owner:HScript, api:Dynamic):Void
 	{
-		if (owner == null)
+		if (owner == null || api == null)
 			return;
 
-		owner.set('defineMC', function(name:String, callbacks:Dynamic) {
+		Reflect.setField(api, 'defineMC', function(name:String, callbacks:Dynamic) {
 			return registerHScript(owner, name, callbacks);
 		});
-		owner.set('removeCustomMC', function(name:String) {
+		Reflect.setField(api, 'removeCustomMC', function(name:String) {
 			return remove(name, owner, false);
 		});
 	}
@@ -350,7 +350,7 @@ class MilyMCCustom
 	}
 	#else
 	public static function installLua(owner:Dynamic):Void {}
-	public static function installHScript(owner:Dynamic):Void {}
+	public static function installHScript(owner:Dynamic, api:Dynamic):Void {} // Haxe
 	public static function releaseLua(owner:Dynamic):Void {}
 	public static function releaseHScript(owner:Dynamic):Void {}
 	#end

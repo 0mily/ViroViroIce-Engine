@@ -49,16 +49,16 @@ local function refreshScrollAnchors()
     end
 end
 
-local function callMilyMCScripts(luaName, hscriptName, args)
+local function callMilyMCLuas(name, args)
     args = args or {}
-    if callOnLuas then callOnLuas('milyMC.' .. luaName, args, true, true) end
-    if callOnHScript then callOnHScript(hscriptName, args, true, true) end
+    if callOnLuas then callOnLuas('milyMC.' .. name, args, true, true) end
+    --if callOnHScript then callOnHScript(hscriptName, args, true, true) end
 end
 
 function onCreate()
     luaDebugMode = false
-    callMilyMCScripts('loadPre', 'onMCloadPre')
-    callMilyMCScripts('load', 'onMCload')
+    callMilyMCLuas('loadPre')
+    callMilyMCLuas('load')
 end
 
 function onCreatePost()
@@ -76,5 +76,5 @@ function onCreatePost()
         }
     end
     refreshScrollAnchors()
-    callMilyMCScripts('loadPost', 'onMCloadPost')
+    callMilyMCLuas('loadPost')
 end

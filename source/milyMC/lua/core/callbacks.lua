@@ -55,20 +55,14 @@ local function safeUpdateNoteMath(objID, isStrum, strumID, songPosition, beat, n
 end
 
 function _milyMCTweenFinished(tag)
-    --[[callLocalMilyMC('finished', tag)
-    callExternalMilyMC('finished', 'onMCfinished', {tag})]]
-    callMilyMCScripts('finished', 'onMCfinished', {tag})
+    callMilyMCLuas('finished', {tag})
 end
 
 function onUpdate(elapsed)
-    --[[callLocalMilyMC('updatePre', elapsed)
-    callExternalMilyMC('updatePre', 'onMCupdatePre', {elapsed})]]
-    callMilyMCScripts('updatePre', 'onMCupdatePre', {elapsed})
+    callMilyMCLuas('updatePre', {elapsed})
     updateTweens(elapsed)
     if updateCustomModifiers then updateCustomModifiers(elapsed) end
-    --[[callLocalMilyMC('update', elapsed)
-    callExternalMilyMC('update', 'onMCupdate', {elapsed})]]
-    callMilyMCScripts('update', 'onMCupdate', {elapsed})
+    callMilyMCLuas('update', {elapsed})
 end
 
 function onUpdatePost(elapsed)
@@ -110,20 +104,20 @@ function onUpdatePost(elapsed)
     for lane = 0, 7 do laneMathWasActive[lane] = activeMask[lane] end
     noteMathWasActive = hasActiveMath
 
-    callMilyMCScripts('updatePost', 'onMCupdatePost', {elapsed})
+    callMilyMCLuas('updatePost', {elapsed})
 end
 
 function onStepHit()
     runScheduledEvents()
-    callMilyMCScripts('step', 'onMCstep', {curStep})
+    callMilyMCLuas('step', {curStep})
 end
 
 function onBeatHit()
-    callMilyMCScripts('beat', 'onMCbeat', {curBeat})
+    callMilyMCLuas('beat', {curBeat})
 end
 
 function onSectionHit()
-    callMilyMCScripts('section', 'onMCsection', {curSection})
+    callMilyMCLuas('section', {curSection})
 end
 
 function onDestroy()

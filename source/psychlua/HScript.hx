@@ -452,19 +452,21 @@ class HScript extends Iris {
 		set('DialoguePlusRuntime', cutscenes.DialoguePlusRuntime);
 		set('ResolutionManager', backend.ResolutionManager);
 		set('DeveloperMode', backend.DeveloperMode);
-		set('milymc', {});
-		set('setMC', milyMC.MilyMC.setMC);
-		set('easeMC', milyMC.MilyMC.easeMC);
-		set('removeMC', milyMC.MilyMC.removeMC);
-		set('setQueueMC', milyMC.MilyMC.setQueueMC);
-		set('easeQueueMC', milyMC.MilyMC.easeQueueMC);
-		set('removeQueueMC', milyMC.MilyMC.removeQueueMC);
-		set('kickMC', milyMC.MilyMC.kickMC);
-		set('setStrum', milyMC.MilyMC.setStrum);
-		set('easeStrum', milyMC.MilyMC.easeStrum);
-		set('setQueueStrum', milyMC.MilyMC.setQueueStrum);
-		set('easeQueueStrum', milyMC.MilyMC.easeQueueStrum);
-		milyMC.MilyMCCustom.installHScript(this);
+		var milyMCApi:Dynamic = {
+			setMC: milyMC.MilyMC.setMC,
+			easeMC: milyMC.MilyMC.easeMC,
+			removeMC: milyMC.MilyMC.removeMC,
+			setQueueMC: milyMC.MilyMC.setQueueMC,
+			easeQueueMC: milyMC.MilyMC.easeQueueMC,
+			removeQueueMC: milyMC.MilyMC.removeQueueMC,
+			kickMC: milyMC.MilyMC.kickMC,
+			setStrum: milyMC.MilyMC.setStrum,
+			easeStrum: milyMC.MilyMC.easeStrum,
+			setQueueStrum: milyMC.MilyMC.setQueueStrum,
+			easeQueueStrum: milyMC.MilyMC.easeQueueStrum
+		};
+		milyMC.MilyMCCustom.installHScript(this, milyMCApi);
+		set('MilyMC', milyMCApi);
 		set('onSection', ScriptFlow.onSection);
 		set('from', ScriptFlow.range);
 		set('every', ScriptFlow.every);
