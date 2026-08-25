@@ -6454,6 +6454,8 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 		{
 			case PsychUIButton.CLICK_EVENT | PsychUICheckBox.CLICK_EVENT | PsychUIInputText.CHANGE_EVENT | PsychUINumericStepper.CHANGE_EVENT | PsychUIDropDownMenu.CLICK_EVENT | PsychUIDropDownMenu.REVEAL_EVENT:
 				ignoreClickForThisFrame = true;
+				if(chartEditorEvents != null)
+					chartEditorEvents.handleUIEvent(id, sender); // yeah
 
 			case PsychUIBox.CLICK_EVENT:
 				ignoreClickForThisFrame = true;
