@@ -599,6 +599,8 @@ class GlobalScriptHandler {
 
 		syncParentState(game);
 
+		// placeholder
+		setOnHScript('Psych', game);
 		set('game', game);
 		set('state', game);
 		set('scriptState', targetState);

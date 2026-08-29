@@ -564,6 +564,8 @@ class HScript extends Iris {
 			var clsName:String = Type.getClassName(cls);
 			var stateName:String = clsName.substr(clsName.indexOf('.') + 1);
 			
+			// placeholder
+			set('Psych', parentState);
 			set('game', parentState);
 			set('stage', parentState);
 			set(stateName, cls);
