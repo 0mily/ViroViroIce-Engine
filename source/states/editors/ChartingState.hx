@@ -443,7 +443,7 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 		infoBox.canMove = false;
 		add(infoBox);
 
-		mainBox = new PsychUIBox(mainBoxPosition.x, mainBoxPosition.y, MAIN_BOX_WIDTH, MAIN_BOX_HEIGHT, ['Charting', 'Data', 'Events', 'Note', 'Section', 'Song']);
+		mainBox = new PsychUIBox(mainBoxPosition.x, mainBoxPosition.y, MAIN_BOX_WIDTH, MAIN_BOX_HEIGHT, ['Charting', 'Data', 'Events', 'Note', 'Section', 'Strums', 'Song']);
 		mainBox.selectedName = 'Song';
 		mainBox.scrollFactor.set();
 		mainBox.cameras = [camUI];
@@ -487,6 +487,7 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 		chartEditorEvents = new ChartEditorEvents(this, mainBox.getTab('Events').menu);
 		addNoteTab();
 		addSectionTab();
+		addStrumsTab();
 		addSongTab();
 		
 		////// for upper box
@@ -3636,6 +3637,94 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 		tab_group.add(susLengthStepper);
 		tab_group.add(strumTimeStepper);
 		tab_group.add(noteTypeDropDown);
+	}
+
+	// TODO: Finish ts someday. This will be fucking complex ngl.
+	function addStrumsTab()
+	{
+		var tab_group = mainBox.getTab('Strums').menu;
+		var heckStrums:Array<Dynamic> = [
+			{tag: 'dad_lane', character: 'dad', visible: true, playable: false, x: 42.0, y: 50.0, scale: 1.0, speed: 1.0, merge: 'None'},
+			{tag: 'bf_lane', character: 'bf', visible: true, playable: true, x: 682.0, y: 50.0, scale: 1.0, speed: 1.0, merge: 'None'},
+			{tag: 'gf_lane', character: 'gf', visible: false, playable: false, x: 362.0, y: 50.0, scale: 0.8, speed: 1.0, merge: 'None'}
+		];
+
+		var detailsX:Float = 130;
+		var detailsTitle = new FlxText(detailsX, 15, 265, '', 15);
+		detailsTitle.color = HaxeUITheme.TEXT;
+		tab_group.add(detailsTitle);
+
+		var tagInput = new PsychUIInputText(detailsX, 52, 122, 'dad_lane', 8);
+		var characterInput = new PsychUIInputText(detailsX + 137, 52, 122, 'dad', 8);
+		tab_group.add(new FlxText(tagInput.x, tagInput.y - 15, 100, 'Tag:'));
+		tab_group.add(new FlxText(characterInput.x, characterInput.y - 15, 110, 'Character tag:'));
+		tab_group.add(tagInput);
+		tab_group.add(characterInput);
+
+		var visibleCheck = new PsychUICheckBox(detailsX, 87, 'Visible', 80);
+		var playableCheck = new PsychUICheckBox(detailsX + 137, 87, 'Playable', 80);
+		tab_group.add(visibleCheck);
+		tab_group.add(playableCheck);
+
+		var xStepper = new PsychUINumericStepper(detailsX, 129, 1, 42, -9999, 9999, 1, 72);
+		var yStepper = new PsychUINumericStepper(detailsX + 137, 129, 1, 50, -9999, 9999, 1, 72);
+		tab_group.add(new FlxText(xStepper.x, xStepper.y - 15, 80, 'Position X:'));
+		tab_group.add(new FlxText(yStepper.x, yStepper.y - 15, 80, 'Position Y:'));
+		tab_group.add(xStepper);
+		tab_group.add(yStepper);
+
+		var scaleStepper = new PsychUINumericStepper(detailsX, 171, 0.05, 1, 0.05, 5, 2, 72);
+		var speedStepper = new PsychUINumericStepper(detailsX + 137, 171, 0.1, 1, 0.1, 10, 2, 72);
+		tab_group.add(new FlxText(scaleStepper.x, scaleStepper.y - 15, 80, 'Scale:'));
+		tab_group.add(new FlxText(speedStepper.x, speedStepper.y - 15, 100, 'Scroll speed:'));
+		tab_group.add(scaleStepper);
+		tab_group.add(speedStepper);
+
+		var mergeDropDown = new PsychUIDropDownMenu(detailsX, 213, ['None', 'dad_lane', 'bf_lane', 'gf_lane'], null, 160);
+		tab_group.add(new FlxText(mergeDropDown.x, mergeDropDown.y - 15, 180, 'Merge notes into:'));
+		tab_group.add(mergeDropDown);
+
+		var laneButtons:Array<PsychUIButton> = [];
+		var laneLabels:Array<String> = ['Dad lane', 'BF lane', 'GF lane'];
+		function selectHeckStrum(index:Int):Void
+		{
+			if(index < 0 || index >= heckStrums.length)
+				return;
+
+			var data:Dynamic = heckStrums[index];
+			detailsTitle.text = laneLabels[index];
+			tagInput.text = data.tag;
+			characterInput.text = data.character;
+			visibleCheck.checked = data.visible;
+			playableCheck.checked = data.playable;
+			xStepper.value = data.x;
+			yStepper.value = data.y;
+			scaleStepper.value = data.scale;
+			speedStepper.value = data.speed;
+			mergeDropDown.selectedLabel = data.merge;
+
+			for(i => button in laneButtons)
+				button.label = (i == index ? '> ' : '  ') + laneLabels[i];
+		}
+
+		for(i in 0...heckStrums.length)
+		{
+			var index:Int = i;
+			var laneButton = new PsychUIButton(10, 15 + (i * 38), '', function() selectHeckStrum(index), 108, 30);
+			laneButtons.push(laneButton);
+			tab_group.add(laneButton);
+		}
+
+		var addButton = new PsychUIButton(10, 137, 'Add', null, 108, 24);
+		var duplicateButton = new PsychUIButton(10, 167, 'Duplicate', null, 108, 24);
+		var removeButton = new PsychUIButton(10, 197, 'Remove', null, 108, 24);
+		for(button in [addButton, duplicateButton, removeButton])
+		{
+			button.active = false;
+			button.alpha = 0.45;
+			tab_group.add(button);
+		}
+		selectHeckStrum(0);
 	}
 
 	var gfSectionCheckBox:PsychUICheckBox;
