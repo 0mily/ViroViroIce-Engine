@@ -544,6 +544,7 @@ class PlayState extends ScriptedState
 	public var scoreTxt:FlxText;
 	public var timeTxt:FlxText;
 	var scoreTxtTween:FlxTween;
+	var scorecolorForms:Array<FlxTextFormat> = [];
 	var resolutionLayoutWidth:Int = -1;
 	var resolutionLayoutHeight:Int = -1;
 
@@ -1067,6 +1068,7 @@ class PlayState extends ScriptedState
 		stagesFunc(function(stage:BaseStage) stage.createPost());
 		setDropshadow();
 		super.create();
+		clearShitforColorScript();
 		Paths.clearUnusedMemory();
 		
 		if(eventNotes.length < 1) checkEventNote();
@@ -3266,10 +3268,20 @@ class PlayState extends ScriptedState
 		var tudo:String = Language.getPhrase('score_text', "SCORE: {1} | MISSES: {2} | ACC: {3} ({4})", [songScore, songMisses, accText, currentFC]);
 		scoreTxt.text = tudo;
 		scoreTxt.clearFormats();
+		scorecolorForms.resize(0);
+
+		// I guess bro? Im not giving a shit i'm sorry
+		if (scoreTxt.color != FlxColor.WHITE)
+			return;
 
 		var indexAcc:Int = tudo.indexOf(accText);
 		if (indexAcc != -1)
-			scoreTxt.addFormat(new flixel.text.FlxTextFormat(0xFF57FFFF), indexAcc, indexAcc + accText.length);
+			// scoreTxt.addFormat(new flixel.text.FlxTextFormat(0xFF57FFFF), indexAcc, indexAcc + accText.length);
+		{
+			var accuracyFormat:FlxTextFormat = new FlxTextFormat(0xFF57FFFF);
+			scoreTxt.addFormat(accuracyFormat, indexAcc, indexAcc + accText.length);
+			scorecolorForms.push(accuracyFormat);
+		}
 
 		if (currentFC != "?")
 		{
@@ -3279,8 +3291,23 @@ class PlayState extends ScriptedState
 
 			var indexFc:Int = tudo.indexOf(currentFC);
 			if (indexFc != -1)
-				scoreTxt.addFormat(new flixel.text.FlxTextFormat(color), indexFc, indexFc + currentFC.length);
+				// scoreTxt.addFormat(new flixel.text.FlxTextFormat(color), indexFc, indexFc + currentFC.length);
+			{
+				var fcFormat:FlxTextFormat = new FlxTextFormat(color);
+				scoreTxt.addFormat(fcFormat, indexFc, indexFc + currentFC.length);
+				scorecolorForms.push(fcFormat);
+			}
 		}
+	}
+
+	function clearShitforColorScript():Void
+	{
+		if (scoreTxt == null || scoreTxt.color == FlxColor.WHITE || scorecolorForms.length < 1)
+			return;
+
+		for (format in scorecolorForms)
+			scoreTxt.removeFormat(format);
+		scorecolorForms.resize(0);
 	}
 
 	public var bucetaTira:Array<String> = [];
@@ -4158,6 +4185,7 @@ class PlayState extends ScriptedState
 		updateIconsPosition();
 		
 		postUpdate(elapsed);
+		clearShitforColorScript();
 	}
 
 	// Health icon updaters
