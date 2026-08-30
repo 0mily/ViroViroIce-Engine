@@ -65,6 +65,7 @@ class ScriptedState extends ScriptedSubState {
 	}
 	override function _postCreate():Void {
 		callOnScripts('onCreatePost');
+		callOnScripts('onLoadPost');
 		
 		MusicBeatSubstate.callGlobal('onCreateStatePost', [this, Type.getClass(this)]);
 	}

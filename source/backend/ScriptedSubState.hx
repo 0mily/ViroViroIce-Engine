@@ -65,12 +65,14 @@ class ScriptedSubState extends MusicBeatSubstate {
 	}
 	override function _postCreate():Void {
 		callOnScripts('onCreatePost');
+		callOnScripts('onLoadPost');
 		
 		#if GLOBAL_SCRIPTS GlobalScriptHandler.call('onCreateSubStatePost', [this]); #end
 	}
 	
 	var _shouldUpdate:Bool = true;
 	public function preUpdate(elapsed:Float):Bool {
+		refreshScreenVar();
 		_shouldUpdate = (callOnScripts('onUpdate', [elapsed], true) != LuaUtils.Function_Stop);
 		return _shouldUpdate;
 	}
@@ -90,8 +92,14 @@ class ScriptedSubState extends MusicBeatSubstate {
 
 	public override function onResize(Width:Int, Height:Int):Void {
 		super.onResize(Width, Height);
+		refreshScreenVar();
 		if (_pre)
 			callOnScripts('onResize', [Width, Height]);
+	}
+
+	public function refreshScreenVar():Void {
+		setOnScripts('screenWidth', ResolutionManager.scriptScreenWidth());
+		setOnScripts('screenHeight', ResolutionManager.scriptScreenHeight());
 	}
 	
 	public override function draw():Void {

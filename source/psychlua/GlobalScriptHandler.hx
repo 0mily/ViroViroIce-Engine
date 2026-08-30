@@ -609,6 +609,8 @@ class GlobalScriptHandler {
 		set('curSubStateName', subStateName);
 		set('inEditor', inEditor);
 		set('globalScriptsAllowEditor', allowEditor);
+		set('screenWidth', backend.ResolutionManager.scriptScreenWidth());
+		set('screenHeight', backend.ResolutionManager.scriptScreenHeight());
 	}
 
 	static function syncParentState(targetState:FlxState):Void {

@@ -722,9 +722,7 @@ class HScript extends Iris {
 			hasRememberedCustom: function() return backend.ResolutionManager.hasRememberedCustomResolution(),
 			isSuspendedForEditor: function() return backend.ResolutionManager.isSuspendedForEditor(),
 			getWidth: function() return backend.ResolutionManager.width,
-			getHeight: function() return backend.ResolutionManager.height,
-			getWindowWidth: function(pixels:Bool = false) return pixels ? backend.VignetteUtil.windowPixelWidth() : backend.VignetteUtil.windowWidth(),
-			getWindowHeight: function(pixels:Bool = false) return pixels ? backend.VignetteUtil.windowPixelHeight() : backend.VignetteUtil.windowHeight()
+			getHeight: function() return backend.ResolutionManager.height
 		});
 		set('preloadVideo', function(name:String) return LoadingState.preloadVideo(name) != null);
 		set('precacheVideo', function(name:String) return LoadingState.preloadVideo(name) != null);
@@ -1282,12 +1280,6 @@ class HScript extends Iris {
 		};
 		set('makeVignette', makeVignetteFunc);
 		set('makeVig', makeVignetteFunc);
-		set('getWindowWidth', function(pixels:Bool = false):Int return pixels ? backend.VignetteUtil.windowPixelWidth() : backend.VignetteUtil.windowWidth());
-		set('getWindowHeight', function(pixels:Bool = false):Int return pixels ? backend.VignetteUtil.windowPixelHeight() : backend.VignetteUtil.windowHeight());
-		set('getFullScreenX', function(camera:String = 'other'):Float return backend.CameraResizeFix.pegarFSX(LuaUtils.cameraFromString(camera)));
-		set('getFullScreenY', function(camera:String = 'other'):Float return backend.CameraResizeFix.pegarFSY(LuaUtils.cameraFromString(camera)));
-		set('getFullScreenWidth', function(camera:String = 'other'):Float return backend.CameraResizeFix.pegarFSL(LuaUtils.cameraFromString(camera)));
-		set('getFullScreenHeight', function(camera:String = 'other'):Float return backend.CameraResizeFix.pegarFSA(LuaUtils.cameraFromString(camera)));
 		set('addLuaSprite', addInstance);
 		set('addInstance', addInstance);
 		set('addSprite', addInstance);
@@ -1713,15 +1705,9 @@ class HScript extends Iris {
 		set('version', MainMenuState.psychEngineVersion.trim());
 		set('modVersion', MainMenuState.modVersion.trim());
 		set('modFolder', this.modFolder);
-		set('screenWidth', FlxG.width);
-		set('screenHeight', FlxG.height);
-		set('windowWidth', backend.VignetteUtil.windowWidth());
-		set('windowHeight', backend.VignetteUtil.windowHeight());
-		set('windowPixelWidth', backend.VignetteUtil.windowPixelWidth());
-		set('windowPixelHeight', backend.VignetteUtil.windowPixelHeight());
+		set('screenWidth', backend.ResolutionManager.scriptScreenWidth());
+		set('screenHeight', backend.ResolutionManager.scriptScreenHeight());
 		set('window', { // hi haxe users 3
-			getWidth: function(pixels:Bool = false) return pixels ? backend.VignetteUtil.windowPixelWidth() : backend.VignetteUtil.windowWidth(),
-			getHeight: function(pixels:Bool = false) return pixels ? backend.VignetteUtil.windowPixelHeight() : backend.VignetteUtil.windowHeight(),
 			setTitle: function(title:String) {
 				if (Lib.application != null && Lib.application.window != null)
 					Lib.application.window.title = title;
@@ -1741,15 +1727,6 @@ class HScript extends Iris {
 			},
 			isFullscreen: function() return Lib.application != null && Lib.application.window != null ? Lib.application.window.fullscreen : false
 		});
-		set('fullScreenX', backend.CameraResizeFix.pegarFSX(LuaUtils.cameraFromString('other')));
-		set('fullScreenY', backend.CameraResizeFix.pegarFSY(LuaUtils.cameraFromString('other')));
-		set('fullScreenWidth', backend.CameraResizeFix.pegarFSL(LuaUtils.cameraFromString('other')));
-		set('fullScreenHeight', backend.CameraResizeFix.pegarFSA(LuaUtils.cameraFromString('other')));
-		set('fullscreenX', backend.CameraResizeFix.pegarFSX(LuaUtils.cameraFromString('other')));
-		set('fullscreenY', backend.CameraResizeFix.pegarFSY(LuaUtils.cameraFromString('other')));
-		set('fullscreenWidth', backend.CameraResizeFix.pegarFSL(LuaUtils.cameraFromString('other')));
-		set('fullscreenHeight', backend.CameraResizeFix.pegarFSA(LuaUtils.cameraFromString('other')));
-
 		set('actualBuildTarget', LuaUtils.getBuildTarget());
 		set('buildTarget', LuaUtils.getScriptBuildTarget());
 		set('mobileBuild', LuaUtils.isMobileBuild());
@@ -1796,6 +1773,8 @@ class HScript extends Iris {
 
 	function callInitialCallbacks():Void
 	{
+		if (exists('onLoadPre'))
+			call('onLoadPre');
 		if (exists('onLoad'))
 			call('onLoad');
 		if (exists('onCreate')) // idk if i want, but i prob should delete the onCreate funct

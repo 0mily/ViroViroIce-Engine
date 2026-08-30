@@ -13,6 +13,7 @@ class ResolutionManager
 	public static var height(default, null):Int = DEFAULT_HEIGHT;
 	public static var resizable(default, null):Bool = DEFAULT_RESIZABLE;
 	public static var changedByScript:Bool = false;
+	static var scriptResolutionOverride:Bool = false;
 	static var initialized:Bool = false;
 	static var resolutionTween:FlxTween = null;
 	static var tweenProxy:Dynamic = null;
@@ -58,6 +59,7 @@ class ResolutionManager
 	{
 		width = Std.int(Math.max(1, width));
 		height = Std.int(Math.max(1, height));
+		scriptResolutionOverride = true;
 
 		rememberedWidth = width;
 		rememberedHeight = height;
@@ -247,6 +249,7 @@ class ResolutionManager
 	public static function reset():Bool
 	{
 		cancelTweenRes();
+		scriptResolutionOverride = false;
 		rememberedWidth = DEFAULT_WIDTH;
 		rememberedHeight = DEFAULT_HEIGHT;
 		rememberedResizable = DEFAULT_RESIZABLE;
@@ -308,6 +311,12 @@ class ResolutionManager
 
 	public static inline function isTweening():Bool
 		return resolutionTween != null;
+
+	public static inline function scriptScreenWidth():Int
+		return scriptResolutionOverride ? width : windowWidth();
+
+	public static inline function scriptScreenHeight():Int
+		return scriptResolutionOverride ? height : windowHeight();
 
 	public static function windowWidth(?fallback:Int = 0):Int
 		return logicalWindowSize(true, fallback);

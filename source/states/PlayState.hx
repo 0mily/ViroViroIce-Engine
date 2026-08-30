@@ -2447,32 +2447,6 @@ class PlayState extends ScriptedState
 		return padding;
 	}
 
-	public function refreshScreenScriptVariables(?camera:FlxCamera):Void
-	{
-		if(camera == null)
-			camera = camOther != null ? camOther : FlxG.camera;
-
-		var fullX:Float = backend.CameraResizeFix.pegarFSX(camera);
-		var fullY:Float = backend.CameraResizeFix.pegarFSY(camera);
-		var fullWidth:Float = backend.CameraResizeFix.pegarFSL(camera);
-		var fullHeight:Float = backend.CameraResizeFix.pegarFSA(camera);
-
-		setOnScripts('screenWidth', FlxG.width);
-		setOnScripts('screenHeight', FlxG.height);
-		setOnScripts('windowWidth', backend.VignetteUtil.windowWidth());
-		setOnScripts('windowHeight', backend.VignetteUtil.windowHeight());
-		setOnScripts('windowPixelWidth', backend.VignetteUtil.windowPixelWidth());
-		setOnScripts('windowPixelHeight', backend.VignetteUtil.windowPixelHeight());
-		setOnScripts('fullScreenX', fullX);
-		setOnScripts('fullScreenY', fullY);
-		setOnScripts('fullScreenWidth', fullWidth);
-		setOnScripts('fullScreenHeight', fullHeight);
-		setOnScripts('fullscreenX', fullX);
-		setOnScripts('fullscreenY', fullY);
-		setOnScripts('fullscreenWidth', fullWidth);
-		setOnScripts('fullscreenHeight', fullHeight);
-	}
-	
 	/**
 	 * Gets an object defined in the `variables` map (ex. from Lua scripts)
 	 * 
@@ -3996,7 +3970,6 @@ class PlayState extends ScriptedState
 		}
 		else FlxG.camera.followLerp = 0;
 		
-		refreshScreenScriptVariables();
 		preUpdate(elapsed);
 
 		if(botplayTxt != null && botplayTxt.visible) {

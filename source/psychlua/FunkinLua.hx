@@ -87,13 +87,20 @@ class FunkinLua {
 				onCreateInstance(newScript);
 			
 			if (autoCallCreate)
-				newScript.call('onCreate');
+				newScript.createCallbacks(); // Nesse ponto, eu só tô indo no puro automático. Aparentemente eu tinha feito todo fodido isso aqui
 		} catch(e:Dynamic) {
 			Log.print(e, FATAL);
 			newScript = null;
 		}
 		
 		return newScript;
+	}
+
+	public function createCallbacks():Void
+	{
+		call('onLoadPre');
+		call('onLoad');
+		call('onCreate');
 	}
 
 	public function new(scriptName:String, ?state:FlxState) { // TODO: allat
@@ -129,8 +136,6 @@ class FunkinLua {
 		set('chrMusic', GameOverSubstate.musicCharacterName);
 		set('pauseMusic', PauseSubState.pauseMusicName);
 		
-		set('screenWidth', FlxG.width);
-		set('screenHeight', FlxG.height);
 		refreshScreenVariables();
 		
 		set('actualBuildTarget', LuaUtils.getBuildTarget());
@@ -165,13 +170,6 @@ class FunkinLua {
 		});
 		//
 
-		addLocalCallback('getWindowWidth', function(?pixels:Bool = false):Int return pixels ? backend.VignetteUtil.windowPixelWidth() : backend.VignetteUtil.windowWidth());
-		addLocalCallback('getWindowHeight', function(?pixels:Bool = false):Int return pixels ? backend.VignetteUtil.windowPixelHeight() : backend.VignetteUtil.windowHeight());
-		addLocalCallback('getFullScreenX', function(?camera:String = 'other'):Float return backend.CameraResizeFix.pegarFSX(LuaUtils.cameraFromString(camera)));
-		addLocalCallback('getFullScreenY', function(?camera:String = 'other'):Float return backend.CameraResizeFix.pegarFSY(LuaUtils.cameraFromString(camera)));
-		addLocalCallback('getFullScreenWidth', function(?camera:String = 'other'):Float return backend.CameraResizeFix.pegarFSL(LuaUtils.cameraFromString(camera)));
-		addLocalCallback('getFullScreenHeight', function(?camera:String = 'other'):Float return backend.CameraResizeFix.pegarFSA(LuaUtils.cameraFromString(camera)));
-		
 		addLocalCallback('close', function() {
 			closed = true;
 			trace('Closing script $scriptName');
@@ -232,26 +230,13 @@ class FunkinLua {
 			LuaL.dostring(lua, ScriptMacros.luaFile('flow'));
 	}
 
-	public function refreshScreenVariables(?camera:String = 'other'):Void
+	public function refreshScreenVariables():Void
 	{
 		if(lua == null || closed)
 			return;
 
-		var cam:FlxCamera = LuaUtils.cameraFromString(camera);
-		set('screenWidth', FlxG.width);
-		set('screenHeight', FlxG.height);
-		set('windowWidth', backend.VignetteUtil.windowWidth());
-		set('windowHeight', backend.VignetteUtil.windowHeight());
-		set('windowPixelWidth', backend.VignetteUtil.windowPixelWidth());
-		set('windowPixelHeight', backend.VignetteUtil.windowPixelHeight());
-		set('fullScreenX', backend.CameraResizeFix.pegarFSX(cam));
-		set('fullScreenY', backend.CameraResizeFix.pegarFSY(cam));
-		set('fullScreenWidth', backend.CameraResizeFix.pegarFSL(cam));
-		set('fullScreenHeight', backend.CameraResizeFix.pegarFSA(cam));
-		set('fullscreenX', backend.CameraResizeFix.pegarFSX(cam));
-		set('fullscreenY', backend.CameraResizeFix.pegarFSY(cam));
-		set('fullscreenWidth', backend.CameraResizeFix.pegarFSL(cam));
-		set('fullscreenHeight', backend.CameraResizeFix.pegarFSA(cam));
+		set('screenWidth', ResolutionManager.scriptScreenWidth());
+		set('screenHeight', ResolutionManager.scriptScreenHeight());
 	}
 
 	function pushLuaValue(path:String):Int
