@@ -7,8 +7,8 @@
 	},
 	"opponent": {
 		"image": "opp",
-		"x": 500,
-		"y": 462,
+		"x": 470,
+		"y": 497,
 		"width": 100,
 		"offsets": {
 			"left": [4, -10],
@@ -21,7 +21,7 @@
 	"bf": {
 		"image": "dingalingdemon",
 		"x": 676,
-		"y": 492,
+		"y": 502,
 		"width": 100,
 		"offsets": {
 			"left": [20, 0],

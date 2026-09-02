@@ -47,7 +47,7 @@ class MasterEditorMenu extends ScriptedSubState
 		"*fart*",
 		"Pó parando",
 		"Eu em",
-		"Shiho, para.",
+		"Shiho, para.", // :( -Shiho
 		"Agora não",
 		"dps termino",
 		"ativem vocês mesmos, eu em",

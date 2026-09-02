@@ -1,47 +1,42 @@
-function onCreate()
-    makeLuaText('loltxt', '', 1000, 0, 0)
-    setTextAlignment('loltxt', 'center')
-    setTextSize('loltxt', 26)
-    setTextBorder('loltxt', 0, '000000')
+luaDebugMode = true
+
+function onLoad()
+    --setProperty('camGame.bgColor', getColorFromHex('FFFFFF'))
+    makeLuaText('loltxt', '', 0, 0, legendaY)
+    setTextFont('loltxt', 'better-vcr.ttf')
+    setTextSize('loltxt', 20)
+    screenCenter('loltxt', 'x')
+    setTextBorder('loltxt', 0)
     setObjectCamera('loltxt', 'other')
     addLuaText('loltxt')
 
-    makeLuaSprite('lolbg', nil, 0, 0)
-    makeGraphic('lolbg', screenWidth, 50, '000000')
-    setObjectCamera('lolbg', 'other')
-    setProperty('lolbg.alpha', 0.7)
-    addLuaSprite('lolbg')
-
-    setProperty('loltxt.visible', false)
+    makeLuaSprite('lolbg')
+    makeGraphic('lolbg', 1, 1, '000000')
+    setObjectOrder('lolbg', getObjectOrder('loltxt')-1)
+    setProperty('lolbg.alpha', 0.5)
     setProperty('lolbg.visible', false)
+    setObjectCamera('lolbg', 'other')
+    addLuaSprite('lolbg')
 end
 
-function onEvent(name, v1, v2)
-    if name == 'Lyrics Event' then
-        
-        if v1 == nil or v1 == '' then
-            setProperty('loltxt.visible', false)
-            setProperty('lolbg.visible', false)
-            return -- me sinto profissional
-        end
+function lyric(txt)
+    setTextString('loltxt', txt)
+    screenCenter('loltxt', 'x')
 
-        v1 = string.gsub(v1, "\\n", "\n")
+    setProperty('loltxt.y', screenHeight - getProperty('loltxt.height') - 100)
 
-        setTextString('loltxt', v1)
-        setProperty('loltxt.visible', true)
-        setProperty('lolbg.visible', true)
+    scaleObject('lolbg', getProperty('loltxt.width') + 10, getProperty('loltxt.height') + 5)
+    setProperty('lolbg.visible', getTextString('loltxt') ~= '')
+    centerBG()
+end
 
-        screenCenter('loltxt', 'x')
+function centerBG()
+    setProperty('lolbg.x', getProperty('loltxt.x') + (getProperty('loltxt.width') / 2) - (getProperty('lolbg.width') / 2))
+    setProperty('lolbg.y', getProperty('loltxt.y') + (getProperty('loltxt.height') / 2) - (getProperty('lolbg.height') / 2))
+end
 
-        local ypreto = downscroll and 100 or 550
-        setProperty('loltxt.y', ypreto)
-
-        local ybranco = 12
-        local racismo = getProperty('loltxt.height')
-
-        makeGraphic('lolbg', screenWidth, racismo + ybranco * 2, '000000')
-
-        setProperty('lolbg.x', 0)
-        setProperty('lolbg.y', ypreto - ybranco)
+function onEvent(event, value1, value2, strumTime)
+    if event == 'Lyrics Event' then
+        lyric(value1)
     end
 end

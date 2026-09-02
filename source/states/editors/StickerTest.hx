@@ -6,10 +6,10 @@ import states.MainMenuState;
 class StickerTest extends MusicBeatState {
     private var stickerSet:String;
     private var stickerPack:String;
-    private var stickerSubState:StickerSubState;
 	var stickerSetInput:PsychUIInputText;
 	var stickerPackInput:PsychUIInputText;
 
+    var stickerSubState:StickerSubState;
 	public function new(?stickers:StickerSubState = null, set:String = "stickers-set-1", pack:String = "all"){
         stickerPack = pack;
         stickerSet = set;
@@ -19,16 +19,10 @@ class StickerTest extends MusicBeatState {
         }
         super();
     }
+
     override function create() {
-        FlxG.sound.music?.pause();
+        var playStickerTransition:Bool = stickerSubState != null;
         FlxG.mouse.visible = true;
-        if (stickerSubState != null)
-			{
-              Mods.clearStoredWithoutStickers();
-			  openSubState(stickerSubState);
-			  stickerSubState.degenStickers();
-			}
-		else Paths.clearStoredMemory();
 
         var bgNames:Array<String> = ["menuBG", "menuBGBlue", "menuBGMagenta", "menuDesat"];
         var bgShit:String = FlxG.random.getObject(bgNames);
@@ -38,7 +32,20 @@ class StickerTest extends MusicBeatState {
         add(BG);
         addEditorBox();
         super.create();
+        if (playStickerTransition)
+			startStickerTransition();
     }
+
+    function startStickerTransition():Void
+	{
+		if (stickerSubState == null)
+			return;
+
+		openSubState(stickerSubState);
+		stickerSubState.degenStickers();
+		stickerSubState = null;
+	}
+
     var UI_box:PsychUIBox;
 	function addEditorBox() {
 		UI_box = new PsychUIBox(FlxG.width, FlxG.height, 250, 200, ['Sticker']);
@@ -64,7 +71,7 @@ class StickerTest extends MusicBeatState {
 		var loadWeekButton:PsychUIButton = new PsychUIButton(20, 150, "Play", function() {
             StickerSubState.STICKER_PACK = stickerPackInput.text;
             StickerSubState.STICKER_SET = stickerSetInput.text;
-            openSubState(new StickerSubState(null,s -> new StickerTest(s,stickerSetInput.text,stickerPackInput.text)));
+            openSubState(new StickerSubState(null, s -> new StickerTest(s, stickerSetInput.text, stickerPackInput.text)));
         });
 		tab.add(loadWeekButton);
 	}
@@ -76,9 +83,8 @@ class StickerTest extends MusicBeatState {
                 ClientPrefs.toggleVolumeKeys(true);
 
                 if(controls.BACK){
-                    FlxG.sound.playMusic(Paths.menuMusic('mainMenu'));
                     FlxG.mouse.visible = false;
-                    MusicBeatState.startTransition(new MainMenuState());
+                    MusicBeatState.startTransition(new MainMenuState(true));
                 }
             }
             else ClientPrefs.toggleVolumeKeys(false);

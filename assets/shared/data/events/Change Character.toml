@@ -3,12 +3,25 @@ description = 'Changes dad, boyfriend, or girlfriend to another character.'
 
 [Character]
 type = 'dropdown'
+group = 1
+part = 1
 default = 'dad'
 options = [ 'dad', 'bf', 'gf' ]
 includeExtraCharacters = true
 width = 130
 advance = false
 
+[PlayIdle]
+type = 'checker'
+label = 'Play Idle'
+group = 1
+part = 2
+default = false
+width = 50
+x = 30
+
 [New]
 type = 'text'
+group = 2
+part = 1
 width = 170

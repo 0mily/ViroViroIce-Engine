@@ -1111,7 +1111,7 @@ class PlayState extends ScriptedState
 		}
 	}
 
-	function applyChrSwapState(oldCharacter:Character, newCharacter:Character, type:Int):Void
+	function applyChrSwapState(oldCharacter:Character, newCharacter:Character, type:Int, syncAnim:Bool):Void
 	{
 		if(oldCharacter == null || newCharacter == null)
 			return;
@@ -1123,7 +1123,9 @@ class PlayState extends ScriptedState
 		oldCharacter.shader = null;
 
 		newCharacter.alpha = lastAlpha;
-		newCharacter.syncHeckAnim(oldCharacter);
+		if (syncAnim)
+			newCharacter.syncHeckAnim(oldCharacter);
+		
 		if(!attachShader(lastShader, newCharacter))
 		{
 			newCharacter.shader = lastShader;
@@ -4887,7 +4889,8 @@ class PlayState extends ScriptedState
 
 
 			case 'Change Character':
-				var target:String = normalizeCharacterTarget(value1);
+				var target:String = normalizeCharacterTarget(value1.split(', ')[0]);
+				var syncShit:Bool = (value1.split(', ')[1] == 'true'); // idk man
 				var charType:Int = switch(target) {
 					case 'gf': 2;
 					case 'dad': 1;
@@ -4904,7 +4907,7 @@ class PlayState extends ScriptedState
 
 							var oldBoyfriend:Character = boyfriend;
 							boyfriend = boyfriendMap.get(value2);
-							applyChrSwapState(oldBoyfriend, boyfriend, charType);
+							applyChrSwapState(oldBoyfriend, boyfriend, charType, !syncShit);
 							iconP1.changeIcon(boyfriend.healthIcon);
 						}
 						setOnScripts('boyfriendName', boyfriend.curCharacter);
@@ -4925,7 +4928,7 @@ class PlayState extends ScriptedState
 							} else if(gf != null) {
 								gf.visible = false;
 							}
-							applyChrSwapState(oldDad, dad, charType);
+							applyChrSwapState(oldDad, dad, charType, !syncShit);
 							iconP2.changeIcon(dad.healthIcon);
 						}
 						setOnScripts('dadName', dad.curCharacter);
@@ -4941,7 +4944,7 @@ class PlayState extends ScriptedState
 
 								var oldGf:Character = gf;
 								gf = gfMap.get(value2);
-								applyChrSwapState(oldGf, gf, charType);
+								applyChrSwapState(oldGf, gf, charType, !syncShit);
 							}
 							setOnScripts('gfName', gf.curCharacter);
 						}
@@ -6870,6 +6873,7 @@ class PlayState extends ScriptedState
 		return result < 0 ? result + mod : result;
 	}
 
+	var fuck:Int = 0;
 	/**
 	 * Handles the character bopping.
 	 * 
