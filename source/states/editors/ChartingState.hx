@@ -41,6 +41,7 @@ import backend.lists.ListLoader.ListKind;
 import objects.Character;
 import objects.HealthIcon;
 import objects.Note;
+import objects.QuantNotes;
 import objects.StrumNote;
 
 using DateTools;
@@ -104,7 +105,7 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 	static inline final SECTION_STEP_EPSILON:Float = 0.0001;
 	final BACKUP_EXT = '.bkp';
 
-	public var quantizations:Array<Int> = [
+	/* public var quantizations:Array<Int> = [
 		4,
 		8,
 		12,
@@ -129,7 +130,11 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 		0xFF00CF00,
 		0xFF9F9F9F,
 		0xFF3F3F3F,
-	];
+	]; */
+
+	public var quantizations:Array<Int> = QuantNotes.QUANTIZATIONS.copy(); // adding from quantin
+	public var quantColors:Array<FlxColor> = QuantNotes.PRIMARY_COLORS.copy(); // adding for quantin
+
 	// buggy but workin
 	var baseQuant:Int = 16;
 	var curQuant(default, set):Int = 16;

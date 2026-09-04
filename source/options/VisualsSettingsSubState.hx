@@ -52,6 +52,14 @@ class VisualsSettingsSubState extends BaseOptionsMenu
 			option.onChange = onChangeNoteSkin;
 			noteOptionID = optionsArray.length - 1;
 		}
+
+		var option:Option = new Option('Quantized Notes',
+			'Colors notes by their rhythmic subdivision instead of their direction.',
+			'quantNotes',
+			BOOL,
+			null,
+			'quant_notes');
+		addOption(option);
 		
 		var noteSplashes:Array<String> = Mods.mergeAllTextsNamed('images/noteskins/splashes/list.txt');
 		for (splash in Mods.mergeAllTextsNamed('images/noteSplashes/list.txt'))

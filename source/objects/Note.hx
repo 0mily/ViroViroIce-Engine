@@ -59,6 +59,7 @@ class Note extends FlxSprite
 	/** totally optional render thingie used by the exact visual end of a sustain */
 	public var visualStrumTime:Null<Float> = null;
 	public var noteData:Int = 0;
+	public var quant(default, null):Int = 4; // quanty wuggy
 
 	public var mustPress(default, set):Bool = false;
 	public var canBeHit:Bool = false;
@@ -270,8 +271,9 @@ class Note extends FlxSprite
 			return;
 		}
 
-		var arr:Array<FlxColor> = ClientPrefs.data.arrowRGB[noteData];
-		if(PlayState.isPixelStage) arr = ClientPrefs.data.arrowRGBPixel[noteData];
+		var useQuantPalette:Bool = ClientPrefs.data.quantNotes && noteData > -1;
+		var arr:Array<FlxColor> = useQuantPalette ? QuantNotes.getPalette(quant) : ClientPrefs.data.arrowRGB[noteData];
+		if(!useQuantPalette && PlayState.isPixelStage) arr = ClientPrefs.data.arrowRGBPixel[noteData];
 
 		if (arr != null && noteData > -1 && noteData <= arr.length)
 		{
@@ -286,6 +288,12 @@ class Note extends FlxSprite
 			rgbShader.b = 0xFF0000FF;
 		}
 		rgbShader.enabled = true;
+		if (useQuantPalette && noteSplashData != null && !hasRGBOverride())
+		{
+			noteSplashData.r = arr[0];
+			noteSplashData.g = arr[1];
+			noteSplashData.b = arr[2];
+		}
 		applyRGBOverride();
 	}
 
@@ -444,6 +452,7 @@ class Note extends FlxSprite
 		y -= 2000;
 		this.strumTime = strumTime;
 		if(!inEditor) this.strumTime += ClientPrefs.data.noteOffset;
+		quant = isSustainNote && prevNote != this ? prevNote.quant : QuantNotes.fromTime(strumTime);
 
 		this.noteData = noteData;
 
@@ -452,6 +461,7 @@ class Note extends FlxSprite
 			rgbShader = new RGBShaderReference(this, initializeGlobalRGBShader(noteData));
 			if(PlayState.SONG != null && PlayState.SONG.disableNoteRGB) useRGBShader = false;
 			texture = '';
+			defaultRGB();
 			
 			x += swagWidth * (noteData);
 			if(!isSustainNote && noteData < colArray.length) { //Doing this 'if' check to fix the warnings on Senpai songs

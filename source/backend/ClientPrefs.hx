@@ -38,6 +38,7 @@ using StringTools;
 	public var noteSkin:String = 'Default';
 	public var splashSkin:String = 'ViroViroIce';
 	public var holdSkin:String = 'Vanilla';
+	public var quantNotes:Bool = false;
 	
 	public var opaqueSustains:Bool = true; // isso não deveria ser strums ao invés de sustains?? -Shiho // sla - Mily
 	public var splashAlpha:Float = 0.8;
