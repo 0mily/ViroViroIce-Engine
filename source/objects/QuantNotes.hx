@@ -75,4 +75,16 @@ class QuantNotes
 			index = PALETTES.length - 1;
 		return PALETTES[index].copy();
 	}
+
+	/*
+	 * Palette config for strums!
+	 */
+	public static function applyToStrum(strum:StrumNote, ?note:Note):Void
+	{
+		if (strum == null)
+			return;
+
+		var palette:Array<FlxColor> = getPalette(note != null ? note.quant : 4);
+		strum.setQuantRGBPalette(palette[0], palette[1], palette[2]);
+	}
 }

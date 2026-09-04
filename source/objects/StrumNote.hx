@@ -26,6 +26,9 @@ class StrumNote extends FlxSprite
 	public var pressedRGBR:Null<FlxColor> = null;
 	public var pressedRGBG:Null<FlxColor> = null;
 	public var pressedRGBB:Null<FlxColor> = null;
+	public var quantRGBR:Null<FlxColor> = null;
+	public var quantRGBG:Null<FlxColor> = null;
+	public var quantRGBB:Null<FlxColor> = null;
 	private function set_texture(value:String):String {
 		if(texture != value) {
 			texture = value;
@@ -155,6 +158,15 @@ class StrumNote extends FlxSprite
 			applyStateRGB();
 	}
 
+	public function setQuantRGBPalette(r:FlxColor, g:FlxColor, b:FlxColor):Void
+	{
+		quantRGBR = r;
+		quantRGBG = g;
+		quantRGBB = b;
+		if (ClientPrefs.data.quantNotes && useRGBShader && !hasRGBOverride() && animation?.curAnim != null && animation.curAnim.name != 'static')
+			applyStateRGB();
+	}
+
 	function applyDefaultRGB():Void
 	{
 		var arr:Array<FlxColor> = ClientPrefs.data.arrowRGB[noteData];
@@ -170,6 +182,18 @@ class StrumNote extends FlxSprite
 
 	function applyStateRGB():Void
 	{
+		if (ClientPrefs.data.quantNotes && animation?.curAnim != null && animation.curAnim.name != 'static')
+		{
+			var arr:Array<FlxColor> = QuantNotes.getPalette(4);
+			if (quantRGBR != null && quantRGBG != null && quantRGBB != null)
+				arr = [quantRGBR, quantRGBG, quantRGBB];
+
+			rgbShader.r = arr[0];
+			rgbShader.g = arr[1];
+			rgbShader.b = arr[2];
+			return;
+		}
+
 		if (animation?.curAnim != null && animation.curAnim.name != 'static')
 		{
 			if (pressedRGBR != null && pressedRGBG != null && pressedRGBB != null)

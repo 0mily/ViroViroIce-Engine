@@ -6228,6 +6228,7 @@ class PlayState extends ScriptedState
 		} else {
 			var spr:StrumNote = playerStrums.members[key];
 			if (strumsblockedFNF[key] != true && spr != null) {
+				QuantNotes.applyToStrum(spr);
 				spr.playAnim('pressed');
 				spr.resetAnim = 0;
 			}
@@ -6501,7 +6502,7 @@ class PlayState extends ScriptedState
 		}
 
 		if(opponentVocals.length <= 0) vocals.volume = 1;
-		strumPlayAnim(true, Std.int(Math.abs(note.noteData)), Conductor.stepCrochet * 1.25 / 1000 / playbackRate);
+		strumPlayAnim(true, Std.int(Math.abs(note.noteData)), Conductor.stepCrochet * 1.25 / 1000 / playbackRate, note);
 		note.hitByOpponent = true;
 		
 		stagesFunc(function(stage:BaseStage) stage.opponentNoteHit(note));
@@ -6565,7 +6566,11 @@ class PlayState extends ScriptedState
 
 			if (!cpuControlled) {
 				var spr = playerStrums.members[note.noteData];
-				if (spr != null) spr.playAnim('confirm', true);
+				if (spr != null)
+				{
+					QuantNotes.applyToStrum(spr, note);
+					spr.playAnim('confirm', true);
+				}
 				spr.animation.finishCallback = (name:String) ->
 				{
 					if (name == 'confirm')
@@ -6574,7 +6579,7 @@ class PlayState extends ScriptedState
 					}
 				};
 			} else {
-				strumPlayAnim(false, Std.int(Math.abs(note.noteData)), Conductor.stepCrochet * 1.25 / 1000 / playbackRate);
+				strumPlayAnim(false, Std.int(Math.abs(note.noteData)), Conductor.stepCrochet * 1.25 / 1000 / playbackRate, note);
 			}
 			vocals.volume = 1;
 
@@ -6934,8 +6939,9 @@ class PlayState extends ScriptedState
 	 * @param 	isDad 	Whether the strumline should be the opponent's or the player's.
 	 * @param 	id 		The ID of the note receptor in the strumline.
 	 * @param 	time 	The time (in seconds) until the animation resets.
+	 * @param 	note 	The note whose quantization colors the animation.
 	*/
-	function strumPlayAnim(isDad:Bool, id:Int, time:Float) {
+	function strumPlayAnim(isDad:Bool, id:Int, time:Float, ?note:Note) {
 		var spr:StrumNote = null;
 		if(isDad) {
 			spr = opponentStrums.members[id];
@@ -6944,6 +6950,7 @@ class PlayState extends ScriptedState
 		}
 
 		if(spr != null) {
+			QuantNotes.applyToStrum(spr, note);
 			spr.playAnim('confirm', true);
 			spr.resetAnim = time;
 		}
