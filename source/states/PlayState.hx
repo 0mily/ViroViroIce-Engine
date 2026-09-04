@@ -4085,6 +4085,7 @@ class PlayState extends ScriptedState
 		doDeathCheck();
 		
 		super.update(elapsed);
+		trackChrPos();
 		updateCameraMoveIdleReset();
 		updateCameraBopZoom(elapsed);
 
@@ -5700,6 +5701,25 @@ class PlayState extends ScriptedState
 			case 'dad': dad;
 			default: extraCharacterMap.get(cameraFocus);
 		}
+	}
+
+	function trackChrPos():Void
+	{
+		if(camFollow == null || !cameraFocusInitialized || isCameraOnForcedPos || cameraFocusTween != null || cameraFocus == 'position')
+			return;
+
+		var point:FlxPoint = getCameraFocusPoint(cameraFocus, cameraFocusOffsetX, cameraFocusOffsetY);
+		if(point == null)
+			return;
+
+		var deltaX:Float = point.x - cameraFocusBaseX;
+		var deltaY:Float = point.y - cameraFocusBaseY;
+		cameraFocusBaseX = point.x;
+		cameraFocusBaseY = point.y;
+		point.put();
+
+		camFollow.x += deltaX;
+		camFollow.y += deltaY;
 	}
 
 	function cameraTargetFromCharacter(character:Character):String
