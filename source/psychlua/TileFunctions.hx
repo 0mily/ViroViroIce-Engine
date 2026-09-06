@@ -19,33 +19,29 @@ class TileFunctions
 	#if LUA_ALLOWED
 	public static function implement():Void
 	{
-		FunkinLua.registerFunction('setTileObject', function(tag:String, axes:String = 'xy', direction:Dynamic = null, direction2OrVelocity:Dynamic = null, velocityOrVelocity2:Dynamic = null, velocity2:Dynamic = null) {
+		FunkinLua.registerFunction('setObjectBackdrop', function(tag:String, axes:String = 'xy', direction:Dynamic = null, direction2OrVelocity:Dynamic = null, velocityOrVelocity2:Dynamic = null, velocity2:Dynamic = null) {
 			return setTileObject(tag, axes, direction, direction2OrVelocity, velocityOrVelocity2, velocity2);
 		});
-		FunkinLua.registerFunction('setTiledObject', function(tag:String, axes:String = 'xy', direction:Dynamic = null, direction2OrVelocity:Dynamic = null, velocityOrVelocity2:Dynamic = null, velocity2:Dynamic = null) {
+		FunkinLua.registerFunction('setBackdrop', function(tag:String, axes:String = 'xy', direction:Dynamic = null, direction2OrVelocity:Dynamic = null, velocityOrVelocity2:Dynamic = null, velocity2:Dynamic = null) {
 			return setTileObject(tag, axes, direction, direction2OrVelocity, velocityOrVelocity2, velocity2);
 		});
-		FunkinLua.registerFunction('makeTileObject', function(tag:String, image:String = null, x:Float = 0, y:Float = 0, axes:String = 'xy', direction:Dynamic = null, direction2OrVelocity:Dynamic = null, velocityOrVelocity2:Dynamic = null, velocity2:Dynamic = null) {
+		FunkinLua.registerFunction('makeObjectBackdrop', function(tag:String, image:String = null, x:Float = 0, y:Float = 0, axes:String = 'xy', direction:Dynamic = null, direction2OrVelocity:Dynamic = null, velocityOrVelocity2:Dynamic = null, velocity2:Dynamic = null) {
 			return makeTileObject(tag, image, x, y, axes, direction, direction2OrVelocity, velocityOrVelocity2, velocity2) != null;
 		});
-		FunkinLua.registerFunction('makeTiledLuaSprite', function(tag:String, image:String = null, x:Float = 0, y:Float = 0, axes:String = 'xy', direction:Dynamic = null, direction2OrVelocity:Dynamic = null, velocityOrVelocity2:Dynamic = null, velocity2:Dynamic = null) {
-			return makeTileObject(tag, image, x, y, axes, direction, direction2OrVelocity, velocityOrVelocity2, velocity2) != null;
-		});
-		FunkinLua.registerFunction('makeAnimatedTileObject', function(tag:String, image:String = null, x:Float = 0, y:Float = 0, spriteType:String = 'auto', axes:String = 'xy', direction:Dynamic = null, direction2OrVelocity:Dynamic = null, velocityOrVelocity2:Dynamic = null, velocity2:Dynamic = null) {
+		FunkinLua.registerFunction('makeAnimatedObjectBackdrop', function(tag:String, image:String = null, x:Float = 0, y:Float = 0, spriteType:String = 'auto', axes:String = 'xy', direction:Dynamic = null, direction2OrVelocity:Dynamic = null, velocityOrVelocity2:Dynamic = null, velocity2:Dynamic = null) {
 			return makeAnimatedTileObject(tag, image, x, y, spriteType, axes, direction, direction2OrVelocity, velocityOrVelocity2, velocity2) != null;
 		});
-		FunkinLua.registerFunction('makeAnimatedTiledLuaSprite', function(tag:String, image:String = null, x:Float = 0, y:Float = 0, spriteType:String = 'auto', axes:String = 'xy', direction:Dynamic = null, direction2OrVelocity:Dynamic = null, velocityOrVelocity2:Dynamic = null, velocity2:Dynamic = null) {
+		FunkinLua.registerFunction('makeAnimatedObjectBackdrop', function(tag:String, image:String = null, x:Float = 0, y:Float = 0, spriteType:String = 'auto', axes:String = 'xy', direction:Dynamic = null, direction2OrVelocity:Dynamic = null, velocityOrVelocity2:Dynamic = null, velocity2:Dynamic = null) {
 			return makeAnimatedTileObject(tag, image, x, y, spriteType, axes, direction, direction2OrVelocity, velocityOrVelocity2, velocity2) != null;
 		});
-		FunkinLua.registerFunction('copyTileObject', function(tag:String, sourceTag:String, axes:String = 'xy', direction:Dynamic = null, direction2OrVelocity:Dynamic = null, velocityOrVelocity2:Dynamic = null, velocity2:Dynamic = null) {
+		FunkinLua.registerFunction('copyObjectBackdrop', function(tag:String, sourceTag:String, axes:String = 'xy', direction:Dynamic = null, direction2OrVelocity:Dynamic = null, velocityOrVelocity2:Dynamic = null, velocity2:Dynamic = null) {
 			return copyTileObject(tag, sourceTag, axes, direction, direction2OrVelocity, velocityOrVelocity2, velocity2) != null;
 		});
-		FunkinLua.registerFunction('setTileVelocity', setTileVelocity);
-		FunkinLua.registerFunction('setTileMotion', setTileMotion);
-		FunkinLua.registerFunction('setTileAxes', setTileAxes);
-		FunkinLua.registerFunction('removeTileObject', removeTileObject);
-		FunkinLua.registerFunction('addGridBackdrop', addGridBackdrop);
 		FunkinLua.registerFunction('setBackdropVelocity', setTileVelocity);
+		FunkinLua.registerFunction('setBackdropMotion', setTileMotion);
+		FunkinLua.registerFunction('setBackdropAxes', setTileAxes);
+		FunkinLua.registerFunction('removeObjectBackdrop', removeTileObject);
+		FunkinLua.registerFunction('addGridBackdrop', addGridBackdrop);
 		FunkinLua.registerFunction('removeBackdrop', removeTileObject);
 	}
 	#end
