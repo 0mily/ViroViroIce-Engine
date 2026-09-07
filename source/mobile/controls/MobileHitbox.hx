@@ -127,7 +127,7 @@ class MobileHitbox extends TouchInputManager
 		hint.scrollFactor.set();
 		hint.alpha = 0.00001;
 
-		if (!ClientPrefs.data.invisibleHitbox) {
+		//if (!ClientPrefs.data.invisibleHitbox) {
 			var hintTween:FlxTween = null;
 			hint.onDown.callback = function() {
 				if (hintTween != null) hintTween.cancel();
@@ -148,7 +148,7 @@ class MobileHitbox extends TouchInputManager
 			}
 			
 			hint.onOut.callback = hint.onUp.callback;
-		}
+		//}
 
 		#if FLX_DEBUG
 		hint.ignoreDrawDebug = true;
