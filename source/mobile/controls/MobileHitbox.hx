@@ -42,7 +42,7 @@ class MobileHitbox extends TouchInputManager
 	{
 		super();
 
-		extraButtons = ClientPrefs.data.extraButtons;
+		extraButtons = 0;
 
 		var hasExtraButtons:Bool = extraButtons > 0;
 		var hitboxY:Int = hasExtraButtons ? Std.int(FlxG.height * 0.25) : 0;

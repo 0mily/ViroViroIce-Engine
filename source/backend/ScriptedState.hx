@@ -12,7 +12,15 @@ import psychlua.LuaUtils;
 import psychlua.GlobalScriptHandler;
 #end
 
+#if mobile
+import flixel.group.FlxGroup;
+import flixel.util.FlxDestroyUtil;
+import mobile.controls.MobileHitbox;
+import mobile.controls.MobileVirtualPad;
+#end
+
 class ScriptedState extends ScriptedSubState {
+    public static var instance:ScriptedState;
 	public var camOther:FlxCamera = null;
 	public var customCameras:Map<String, FlxCamera> = new Map();
 	var customCameraAutoSize:Map<String, Bool> = new Map();
@@ -32,7 +40,7 @@ class ScriptedState extends ScriptedSubState {
 	
 	public override function create():Void {
 		#if ADDONS_ALLOWED Mods.updatedOnState = false; #end
-		
+		instance = this;
 		super.create();
 		
 		if (!FlxTransitionableState.skipNextTransOut && _requestedSubState == null)
@@ -57,7 +65,91 @@ class ScriptedState extends ScriptedSubState {
 			initPsychCamera();
 		
 		super.preCreate();
+	}	
+	#if mobile
+	public var hitbox:MobileHitbox;
+	public var virtualPad:MobileVirtualPad;
+
+	public var virtualPadCam:FlxCamera;
+	public var hitboxCam:FlxCamera;
+
+	/**
+	 * Add the Virtual Pad to the screen.
+	 * @param DPad DPad JSON name (e.g. "LEFT_FULL")
+	 * @param Action Action JSON name (e.g. "A_B_C")
+	 */
+	public static function addVirtualPad(DPad:String, Action:String)
+	{
+		virtualPad = new MobileVirtualPad(DPad, Action);
+		add(virtualPad);
 	}
+	
+	public static function addVirtualPadCamera(DefaultDrawTarget:Bool = false)
+	{
+		if (virtualPad != null)
+		{
+			virtualPadCam = new FlxCamera();
+			virtualPadCam.bgColor.alpha = 0;
+			FlxG.cameras.add(virtualPadCam, DefaultDrawTarget);
+			
+			virtualPad.cameras = [virtualPadCam];
+		}
+	}
+
+	public static function removeVirtualPad()
+	{
+		if (virtualPad != null)
+		{
+			remove(virtualPad);
+			virtualPad = FlxDestroyUtil.destroy(virtualPad);
+		}
+
+		if(virtualPadCam != null)
+		{
+			FlxG.cameras.remove(virtualPadCam);
+			virtualPadCam = FlxDestroyUtil.destroy(virtualPadCam);
+		}
+	}
+
+	/**
+	 * Adds the Hitbox to the screen.
+	 * @param DefaultDrawTarget If the camera will be the standard target for drawing
+	 */
+	public static function addMobileControls(DefaultDrawTarget:Bool = false)
+	{
+		hitbox = new MobileHitbox();
+
+		hitboxCam = new FlxCamera();
+		hitboxCam.bgColor.alpha = 0;
+		FlxG.cameras.add(hitboxCam, DefaultDrawTarget);
+
+		hitbox.cameras = [hitboxCam];
+		hitbox.visible = false;
+		add(hitbox);
+	}
+
+	public static function removeMobileControls()
+	{
+		if (hitbox != null)
+		{
+			remove(hitbox);
+			hitbox = FlxDestroyUtil.destroy(hitbox);
+		}
+
+		if(hitboxCam != null)
+		{
+			FlxG.cameras.remove(hitboxCam);
+			hitboxCam = FlxDestroyUtil.destroy(hitboxCam);
+		}
+	}
+
+	override function destroy()
+	{
+		super.destroy();
+		removeVirtualPad();
+		removeMobileControls();
+	}
+	#end
 	override function _preCreate():Void {
 		#if SCRIPTS_ALLOWED startStateScripts(); #end
 		

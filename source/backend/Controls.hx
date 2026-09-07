@@ -182,24 +182,24 @@ class Controls
 	@:noCompletion private function get_activePad():Dynamic {
 		var sub = FlxG.state.subState;
 		
-		if (sub != null && Std.isOfType(sub, MusicBeatSubstate)) {
-			var mbs:MusicBeatSubstate = cast sub;
+		if (sub != null && Std.isOfType(sub, ScriptedSubState)) {
+			var mbs:ScriptedSubState = cast sub;
 			if (mbs.virtualPad != null) return mbs.virtualPad;
 		}
 		
-		return (MusicBeatState.instance != null) ? MusicBeatState.instance.virtualPad : null;
+		return (ScriptedState.instance != null) ? ScriptedState.instance.virtualPad : null;
 	}
 
 	private var activeHitbox(get, never):Dynamic;
 	@:noCompletion private function get_activeHitbox():Dynamic {
 		var sub = FlxG.state.subState;
 		
-		if (sub != null && Std.isOfType(sub, MusicBeatSubstate)) {
-			var mbs:MusicBeatSubstate = cast sub;
+		if (sub != null && Std.isOfType(sub, ScriptedSubState)) {
+			var mbs:ScriptedSubState = cast sub;
 			if (mbs.hitbox != null) return mbs.hitbox;
 		}
 		
-		return (MusicBeatState.instance != null) ? MusicBeatState.instance.hitbox : null;
+		return (ScriptedState.instance != null) ? ScriptedState.instance.hitbox : null;
 	}
 
 	private function processMobileInput(source:Dynamic, keys:Array<TouchInputID>, mode:InputMode):Bool {
@@ -208,8 +208,8 @@ class Controls
 		var sub = FlxG.state.subState;
 		var hasSubControls = false;
 		
-		if (sub != null && Std.isOfType(sub, MusicBeatSubstate)) {
-			var mbs:MusicBeatSubstate = cast sub;
+		if (sub != null && Std.isOfType(sub, ScriptedSubState)) {
+			var mbs:ScriptedSubState = cast sub;
 			hasSubControls = (mbs.virtualPad != null || mbs.hitbox != null);
 		}
 
