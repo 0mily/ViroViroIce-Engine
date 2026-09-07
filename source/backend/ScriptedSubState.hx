@@ -79,13 +79,13 @@ class ScriptedSubState extends MusicBeatSubstate {
 	 * @param DPad DPad JSON name (e.g. "LEFT_FULL")
 	 * @param Action Action JSON name (e.g. "A_B_C")
 	 */
-	public static function addVirtualPad(DPad:String, Action:String)
+	public function addVirtualPad(DPad:String, Action:String)
 	{
 		virtualPad = new MobileVirtualPad(DPad, Action);
 		add(virtualPad);
 	}
 	
-	public static function addVirtualPadCamera(DefaultDrawTarget:Bool = false)
+	public function addVirtualPadCamera(DefaultDrawTarget:Bool = false)
 	{
 		if (virtualPad != null)
 		{
@@ -97,7 +97,7 @@ class ScriptedSubState extends MusicBeatSubstate {
 		}
 	}
 
-	public static function removeVirtualPad()
+	public function removeVirtualPad()
 	{
 		if (virtualPad != null)
 		{
@@ -116,7 +116,7 @@ class ScriptedSubState extends MusicBeatSubstate {
 	 * Adds the Hitbox to the screen.
 	 * @param DefaultDrawTarget If the camera will be the standard target for drawing
 	 */
-	public static function addMobileControls(DefaultDrawTarget:Bool = false)
+	public function addMobileControls(DefaultDrawTarget:Bool = false)
 	{
 		hitbox = new MobileHitbox();
 
@@ -129,7 +129,7 @@ class ScriptedSubState extends MusicBeatSubstate {
 		add(hitbox);
 	}
 
-	public static function removeMobileControls()
+	public function removeMobileControls()
 	{
 		if (hitbox != null)
 		{
@@ -259,6 +259,10 @@ class ScriptedSubState extends MusicBeatSubstate {
 	
 	public override function destroy():Void {
 		#if SCRIPTS_ALLOWED destroyScripts(); #end
+		#if mobile
+		removeVirtualPad();
+		removeMobileControls();
+		#end
 		super.destroy();
 	}
 	
