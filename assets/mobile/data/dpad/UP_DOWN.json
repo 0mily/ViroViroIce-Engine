@@ -1,0 +1,6 @@
+{
+	"buttons": [
+		{ "name": "buttonUp", "x": 0, "y": 255, "anchorX": "left", "anchorY": "bottom", "graphic": "up", "color": "0x00FF00", "ids": ["UP"] },
+		{ "name": "buttonDown", "x": 0, "y": 135, "anchorX": "left", "anchorY": "bottom", "graphic": "down", "color": "0x00FFFF", "ids": ["DOWN"] }
+	]
+}

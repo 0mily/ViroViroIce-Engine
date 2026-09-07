@@ -211,6 +211,10 @@ class FreeplayState extends ScriptedState
 		player = new MusicPlayer(this);
 		add(player);
 		
+		#if mobile
+		addVirtualPad('LEFT_FULL', 'FREEPLAY');
+		#end
+		
 		changeSelection();
 		updateTexts();
 		super.create();

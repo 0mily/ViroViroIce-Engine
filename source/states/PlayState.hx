@@ -988,6 +988,11 @@ class PlayState extends ScriptedState
 		resolutionLayoutWidth = FlxG.width;
 		resolutionLayoutHeight = FlxG.height;
 		startingSong = true;
+		
+		#if mobile
+		addMobileControls(false);
+		hitbox.visible = false;
+		#end
 
 		#if LUA_ALLOWED
 		for (notetype in noteTypes)
@@ -3074,6 +3079,9 @@ class PlayState extends ScriptedState
 			if (skipCountdown || startOnTime > 0) skipArrowStartTween = true;
 
 			canPause = true;
+			#if mobile
+			hitbox.visible = true;
+			#end
 			for (i in 0...playerStrums.length) {
 				setOnScripts('defaultPlayerStrumX' + i, playerStrums.members[i].x);
 				setOnScripts('defaultPlayerStrumY' + i, playerStrums.members[i].y);
@@ -5898,6 +5906,9 @@ class PlayState extends ScriptedState
 		timeBar.visible = false;
 		timeTxt.visible = false;
 		canPause = false;
+		#if mobile
+		hitbox.visible = false;
+		#end
 		endingSong = true;
 		camZooming = false;
 		inCutscene = false;

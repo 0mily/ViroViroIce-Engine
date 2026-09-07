@@ -4,6 +4,16 @@ import flixel.input.gamepad.FlxGamepadButton;
 import flixel.input.gamepad.FlxGamepadInputID;
 import flixel.input.gamepad.mappings.FlxGamepadMapping;
 import flixel.input.keyboard.FlxKey;
+#if mobile
+import mobile.backend.flixel.input.TouchInputID;
+import mobile.backend.MobileUtil;
+
+private enum abstract InputMode(Int) {
+	var PRESSED = 0;
+	var JUST_PRESSED = 1;
+	var JUST_RELEASED = 2;
+}
+#end
 
 /**
  * Used to retrieve keybinds and inputs.
@@ -89,6 +99,7 @@ class Controls
 	//Gamepad, Keyboard stuff
 	public var keyboardBinds:Map<String, Array<FlxKey>>;
 	public var gamepadBinds:Map<String, Array<FlxGamepadInputID>>;
+	#if mobile public var mobileBinds:Map<String, Array<TouchInputID>>; #end
 	public function justPressed(key:String)
 	{
 		var result:Bool = (FlxG.keys.anyJustPressed(keyboardBinds[key]) == true);
@@ -97,7 +108,7 @@ class Controls
 		if(key == 'accept' && DeveloperMode.isMobileLike() && TouchUtil.pressAction())
 			return true;
 
-		return result || _myGamepadJustPressed(gamepadBinds[key]) == true;
+		return result || _myGamepadJustPressed(gamepadBinds[key]) == true #if mobile || hitboxJustPressed(mobileBinds[key]) == true || mobilePadJustPressed(mobileBinds[key]) == true #end;
 	}
 
 	public function pressed(key:String)
@@ -105,7 +116,7 @@ class Controls
 		var result:Bool = (FlxG.keys.anyPressed(keyboardBinds[key]) == true);
 		if(result) controllerMode = false; 
 
-		return result || _myGamepadPressed(gamepadBinds[key]) == true;
+		return result || _myGamepadPressed(gamepadBinds[key]) == true #if mobile || hitboxPressed(mobileBinds[key]) == true || mobilePadPressed(mobileBinds[key]) == true #end;
 	}
 
 	public function justReleased(key:String)
@@ -113,7 +124,7 @@ class Controls
 		var result:Bool = (FlxG.keys.anyJustReleased(keyboardBinds[key]) == true);
 		if(result) controllerMode = false;
 
-		return result || _myGamepadJustReleased(gamepadBinds[key]) == true;
+		return result || _myGamepadJustReleased(gamepadBinds[key]) == true #if mobile || hitboxJustReleased(mobileBinds[key]) == true || mobilePadJustReleased(mobileBinds[key]) == true #end;
 	}
 
 	public var controllerMode:Bool = false;
@@ -162,6 +173,93 @@ class Controls
 		}
 		return false;
 	}
+	
+	#if mobile
+	private var _wasInSubstate:Bool = false;
+	private var _substateCloseTime:Float = 0;
+
+	private var activePad(get, never):Dynamic;
+	@:noCompletion private function get_activePad():Dynamic {
+		var sub = FlxG.state.subState;
+		
+		if (sub != null && Std.isOfType(sub, MusicBeatSubstate)) {
+			var mbs:MusicBeatSubstate = cast sub;
+			if (mbs.virtualPad != null) return mbs.virtualPad;
+		}
+		
+		return (MusicBeatState.instance != null) ? MusicBeatState.instance.virtualPad : null;
+	}
+
+	private var activeHitbox(get, never):Dynamic;
+	@:noCompletion private function get_activeHitbox():Dynamic {
+		var sub = FlxG.state.subState;
+		
+		if (sub != null && Std.isOfType(sub, MusicBeatSubstate)) {
+			var mbs:MusicBeatSubstate = cast sub;
+			if (mbs.hitbox != null) return mbs.hitbox;
+		}
+		
+		return (MusicBeatState.instance != null) ? MusicBeatState.instance.hitbox : null;
+	}
+
+	private function processMobileInput(source:Dynamic, keys:Array<TouchInputID>, mode:InputMode):Bool {
+		if (keys == null || source == null) return false;
+
+		var sub = FlxG.state.subState;
+		var hasSubControls = false;
+		
+		if (sub != null && Std.isOfType(sub, MusicBeatSubstate)) {
+			var mbs:MusicBeatSubstate = cast sub;
+			hasSubControls = (mbs.virtualPad != null || mbs.hitbox != null);
+		}
+
+		if (hasSubControls) {
+			_wasInSubstate = true;
+		} else if (_wasInSubstate) {
+			_wasInSubstate = false;
+			_substateCloseTime = haxe.Timer.stamp();
+		}
+
+		if (haxe.Timer.stamp() - _substateCloseTime < 0.1) return false;
+
+		var isTriggered:Bool = switch (mode) {
+			case PRESSED: source.isAnyPressed(keys);
+			case JUST_PRESSED: source.isAnyJustPressed(keys);
+			case JUST_RELEASED: source.isAnyJustReleased(keys);
+		};
+
+		if (isTriggered) {
+			controllerMode = true; // !!DO NOT DISABLE IF YOU DO NOT WANT TO KILL INPUT MOBILE!!
+			return true;
+		}
+		
+		return false;
+	}
+	
+	private function mobilePadPressed(keys:Array<TouchInputID>):Bool {
+		return processMobileInput(activePad, keys, PRESSED);
+	}
+	
+	private function mobilePadJustPressed(keys:Array<TouchInputID>):Bool {
+		return processMobileInput(activePad, keys, JUST_PRESSED);
+	}
+	
+	private function mobilePadJustReleased(keys:Array<TouchInputID>):Bool {
+		return processMobileInput(activePad, keys, JUST_RELEASED);
+	}
+	
+	private function hitboxPressed(keys:Array<TouchInputID>):Bool {
+		return processMobileInput(activeHitbox, keys, PRESSED);
+	}
+	
+	private function hitboxJustPressed(keys:Array<TouchInputID>):Bool {
+		return processMobileInput(activeHitbox, keys, JUST_PRESSED);
+	}
+	
+	private function hitboxJustReleased(keys:Array<TouchInputID>):Bool {
+		return processMobileInput(activeHitbox, keys, JUST_RELEASED);
+	}
+	#end
 
 	// IGNORE THESE
 	public static var instance:Controls;
@@ -169,5 +267,6 @@ class Controls
 	{
 		keyboardBinds = ClientPrefs.keyBinds;
 		gamepadBinds = ClientPrefs.gamepadBinds;
+		#if mobile mobileBinds = MobileUtil.mobileIDs; #end
 	}
 }

@@ -1,0 +1,6 @@
+{
+	"buttons": [
+		{ "name": "buttonLeft", "x": 0, "y": 135, "anchorX": "left", "anchorY": "bottom", "graphic": "left", "color": "0xFF00FF", "ids": ["LEFT"] },
+		{ "name": "buttonRight", "x": 127, "y": 135, "anchorX": "left", "anchorY": "bottom", "graphic": "right", "color": "0xFF0000", "ids": ["RIGHT"] }
+	]
+}

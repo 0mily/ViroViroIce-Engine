@@ -6,6 +6,13 @@ import shaders.ErrorHandledShader;
 import psychlua.GlobalScriptHandler;
 #end
 
+#if mobile
+import flixel.group.FlxGroup;
+import flixel.util.FlxDestroyUtil;
+import mobile.controls.MobileVirtualPad;
+import mobile.controls.MobileHitbox;
+#end
+
 using StringTools;
 
 /**
@@ -199,73 +206,77 @@ class MusicBeatSubstate extends flixel.FlxSubState {
 	function get_controls():Controls {
 		return Controls.instance;
 	}
+	
+	#if mobile
+	public var virtualPad:MobileVirtualPad;
+	public var virtualPadCam:FlxCamera;
+	
+	public var hitbox:MobileHitbox;
+	public var hitboxCam:FlxCamera;
 
-	#if (TOUCH_CONTROLS_ALLOWED && mobile)
-	public var touchPad:TouchPad;
-	public var hitbox:Hitbox;
-	public var camControls:FlxCamera;
-	public var tpadCam:FlxCamera;
-
-	public function addTouchPad(DPad:String, Action:String)
+    /**
+	 * Add the Virtual Pad to the screen.
+	 * @param DPad DPad JSON name (e.g. "LEFT_FULL")
+	 * @param Action Action JSON name (e.g. "A_B_C")
+	 */
+	public function addVirtualPad(DPad:String, Action:String)
 	{
-		touchPad = new TouchPad(DPad, Action);
-		add(touchPad);
+		virtualPad = new MobileVirtualPad(DPad, Action);
+		add(virtualPad);
 	}
-
-	public function removeTouchPad()
+	
+	public function addMobileControls(DefaultDrawTarget:Bool = false)
 	{
-		if (touchPad != null)
-		{
-			remove(touchPad);
-			touchPad = FlxDestroyUtil.destroy(touchPad);
-		}
+		hitbox = new MobileHitbox();
 
-		if(tpadCam != null)
-		{
-			FlxG.cameras.remove(tpadCam);
-			tpadCam = FlxDestroyUtil.destroy(tpadCam);
-		}
-	}
+		hitboxCam = new FlxCamera();
+		hitboxCam.bgColor.alpha = 0;
+		FlxG.cameras.add(hitboxCam, DefaultDrawTarget);
 
-	public function addHitbox(defaultDrawTarget:Bool = false):Void
-	{
-		var extraMode = MobileData.extraActions.get(ClientPrefs.data.extraHints);
-
-		hitbox = new Hitbox(extraMode,MobileData.getButtonsColors());
-
-		camControls = new FlxCamera();
-		camControls.bgColor.alpha = 0;
-		FlxG.cameras.add(camControls, defaultDrawTarget);
-
-		hitbox.cameras = [camControls];
+		hitbox.cameras = [hitboxCam];
 		hitbox.visible = false;
 		add(hitbox);
 	}
+	
+	public function addVirtualPadCamera(DefaultDrawTarget:Bool = false)
+	{
+		if (virtualPad != null)
+		{
+			virtualPadCam = new FlxCamera();
+			virtualPadCam.bgColor.alpha = 0;
+			FlxG.cameras.add(virtualPadCam, DefaultDrawTarget);
+			
+			virtualPad.cameras = [virtualPadCam];
+		}
+	}
 
-	public function removeHitbox()
+	public function removeVirtualPad()
+	{
+		if (virtualPad != null)
+		{
+			remove(virtualPad);
+			virtualPad = FlxDestroyUtil.destroy(virtualPad);
+		}
+
+		if(virtualPadCam != null)
+		{
+			FlxG.cameras.remove(virtualPadCam);
+			virtualPadCam = FlxDestroyUtil.destroy(virtualPadCam);
+		}
+	}
+	
+	public function removeMobileControls()
 	{
 		if (hitbox != null)
 		{
 			remove(hitbox);
 			hitbox = FlxDestroyUtil.destroy(hitbox);
-			hitbox = null;
 		}
 
-		if(camControls != null)
+		if(hitboxCam != null)
 		{
-			FlxG.cameras.remove(camControls);
-			camControls = FlxDestroyUtil.destroy(camControls);
-		}
-	}
-
-	public function addTouchPadCamera(defaultDrawTarget:Bool = false):Void
-	{
-		if (touchPad != null)
-		{
-			tpadCam = new FlxCamera();
-			tpadCam.bgColor.alpha = 0;
-			FlxG.cameras.add(tpadCam, defaultDrawTarget);
-			touchPad.cameras = [tpadCam];
+			FlxG.cameras.remove(hitboxCam);
+			hitboxCam = FlxDestroyUtil.destroy(hitboxCam);
 		}
 	}
 	#end
@@ -279,9 +290,9 @@ class MusicBeatSubstate extends flixel.FlxSubState {
 			MusicBeatSubstate.callGlobal('onDestroySubState', [this, Type.getClass(this)]);
 		#end
 
-		#if (TOUCH_CONTROLS_ALLOWED && mobile)
-		removeTouchPad();
-		removeHitbox();
+		#if mobile
+		removeVirtualPad();
+		removeMobileControls();
 		#end
 		
 		verFPSsla(false);
