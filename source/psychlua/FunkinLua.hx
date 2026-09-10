@@ -151,7 +151,9 @@ class FunkinLua {
 		set('scriptName', scriptName);
 		set('currentModDirectory', Mods.currentModDirectory);
 
-		set('discordUser', backend.DiscordClient.username);
+		#if DISCORD_ALLOWED
+        set('discordUser', backend.DiscordClient.username);
+        #end
 		
 		// mod settings
 		addLocalCallback("getModSetting", function(saveTag:String, ?modName:String = null) {

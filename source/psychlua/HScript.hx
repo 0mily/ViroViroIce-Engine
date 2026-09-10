@@ -803,7 +803,9 @@ class HScript extends Iris {
 				return PlayState.instance.setIconFrame(0, frame) && PlayState.instance.setIconFrame(1, frame);
 			return PlayState.instance.setIconFrame(side, frame);
 		});
+		#if DISCORD_ALLOWED
 		set('discordUser', backend.DiscordClient.username);
+		#end
 		var scriptVariables = function():Map<String, Dynamic> {
 			var vars:Map<String, Dynamic> = variableMap;
 			if(vars == null && FlxG.state != null)
