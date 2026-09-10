@@ -150,6 +150,8 @@ class FunkinLua {
 		set('modFolder', modFolder);
 		set('scriptName', scriptName);
 		set('currentModDirectory', Mods.currentModDirectory);
+
+		set('discordUser', backend.DiscordClient.username);
 		
 		// mod settings
 		addLocalCallback("getModSetting", function(saveTag:String, ?modName:String = null) {

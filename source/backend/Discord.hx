@@ -20,6 +20,7 @@ class DiscordClient
 	private inline static final _defaultID:String = "1492539272769835181";
 	public static var clientID(default, set):String = _defaultID;
 	private static var presence:DiscordPresence = new DiscordPresence();
+	public static var username:String = 'Unknown'; // for funsies
 	// hides this field from scripts and reflection in general
 	@:unreflective private static var __thread:Thread;
 
@@ -52,11 +53,8 @@ class DiscordClient
 		final user = cast (request[0].username, String);
 		final discriminator = cast (request[0].discriminator, String);
 
-		var message = '(Discord) Connected to User ';
-		if (discriminator != '0') //Old discriminators
-			message += '($user#$discriminator)';
-		else //New Discord IDs/Discriminator system
-			message += '($user)';
+		username = discriminator != '0' ? '$user#$discriminator' : user;
+		trace('(Discord) Connected to User ($username)');
 		
 		var button:DiscordButton = new DiscordButton();
 		button.url = 'https://www.youtube.com/watch?v=xVBj4RLmyrI';
