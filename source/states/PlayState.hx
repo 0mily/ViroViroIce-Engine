@@ -631,6 +631,12 @@ class PlayState extends ScriptedState
 	*/
 	public var endCallback:Void->Void = null;
 
+	// Stores Lyric Text and BG in a Group
+	/**
+	 * lyric so awsomefe.
+	*/
+	public var lyricGrp:FlxSpriteGroup;
+
 	private static var _lastLoadedModDirectory:String = '';
 	public static var nextReloadAll:Bool = false;
 	override public function create()
@@ -866,6 +872,7 @@ class PlayState extends ScriptedState
         
 
 		uiGroup = new FlxSpriteGroup();
+		lyricGrp = new FlxSpriteGroup(); // whatever man
 		comboGroup = new FlxSpriteGroup();
 		noteGroup = new FlxTypedGroup<FlxBasic>();
 		add(comboGroup);

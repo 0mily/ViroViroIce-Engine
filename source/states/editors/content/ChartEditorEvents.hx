@@ -55,6 +55,7 @@ private typedef EventFieldDefinition =
 	var rowGap:Float;
 	var height:Int;
 	var advance:Bool;
+	var percent:Bool;
 }
 
 private typedef EventCatalogEntry =
@@ -898,7 +899,7 @@ class ChartEditorEvents
 	{
 		var parsed:Float = snapNumber(Std.parseFloat(value), field);
 		var stepper:PsychUINumericStepper = null;
-		stepper = new PsychUINumericStepper(x, y, field.step, parsed, field.min, field.max, field.decimals, field.width);
+		stepper = new PsychUINumericStepper(x, y, field.step, parsed, field.min, field.max, field.decimals, field.width, field.percent);
 		stepper.onValueChange = function()
 			writeFieldValue(field, formatNumber(stepper.value, field.decimals));
 		addDynamic(stepper);
@@ -1798,7 +1799,8 @@ class ChartEditorEvents
 			rowHeight: readFloat(raw, ['rowHeight', 'row_height', 'advanceHeight', 'advance_height'], 0),
 			rowGap: readFloat(raw, ['rowGap', 'row_gap', 'verticalSpacing', 'vertical_spacing'], 0),
 			height: readInt(raw, ['height', 'h'], buttonSize),
-			advance: parseBool(readString(raw, ['advance', 'nextLine', 'flow'], 'true'))
+			advance: parseBool(readString(raw, ['advance', 'nextLine', 'flow'], 'true')),
+			percent: parseBool(readString(raw, ['percent', 'isPercent', 'usePercentage'], 'false'))
 		};
 	}
 

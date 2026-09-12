@@ -3,4 +3,89 @@ description = 'Displays centered lyric text. Use \n for line breaks; empty text 
 
 [Text]
 type = 'text'
-width = 330
+group = 1
+width = 390
+
+[Camera]
+type = 'dropdown'
+group = 2
+part = 1
+default = 'Other'
+options = [ 'Game', 'HUD', 'Other', 'Custom' ]
+width = 84
+advance = false
+
+[Size]
+type = 'stepper'
+group = 3
+default = 20
+min_max = [ 1, 100 ]
+decimals = 2
+width = 72
+xOffset = 25
+advance = false
+
+[X]
+type = 'stepper'
+group = 4
+part = 1
+default = 0
+min_max = [ -9999, 9999 ]
+decimals = 2
+width = 72
+xOffset = 10
+advance = false
+
+[Y]
+type = 'stepper'
+group = 4
+part = 2
+default = 0
+min_max = [ -9999, 9999 ]
+decimals = 2
+width = 72
+xOffset = 10
+
+[CustomCam]
+type = 'text'
+group = 2
+part = 2
+label = 'Custom Cam Name'
+width = 100
+advance = false
+
+[Font]
+type = 'text'
+group = 5
+label = 'Font'
+default = 'better-vcr.ttf'
+width = 100
+xOffset = 10
+advance = false
+
+[BgAlpha]
+type = 'stepper'
+group = 6
+label = 'BG Opacity'
+default = 0.6
+min_max = [ 0, 1 ]
+step = 0.1
+decimals = 1
+percent = true
+width = 72
+xOffset = 10
+advance = false
+
+[TxtColor]
+type = 'color'
+group = 7
+label = 'Text Color'
+default = 'FFFFFF'
+width = 80
+xOffset = 10
+
+[Tag]
+type = 'text'
+group = 8
+width = 100
+x = 137
