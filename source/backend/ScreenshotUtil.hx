@@ -12,8 +12,6 @@ import sys.FileSystem;
 import sys.io.File;
 #end
 
-// alguém faz ele fazer sonzinho????
-
 class ScreenshotUtil // eu só roubei do Vslice e adaptei essa bct
 {
 	static inline final SCREENSHOT_FOLDER:String = 'screenshots';
@@ -82,6 +80,10 @@ class ScreenshotUtil // eu só roubei do Vslice e adaptei essa bct
 		var camera:FlxCamera = overlayCamera();
 		var state:FlxState = FlxG.state;
 
+		if (state.subState != null) {
+        	state = state.subState;
+    	}
+
 		var fullScreenX:Float = CameraResizeFix.pegarFSX(camera);
 		var fullScreenY:Float = CameraResizeFix.pegarFSY(camera);
 		var fullScreenWidth:Float = CameraResizeFix.pegarFSL(camera);
@@ -148,7 +150,7 @@ class ScreenshotUtil // eu só roubei do Vslice e adaptei essa bct
 	static function screenshotKeyboardKey():FlxKey
 	{
 		var data:Dynamic = screenshotKeyData();
-		var keyName:String = data != null && Reflect.hasField(data, 'keyboard') ? Std.string(Reflect.field(data, 'keyboard')) : 'F10';
+		var keyName:String = data != null && Reflect.hasField(data, 'keyboard') ? Std.string(Reflect.field(data, 'keyboard')) : 'F3';
 		return FlxKey.fromString(keyName);
 	}
 
@@ -193,6 +195,7 @@ class ScreenshotUtil // eu só roubei do Vslice e adaptei essa bct
 			var bitmap:BitmapData = BitmapData.fromImage(FlxG.stage.window.readPixels());
 			saveBitmap(bitmap);
 			showFeedback(bitmap);
+			FlxG.sound.play(Paths.sound('general/screenshot'), 1);
 		}
 		catch(e:Dynamic)
 		{
