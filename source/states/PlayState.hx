@@ -1057,7 +1057,7 @@ class PlayState extends ScriptedState
 		var holdSplash:SustainSplash = new SustainSplash();
 		holdSplash.alpha = 0.0001;
 		
-		if (ClientPrefs.data.hitsoundVolume > 0) Paths.hitsound();
+		if (ClientPrefs.data.hitsoundVolume > 0) Paths.hitsound(ClientPrefs.data.hitsound);
 		if (!ghostTapping) for (i in 1...4) Paths.missnote(i);
 		Paths.image('alphabet');
 		
@@ -6574,9 +6574,8 @@ class PlayState extends ScriptedState
 
 		note.wasGoodHit = true;
 
-		//trace('essa porra pode hitsoundear?  Volume do hitsound é maior que 0? ${note.hitsoundVolume > 0} | hitsound tá ativo? ${!note.hitsoundDisabled}');
 		if (note.hitsoundVolume > 0 && !isSus)
-			FlxG.sound.play(note.hitsound == 'hitsound' ? Paths.hitsound() : Paths.sound(note.hitsound), note.hitsoundVolume);
+			FlxG.sound.play(note.hitsound == 'hitsound' ? Paths.hitsound(ClientPrefs.data.hitsound) : Paths.sound(note.hitsound), note.hitsoundVolume);
 		
 		var noteCharacter:Character = getNoteCharacter(note, boyfriend);
 		var char:Character = noteCharacter;

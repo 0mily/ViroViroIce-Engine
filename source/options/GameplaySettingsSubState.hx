@@ -49,6 +49,26 @@ class GameplaySettingsSubState extends BaseOptionsMenu
 			BOOL);
 		addOption(option);
 
+		var hitsounds:Array<String> = Mods.mergeAllTextsNamed('sounds/game/hitsound/list.txt');
+		for (hit in Mods.mergeAllTextsNamed('sounds/game/hitsound/list.txt'))
+			if (!hitsounds.contains(hit))
+				hitsounds.push(hit);
+		if(hitsounds.length > 0)
+		{
+			if(!hitsounds.contains(ClientPrefs.data.hitsound))
+				ClientPrefs.data.hitsound = ClientPrefs.defaultData.hitsound;
+
+			hitsounds.insert(0, ClientPrefs.defaultData.hitsound);
+			var option:Option = new Option('Hitsound:',
+				"Select your preferred hitsound variation.",
+				'hitsound',
+				STRING,
+				hitsounds);
+			addOption(option);
+			option.onChange = playHitsound;
+			trace(hitsounds);
+		}
+
 		var option:Option = new Option('Hitsound Volume',
 			'Changes the volume of a tick sound that will play when hitting notes.',
 			'hitsoundVolume',
@@ -59,7 +79,7 @@ class GameplaySettingsSubState extends BaseOptionsMenu
 		option.maxValue = 1;
 		option.changeValue = 0.1;
 		option.decimals = 1;
-		option.onChange = onChangeHitsoundVolume;
+		option.onChange = playHitsound;
 
 		var option:Option = new Option('Rating Offset',
 			'Changes how late/early you have to hit for a "Sick!"\nHigher means you have to hit later.',
@@ -134,8 +154,8 @@ class GameplaySettingsSubState extends BaseOptionsMenu
 		addOption(option);
 	}
 
-	function onChangeHitsoundVolume(?_, ?_)
-		FlxG.sound.play(Paths.hitsound(), ClientPrefs.data.hitsoundVolume);
+	function playHitsound(?_, ?_)
+		FlxG.sound.play(Paths.hitsound(ClientPrefs.data.hitsound), ClientPrefs.data.hitsoundVolume);
 
 	function onChangeAutoPause(?_, ?_)
 		FlxG.autoPause = ClientPrefs.data.autoPause;

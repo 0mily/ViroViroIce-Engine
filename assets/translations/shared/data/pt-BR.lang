@@ -241,6 +241,8 @@ setting_auto_pause: "Pausa Automática"
 description_auto_pause: "Se marcado, a janela é automaticamente pausada se não estiver em foco."
 setting_disable_reset_button: "Desativar Botão de Reset"
 description_disable_reset_button: "Se marcado, apertar Reset não irá matar o jogador."
+setting_hitsound: "Som de Acerto:"
+description_hitsound: "Escolha o seu Som de Acerto favorito."
 setting_hitsound_volume: "Volume do Som de Acerto"
 description_hitsound_volume: "Altera o volume de um "tick" que vai soar ao pressionar notas."
 setting_rating_offset: "Offset de Acerto"
@@ -257,7 +259,7 @@ setting_sustains_as_one_note: "Notas Longas Fundidas"
 description_sustains_as_one_note: "Se marcado, notas longas não poderão ser acertadas se a principal não for acertada,\nalém de contar como um único erro."
 
 // Loading Screen
-now_loading: "Carregando{1}"
+now_loading: "Carregando"
 
 // Difficulties
 difficulty_easy: "Fácil"

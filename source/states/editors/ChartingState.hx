@@ -2079,10 +2079,10 @@ class ChartingState extends ScriptedState implements PsychUIEventHandler.PsychUI
 		
 		if (canPlayHitSound) {
 			if(hitSoundPlayer && note.mustPress) {
-				FlxG.sound.play(Paths.hitsound(), hitsoundPlayerStepper.value);
+				FlxG.sound.play(Paths.hitsound(ClientPrefs.data.hitsound), hitsoundPlayerStepper.value);
 				hitSoundPlayer = false;
 			} else if(hitSoundOpp && !note.mustPress) {
-				FlxG.sound.play(Paths.hitsound(), hitsoundOpponentStepper.value);
+				FlxG.sound.play(Paths.hitsound(ClientPrefs.data.hitsound), hitsoundOpponentStepper.value);
 				hitSoundOpp = false;
 			}
 		}

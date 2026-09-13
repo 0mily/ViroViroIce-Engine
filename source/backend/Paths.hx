@@ -264,9 +264,6 @@ class Paths
 	inline static public function chartEditorSound(key:String, ?modsAllowed:Bool = true):Sound
 		return editorSound('charting/$key', modsAllowed);
 
-	inline static public function hitsound(?modsAllowed:Bool = true):Sound
-		return gameSound('hitsound', modsAllowed);
-
 	inline static public function missnote(index:Int, ?modsAllowed:Bool = true):Sound
 		return gameSound('missnotes/missnote$index', modsAllowed);
 
@@ -284,6 +281,12 @@ class Paths
 
 	inline static public function editorMusic(editorName:String, ?track:String = 'music', ?modsAllowed:Bool = true):Sound
 		return music('editors/${normalizePathPart(editorName, "chartingEditor")}/${normalizeSoundLeaf(track, "music")}', modsAllowed);
+
+	public static function hitsound(key:String, ?modsAllowed:Bool = true):Sound
+	{
+		var sound:String = formatToSongPath(normalizePathPart(key, 'viroviroice'));
+		return gameSound('hitsound/$sound', modsAllowed);
+	}
 
 	public static function pauseMusic(pauseMusicName:String, ?characterName:String = 'default', ?uiName:String = null, ?track:String = 'music', ?modsAllowed:Bool = true):Sound
 	{

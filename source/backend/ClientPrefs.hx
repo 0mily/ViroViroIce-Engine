@@ -31,7 +31,6 @@ using StringTools;
 	public var sickWindow:Float = 45.0;
 	public var goodWindow:Float = 90.0;
 	public var badWindow:Float = 135.0;
-
 	
 // ======================[Visuals]
 	
@@ -52,8 +51,8 @@ using StringTools;
 
 	public var weekpixel:Bool = true;
 
-
 // ======================[Graphics]
+
 	public var lowQuality:Bool = false;
 	public var antialiasing:Bool = true;
 	public var shaders:Bool = true;
@@ -61,7 +60,6 @@ using StringTools;
 
 	public var framerate:Int = 60;
 	public var unlockedFPS:Bool = false;
-
 	
 // ======================[QoL]
 
@@ -71,8 +69,8 @@ using StringTools;
 	public var multithreadedLoading:Bool = #if (desktop || cpp || hl) true #else false #end;
 	public var screenshots:Bool = true;
 	public var pauseMusic:String = 'Tea Time';
+	public var hitsound:String = 'ViroViroIce';
 	public var hitsoundVolume:Float = 0;
-	
 	
 // ======================[Misc.]
 
@@ -80,7 +78,6 @@ using StringTools;
 	public var developerMode:Bool = false;
 	public var discordRPC:Bool = true;
 	public var checkForUpdates:Bool = true;
-
 
 // ======================[Too Specific to organize]
 
@@ -98,7 +95,6 @@ using StringTools;
 	public var language:String = 'en-US';
 	public var loadingScreen:Bool = true;
 	public var comboOffset:Array<Int> = [0, 0, 0, 0];
-	
 
 // ======================[Unused or just fucked up]
 
