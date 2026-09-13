@@ -178,7 +178,7 @@ class ClientPrefs {
 		'back'			=> [B],
 		'pause'			=> [START],
 		'reset'			=> [BACK],
-		'screenshot'    => [RIGHT_ANALOG_STICK] // ?
+		'screenshot'    => [RIGHT_ANALOG_STICK] // ? // ??? -Shiho
 	];
 	public static var defaultKeys:Map<String, Array<FlxKey>> = null;
 	public static var defaultButtons:Map<String, Array<FlxGamepadInputID>> = null;
@@ -247,7 +247,7 @@ class ClientPrefs {
 	{
 		ensureModsSave();
 
-		selectedContent = Mods.normalizeFolderKey(saveString(modsSave.data.selectedContent));
+		selectedContent = Mods.normalizeFolderKey(saveString(Mods.parseContentList().selected)); // ei doido...
 		pendingSelectedContent = Mods.normalizeFolderKey(saveString(modsSave.data.pendingSelectedContent));
 		contentBootStatus = saveString(modsSave.data.contentBootStatus).toLowerCase();
 	}

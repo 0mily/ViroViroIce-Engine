@@ -19,6 +19,11 @@ typedef ModsList = {
 	all:Array<String>
 };
 
+typedef ContentsList = {
+	selected:String,
+	all:Array<String>
+};
+
 typedef PackageModData = {
 	@:optional var global:Bool;
 	@:optional var name:String;
@@ -46,6 +51,7 @@ class Mods
 	public static inline var CONTENTS_FOLDER:String = 'contents';
 	static inline var ADDONS_LIST_FILE:String = 'addonsList.txt';
 	static inline var LEGACY_MODS_LIST_FILE:String = 'modsList.txt';
+	static inline var CONTENTS_LIST_FILE:String = 'contentsList.txt';
 
 	static public var selectedContentDirectory:String = '';
 	static public var currentModDirectory:String = '';
@@ -1309,6 +1315,68 @@ class Mods
 			}
 		}
 		pushGlobalMods();
+		#end
+	}
+
+	public static var updatedContentOnState:Bool = false;
+	inline public static function parseContentList():ContentsList {
+		var list:ContentsList = {selected: '', all: []};
+
+		#if ADDONS_ALLOWED
+		#if sys
+		var listFile:String = #if mobile StorageSystem.getDirectory() + #end CONTENTS_LIST_FILE;
+		if (FileSystem.exists(listFile)) {
+			try {
+				for (content in CoolUtil.coolTextFile(listFile)) {
+					if (content.trim().length < 1) continue;
+
+					var dat = content.split('|');
+					var folder:String = dat[0];
+					var contentSelected:Bool = (dat[1] == '1');
+
+					list.all.push(folder);
+					if (contentSelected) list.selected = folder;
+
+					ClientPrefs.selectedContent = folder;
+				}
+			} catch(e) {
+				trace(e);
+
+				FileSystem.deleteFile(listFile);
+			}
+		} else #end {
+			for (folder in Mods.getContentDirectories()) {
+				list.all.push(folder);
+				list.selected = ClientPrefs.selectedContent;
+			}
+		}
+		#end
+
+		if (!updatedContentOnState) updateContentsList(list);
+
+		return list;
+	}
+
+	public static function updateContentsList(?list:ContentsList) {
+		#if ADDONS_ALLOWED
+		var list:ContentsList = (list ?? parseContentList());
+
+		for (folder in Mods.getContentDirectories()) {
+			if (!list.all.contains(folder)) {
+				list.all.push(folder);
+				list.selected = ClientPrefs.selectedContent;
+			}
+		}
+
+		#if sys
+		var txtContent:String = '';
+		for (content in list.all)
+			txtContent += '$content|${list.selected == content ? 1 : 0}\n';
+
+		File.saveContent(CONTENTS_LIST_FILE, txtContent);
+		#end
+
+		updatedContentOnState = true;
 		#end
 	}
 

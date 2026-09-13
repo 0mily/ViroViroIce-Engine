@@ -6,6 +6,8 @@ import flixel.util.FlxSpriteUtil;
 import flixel.util.FlxGradient;
 import openfl.display.BitmapData;
 
+import backend.Mods;
+
 // mano, eu genuinamente fiquei com preguiça de continuar
 // i'm still, what the fuck i coed
 
@@ -141,6 +143,18 @@ class ContentMenuState extends MusicBeatState
 			list.push(new ContentEntry(folder));
 		#end
 		return list;
+	}
+
+	function save(selContent:String){
+		var list:ContentsList = {selected: '', all: []};
+
+		for (folder in Mods.getContentDirectories()) {
+				list.all.push(folder);
+			}
+
+		list.selected = selContent;
+		
+		Mods.updateContentsList(list);
 	}
 
 	override function update(elapsed:Float)
@@ -346,6 +360,7 @@ class ContentMenuState extends MusicBeatState
 				Language.reloadPhrases();
 				Difficulty.resetList();
 				backend.ResolutionManager.reset();
+				save(entry.folder);
 
 				MusicBeatState.switchState(new TitleState());
 			});
