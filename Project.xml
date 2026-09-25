@@ -98,6 +98,7 @@
 		<assets path='example_contents' rename='contents' embed='false' type='template' unless="mac || mobile"/>
 		<assets path='example_contents' rename='contents' embed='false' if="mac || mobile"/>
 		<assets path='list.txt' rename='addonsList.txt' />
+		<assets path='listc.txt' rename='contentsList.txt' />
 	</section>
 
 	<define name="CHECK_FOR_UPDATES" if="officialBuild"/>
