@@ -112,7 +112,6 @@ class NoteOffsetState extends ScriptedState
 		beatText.acceleration.y = 250;
 		beatText.visible = false;
 		add(beatText);
-		trace(beatText.x);
 		
 		timeTxt = new FlxText(0, 600, FlxG.width, "", 32);
 		timeTxt.setFormat(Paths.font("vcr.ttf"), 32, FlxColor.WHITE, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
