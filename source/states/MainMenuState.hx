@@ -19,7 +19,7 @@ enum abstract MainMenuColumn(String) to String {
 class MainMenuState extends ScriptedState
 {
 	public static var psychEngineVersion:String = '0.0.5';
-	public static var modVersion = '0.1.6';
+	public static var modVersion = '0.0.1';
 	public static final buildCommit:String = backend.macro.BuildInfo.getCommit();
 	public static var curSelected:Int = 0;
 	public static var curColumn:MainMenuColumn = CENTER;

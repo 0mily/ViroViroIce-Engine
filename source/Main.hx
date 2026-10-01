@@ -239,7 +239,11 @@ class Main extends Sprite
 		Sys.println(errText);
 		#end
 		
+		#if linux
+		Sys.command('zenity --error --title="Oops..." --text="${errMsg.replace('"', '\\"')}" --width=550 2> /dev/null'); // i think this works for all distros? maybe?
+		#else
 		Application.current.window.alert(errMsg, 'Oops...');
+		#end
 		#if DISCORD_ALLOWED
 		DiscordClient.shutdown();
 		#end

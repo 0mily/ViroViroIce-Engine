@@ -1,16 +1,11 @@
 package options;
 
-import backend.StageData;
 import objects.Character;
 import objects.Bar;
 import flixel.addons.display.shapes.FlxShapeCircle;
 
-import states.stages.StageWeek1 as BackgroundStage;
-
 class NoteOffsetState extends ScriptedState
 {
-	var stageDirectory:String = 'week1';
-	var createStage:Bool = true;
 	var boyfriend:Character;
 	var gf:Character;
 
@@ -35,6 +30,8 @@ class NoteOffsetState extends ScriptedState
 	var controllerPointer:FlxSprite;
 	var _lastControllerMode:Bool = false;
 
+	var drums:FlxSound;
+
 	override public function create() {
 		preCreate();
 		
@@ -51,12 +48,6 @@ class NoteOffsetState extends ScriptedState
 
 		persistentUpdate = true;
 		FlxG.sound.pause();
-
-		// Stage
-		if (createStage) {
-			Paths.setCurrentLevel(stageDirectory);
-			new BackgroundStage();
-		}
 
 		preCreate();
 
@@ -121,6 +112,7 @@ class NoteOffsetState extends ScriptedState
 		beatText.acceleration.y = 250;
 		beatText.visible = false;
 		add(beatText);
+		trace(beatText.x);
 		
 		timeTxt = new FlxText(0, 600, FlxG.width, "", 32);
 		timeTxt.setFormat(Paths.font("vcr.ttf"), 32, FlxColor.WHITE, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
@@ -166,8 +158,14 @@ class NoteOffsetState extends ScriptedState
 		updateMode();
 		_lastControllerMode = true;
 
-		Conductor.bpm = 128;
-		FlxG.sound.playMusic(Paths.music('offsetSong'), 1, true);
+		drums = new FlxSound();
+		drums.loadEmbedded(Paths.music('menus/LagAdjustment/drums'), true);
+		drums.volume = 0;
+		FlxG.sound.list.add(drums);
+		
+		Conductor.bpm = 100;
+		FlxG.sound.playMusic(Paths.music('menus/LagAdjustment/music'), 1, true);
+		drums.play();
 
 		super.create();
 	}
@@ -432,23 +430,31 @@ class NoteOffsetState extends ScriptedState
 		if (lastBeatHit == beat)
 			return;
 		
-		if (beat % 2 == 0) {
+		if (onComboMenu){
+			if (beat % 2 == 0){
+				boyfriend.dance();
+				gf.dance();
+			}
+		} else {
 			boyfriend.dance();
 			gf.dance();
-		}
-		
-		if (beat % 4 == 2) {
-			FlxG.camera.zoom = 1.15;
+
+			FlxG.camera.zoom = 1.05;
 			
 			beatText.alpha = 1;
 			beatText.y = 320;
 			beatText.velocity.y = -150;
+			if (beat % 2 == 0){
+				beatText.x = 890;
+			} else {
+				beatText.x = 260;
+			}
 
 			if (zoomTween != null) zoomTween.cancel();
 			zoomTween = FlxTween.tween(FlxG.camera, {zoom: 1}, 1, {ease: FlxEase.circOut, onComplete: (_) -> zoomTween = null});
 			
 			if (beatTween != null) beatTween.cancel();
-			beatTween = FlxTween.tween(beatText, {alpha: 0}, 1, {ease: FlxEase.sineIn, onComplete: (_) -> beatTween = null});
+			beatTween = FlxTween.tween(beatText, {alpha: 0}, 0.5, {ease: FlxEase.sineIn, onComplete: (_) -> beatTween = null});
 		}
 
 		lastBeatHit = beat;
@@ -525,9 +531,13 @@ class NoteOffsetState extends ScriptedState
 		var str:String;
 		var str2:String;
 		if(onComboMenu)
+		{
 			str = Language.getPhrase('combo_offset', 'Combo Offset');
-		else
+			if (drums != null) drums.fadeOut(1, 0);
+		} else {
 			str = Language.getPhrase('note_delay', 'Note/Beat Delay');
+			drums.fadeIn(1, drums.volume, 1);
+		}
 
 		if(!controls.controllerMode)
 			str2 = Language.getPhrase('switch_on_accept', '(Press Accept to Switch)');
