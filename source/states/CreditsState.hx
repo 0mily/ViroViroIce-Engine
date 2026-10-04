@@ -166,7 +166,7 @@ class CreditsState extends ScriptedState
 				var blockedFNF:Bool = (callOnScripts('onSelected', [creditsStuff[curSelected][0], curSelected], true) == psychlua.LuaUtils.Function_Stop);
 				blockedFNF = (blockedFNF || callOnScripts('onAccept', [creditsStuff[curSelected], curSelected], true) == psychlua.LuaUtils.Function_Stop);
 				if (!blockedFNF) {
-					CoolUtil.browserLoad(creditsStuff[curSelected][3]);
+					CoolUtil.browserLoad(creditsStuff[curSelected][3] == 'shiho' ? shiho() : creditsStuff[curSelected][3]);
 				}
 			}
 			if (controls.BACK)
@@ -277,6 +277,11 @@ class CreditsState extends ScriptedState
 
 	public function isSeparator(num:Int):Bool {
 		return (creditsStuff[num].length <= 2);
+	}
+
+	function shiho(){
+		var links:Array<String> = ['gnx_Ygu4FqI', 'BfgcJQOUtnk', 'UqjSEml2MEE', 'xVBj4RLmyrI', 'GjyW6uAWiA0', 'afLFnwF1wcs', 'xTRkM43kOe4', 'lQbBQFNi4Kg', '1Bk_nqUQ0fc', 'ezMdddYcRsc', '-7gIpfrQdAI', 'FQGOf5qVrRs', '6uguiIBKPyE', 'QMvZMaVFtH', 'if8hKMC2bgw', 'xrKX2gKnNZE', 'U3apE-xf2vk'];
+		return 'https://www.youtube.com/watch?v=${FlxG.random.getObject(links)}';
 	}
 
 	#if LUA_ALLOWED
