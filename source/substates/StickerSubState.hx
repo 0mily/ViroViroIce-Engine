@@ -218,7 +218,7 @@ class StickerSubState extends MusicBeatSubstate
         sticky = new StickerSprite(0, 0, STICKER_SET, sticker);
       }
       else
-        sticky = new StickerSprite(0, 0, null, "faceSticker");
+        sticky = new StickerSprite(0, 0, null, "faceSticker" + FlxG.random.int(1, 2));
 
       sticky.visible = false;
       sticky.active = false;

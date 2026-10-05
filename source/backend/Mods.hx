@@ -1397,7 +1397,8 @@ class Mods
 		for (key => val in cache){
 			if(	key.toLowerCase().contains("transitionswag")
 				|| key.contains("bg_graphic_")
-				|| key == "images/faceSticker.png")
+				|| key == 'images/faceSticker1.png'
+				|| key == 'images/faceSticker2.png')
 				Paths.currentTrackedAssets.set(key,val);
 		}
 		Paths.clearStoredMemory();
@@ -1408,7 +1409,8 @@ class Mods
 		for (key => val in Paths.currentTrackedAssets){
 			if(	key.toLowerCase().contains("transitionswag")
 				|| key.contains("bg_graphic_")
-				|| key == "images/faceSticker.png")
+				|| key == 'images/faceSticker1.png'
+				|| key == 'images/faceSticker2.png')
 				Paths.localTrackedAssets.push(key);
 		}
 	}

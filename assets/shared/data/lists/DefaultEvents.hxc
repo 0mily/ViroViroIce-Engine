@@ -16,7 +16,7 @@ class DefaultEvents extends Event
 	{
 		return {
 			category: 'Camera',
-			names: ['Focus Camera', 'Camera Zoom', 'Camera Angle', 'Camera Module Bop', 'Add Camera Zoom', 'Screen Shake', 'Camera Flash', 'Modify Camera Move'] // Cameras
+			names: ['Focus Camera', 'Camera Zoom', 'Camera Angle', 'Camera Module Bop', 'Add Camera Zoom', 'Camera Follow Pos', 'Screen Shake', 'Camera Flash', 'Modify Camera Move'] // Cameras
 		};
 	}
 
