@@ -4793,7 +4793,7 @@ class PlayState extends ScriptedState
 					}
 				}
 				else if(value != 0) {
-					if(dad.curCharacter.startsWith('gf')) { //Tutorial GF is actually Dad! The GF is an imposter!! ding ding ding ding ding ding ding, dindinding, end my suffering
+					if(dad.curCharacter.startsWith('gf')) { //Tutorial GF is actually Dad! The GF is an imposter!! ding ding ding ding ding ding ding, dindinding, end my suffering // very funny shadowmario
 						dad.playAnim('cheer', true);
 						dad.specialAnim = true;
 						dad.heyTimer = flValue2;
@@ -4821,7 +4821,7 @@ class PlayState extends ScriptedState
 			case 'Camera Module Bop':
 				applyCameraModuleBopEvent(value1, value2, values);
 
-			case 'Modify Camera Move' | 'ModifyCameraMove': // desculpa Shiho
+			case 'Modify Camera Move' | 'ModifyCameraMove': // desculpa Shiho // okay! -Shiho
 				applyModifyCameraMoveEvent(value1, value2, values);
 
 			case 'Play Animation' | 'PlayAnimation':
@@ -4975,15 +4975,16 @@ class PlayState extends ScriptedState
 			case 'Change Scroll Speed':
 				if (songSpeedType != "constant")
 				{
-					if(flValue1 == null) flValue1 = 1;
-					if(flValue2 == null) flValue2 = 0;
+					var speed:Float = Std.parseFloat(value1.split(', ')[0]);
+					var steps:Float = Std.parseFloat(value1.split(', ')[1]);
+					var easing:Array<String> = value2.split(', ');
 
-					var newValue:Float = SONG.speed * ClientPrefs.getGameplaySetting('scrollspeed') * flValue1;
+					var newValue:Float = easing[2] == 'false' ? SONG.speed * ClientPrefs.getGameplaySetting('scrollspeed') * flValue1 : flValue1;
 					cancelSongSpeedTween();
-					if(flValue2 <= 0)
+					if(steps <= 0 || easing[0] == 'instant')
 						songSpeed = newValue;
 					else
-						songSpeedTween = FlxTween.tween(this, {songSpeed: newValue}, flValue2 / playbackRate, {ease: FlxEase.linear, onComplete:
+						songSpeedTween = FlxTween.tween(this, {songSpeed: newValue}, (steps * Conductor.stepCrochet / 1000) / playbackRate, {ease: getCameraZoomEase(easing[0] == 'linear' ? 'linear' : easing[0] + easing[1]), onComplete:
 							function (twn:FlxTween)
 							{
 								if(songSpeedTween == twn)
@@ -4991,32 +4992,6 @@ class PlayState extends ScriptedState
 							}
 						});
 				}
-
-			case 'Change Scroll Speed GOOD':
-				if (songSpeedType != "constant")
-					{
-						if(flValue1 == null) flValue1 = 1;
-						if(flValue2 == null) flValue2 = 0;
-
-						var newValue:Float = flValue1;
-
-						cancelSongSpeedTween();
-						if(flValue2 <= 0)
-						{
-							songSpeed = newValue;
-						}
-						else
-						{
-							songSpeedTween = FlxTween.tween(this, {songSpeed: newValue}, flValue2 / playbackRate, {
-								ease: FlxEase.linear,
-								onComplete: function (twn:FlxTween)
-								{
-									if(songSpeedTween == twn)
-										songSpeedTween = null;
-								}
-							});
-						}
-					}
 
 			case 'Camera Zoom':
 				applyCameraZoomEvent(value1, value2);

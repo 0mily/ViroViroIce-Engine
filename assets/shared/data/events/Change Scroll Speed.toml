@@ -1,19 +1,55 @@
 name = 'Change Scroll Speed'
-description = 'Changes song scroll speed by multiplier.'
+description = 'Changes song scroll speed by multiplier or absolute value.'
 
-[Multiplier]
+[Speed]
 type = 'stepper'
+label = 'New Speed'
+group = 1
+part = 1
 default = 1
 step = 0.1
-min_max = [ 0.05, 10 ]
-decimals = 3
-width = 85
+min_max = [ 0.1, 10 ]
+decimals = 2
+width = 60
 advance = false
 
-[Seconds]
+[Steps]
 type = 'stepper'
+group = 1
+part = 2
 default = 0
 step = 1
-min_max = [ 0, 60 ]
+min_max = [ 0, 999 ]
+xOffset = 15
+width = 70
 decimals = 2
-width = 80
+advance = false
+
+[Absolute]
+type = 'checker'
+label = 'Absolute'
+group = 2
+part = 3
+default = true
+width = 50
+xOffset = 15
+
+[Ease]
+type = 'dropdown'
+label = 'Easing Type'
+group = 2
+part = 1
+default = 'linear'
+options = [ 'instant', 'linear', 'back', 'bounce', 'circ', 'cube', 'elastic', 'expo', 'quad', 'quart', 'quint', 'sine', 'smoothStep', 'smootherStep' ]
+width = 90
+advance = false
+
+[EaseDir]
+type = 'dropdown'
+label = 'Easing Direction'
+group = 2
+part = 2
+default = 'InOut'
+options = [ 'In', 'InOut', 'Out' ]
+width = 90
+xOffset = 25

@@ -448,6 +448,15 @@ class VSlice
 					eventFloatString(value, ['offsetX'], 0),
 					eventFloatString(value, ['offsetY'], 0)
 				];
+
+			case 'scrollspeed':
+				var speed:String = eventFloatString(value, ['scroll'], 1);
+				var steps:String = eventFloatString(value, ['duration'], 0);
+				var ease:String = readString(value, ['ease'], 'linear');
+				var easeDir:String = readString(value, ['easeDir'], 'InOut');
+				var absolute:String = readString(value, ['absolute'], 'true');
+				
+				return ['Change Scroll Speed', '$speed, $steps', '$ease, $easeDir, $absolute'];
 		}
 
 		var fields:Array<Dynamic> = eventValueFields(value);

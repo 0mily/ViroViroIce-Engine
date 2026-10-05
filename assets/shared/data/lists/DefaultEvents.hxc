@@ -32,7 +32,7 @@ class DefaultEvents extends Event
 	{
 		return {
 			category: 'Gameplay',
-			names: ['Change Scroll Speed', 'Change Scroll Speed GOOD', 'BPM Change'] // Play
+			names: ['Change Scroll Speed', 'BPM Change'] // Play
 		};
 	}
 
