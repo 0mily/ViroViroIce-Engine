@@ -290,7 +290,7 @@ class CreditsState extends ScriptedState
 		if (shiho == 1)
 			shiholor = icons[blehhhh][1];
 
-		var dick:Array<String> = ['https://www.youtube.com/watch?v=${FlxG.random.getObject(links)}', 'shiho/${icons[blehhhh][0]}'];
+		var dick:Array<String> = [FlxG.random.bool(0.000001) ? 'https://twitter.com/xdshiho' /*good luck -Shiho*/ : 'https://www.youtube.com/watch?v=${FlxG.random.getObject(links)}', 'shiho/${icons[blehhhh][0]}'];
 		return dick[shiho];
 	}
 
