@@ -61,6 +61,7 @@ class Main extends Sprite
 	public static var traces:ScriptTraceDisplay;
 
 	public static final platform:String = #if mobile "Phones" #else "PCs" #end;
+	var linuxDialogCommand:String = 'zenity'; // zenity is the default cuz i *THINK* most distros have it idk don't quote me on that -Shiho
 	
 	// You can pretty much ignore everything from here on - your code should go in your states.
 	
@@ -69,6 +70,9 @@ class Main extends Sprite
 		super();
 		
 		#if CRASH_HANDLER
+		if (Sys.command('which kdialog') == 0)
+			linuxDialogCommand = 'kdialog'; // people that install their distros using kde plasma with all the qof stuff have kdialog so this should be fine
+
 		Lib.current.loaderInfo.uncaughtErrorEvents.addEventListener(UncaughtErrorEvent.UNCAUGHT_ERROR, onCrash);
 		#end
 		
@@ -240,7 +244,7 @@ class Main extends Sprite
 		#end
 		
 		#if linux
-		Sys.command('zenity --error --title="Oops..." --text="${errMsg.replace('"', '\\"')}" --width=550 2> /dev/null'); // i think this works for all distros? maybe?
+		Sys.command(linuxDialogCommand == 'zenity' ? 'zenity --error --title="Oops..." --text="${errMsg.replace('"', '\\"')}" --width=550 2> /dev/null' : 'kdialog --error "${errMsg.replace('"', '\\"')}" --title="Oops..."');
 		#else
 		Application.current.window.alert(errMsg, 'Oops...');
 		#end

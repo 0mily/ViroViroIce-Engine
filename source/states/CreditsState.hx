@@ -19,6 +19,8 @@ class CreditsState extends ScriptedState
 	public var creditsStuff:Array<Array<String>> = [];
 	public var defaultList:Array<Array<String>>;
 
+	var shiholor:String = 'FFFFFF';
+
 	function refreshShitScript():Void {
 		setOnScripts('curSelected', curSelected);
 		setOnScripts('selectedCredit', creditsStuff[curSelected]);
@@ -67,7 +69,8 @@ class CreditsState extends ScriptedState
 				var str:String = 'credits/missing_icon';
 				if(credit[1] != null && credit[1].length > 0)
 				{
-					var fileName = 'credits/' + credit[1];
+					var iconName:String = credit[1] == 'shicon' ? shiho(1) : credit[1];
+					var fileName = 'credits/' + iconName;
 					if (Paths.fileExists('images/$fileName.png', IMAGE)) str = fileName;
 					else if (Paths.fileExists('images/$fileName-pixel.png', IMAGE)) str = fileName + '-pixel';
 				}
@@ -166,7 +169,7 @@ class CreditsState extends ScriptedState
 				var blockedFNF:Bool = (callOnScripts('onSelected', [creditsStuff[curSelected][0], curSelected], true) == psychlua.LuaUtils.Function_Stop);
 				blockedFNF = (blockedFNF || callOnScripts('onAccept', [creditsStuff[curSelected], curSelected], true) == psychlua.LuaUtils.Function_Stop);
 				if (!blockedFNF) {
-					CoolUtil.browserLoad(creditsStuff[curSelected][3] == 'shiho' ? shiho() : creditsStuff[curSelected][3]);
+					CoolUtil.browserLoad(creditsStuff[curSelected][3] == 'shink' ? shiho(0) : creditsStuff[curSelected][3]);
 				}
 			}
 			if (controls.BACK)
@@ -213,7 +216,7 @@ class CreditsState extends ScriptedState
 		} while (isSeparator(curSelected) && max >= 0);
 
 		if (callOnScripts('onHighlighted', [creditsStuff[curSelected][0], curSelected], true) != psychlua.LuaUtils.Function_Stop) {
-			var newColor:FlxColor = CoolUtil.colorFromString(creditsStuff[curSelected][4]);
+			var newColor:FlxColor = CoolUtil.colorFromString(creditsStuff[curSelected][4] == 'shiholor' ? shiholor : creditsStuff[curSelected][4]);
 			if(newColor != intendedColor) {
 				intendedColor = newColor;
 				FlxTween.cancelTweensOf(bg);
@@ -279,9 +282,16 @@ class CreditsState extends ScriptedState
 		return (creditsStuff[num].length <= 2);
 	}
 
-	function shiho(){
+	function shiho(shiho:Int){
 		var links:Array<String> = ['gnx_Ygu4FqI', 'BfgcJQOUtnk', 'UqjSEml2MEE', 'xVBj4RLmyrI', 'GjyW6uAWiA0', 'afLFnwF1wcs', 'xTRkM43kOe4', 'lQbBQFNi4Kg', '1Bk_nqUQ0fc', 'ezMdddYcRsc', '-7gIpfrQdAI', 'FQGOf5qVrRs', '6uguiIBKPyE', 'QMvZMaVFtH', 'if8hKMC2bgw', 'xrKX2gKnNZE', 'U3apE-xf2vk'];
-		return 'https://www.youtube.com/watch?v=${FlxG.random.getObject(links)}';
+		var icons:Array<Array<String>> = [['shiho', '93D1C9'], ['shibird', '93D1C9'], ['ping', '8DD357'], ['ive', 'D1417D'], ['mei', 'F4D79C'], ['soup', 'DA4E2B']];
+		
+		var blehhhh:Int = FlxG.random.int(0, 5);
+		if (shiho == 1)
+			shiholor = icons[blehhhh][1];
+
+		var dick:Array<String> = ['https://www.youtube.com/watch?v=${FlxG.random.getObject(links)}', 'shiho/${icons[blehhhh][0]}'];
+		return dick[shiho];
 	}
 
 	#if LUA_ALLOWED
